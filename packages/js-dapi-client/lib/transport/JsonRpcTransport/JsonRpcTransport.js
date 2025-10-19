@@ -44,8 +44,15 @@ class JsonRpcTransport {
    * @returns {Promise<object>}
    */
   async request(method, params = {}, options = {}) {
-    const dapiAddressProvider = this.createDAPIAddressProviderFromOptions(options)
+    let dapiAddressProvider = this.createDAPIAddressProviderFromOptions(options)
       || this.dapiAddressProvider;
+
+    // Support async provider initialization (DNS hostname resolution)
+    // If dapiAddressProvider has getAddressProvider method (DAPIClient wrapper),
+    // await the async initialization to ensure DNS resolution completes
+    if (dapiAddressProvider && typeof dapiAddressProvider.getAddressProvider === 'function') {
+      dapiAddressProvider = await dapiAddressProvider.getAddressProvider();
+    }
 
     const address = await dapiAddressProvider.getLiveAddress();
 
