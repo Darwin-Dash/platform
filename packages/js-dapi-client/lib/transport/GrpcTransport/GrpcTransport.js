@@ -34,16 +34,59 @@ class GrpcTransport {
   }
 
   /**
-   * Make request to DAPI node
-   * @param {Function} ClientClass
-   * @param {string} method
-   * @param {object} requestMessage
-   * @param {DAPIClientOptions} [options]
-   * @returns {Promise<object>}
+   * Make request to DAPI node via gRPC
+   *
+   * Handles both synchronous and asynchronous address provider patterns:
+   * - Direct address providers (synchronous): used immediately
+   * - DAPIClient wrapper (asynchronous): awaits getAddressProvider() for DNS resolution
+   *
+   * @param {Function} ClientClass gRPC service client class
+   * @param {string} method gRPC method name to call
+   * @param {object} requestMessage gRPC request message
+   * @param {DAPIClientOptions} [options] Request-specific options
+   * @returns {Promise<object>} gRPC response
    */
   async request(ClientClass, method, requestMessage, options = { }) {
-    const dapiAddressProvider = this.createDAPIAddressProviderFromOptions(options)
+    let dapiAddressProvider = this.createDAPIAddressProviderFromOptions(options)
       || this.dapiAddressProvider;
+
+    /**
+     * DUCK TYPING FOR ASYNC ADDRESS PROVIDER SUPPORT
+     *
+     * The dapiAddressProvider parameter can be one of two types:
+     *
+     * 1. DIRECT ADDRESS PROVIDER (synchronous):
+     *    - ListDAPIAddressProvider
+     *    - SimplifiedMasternodeListDAPIAddressProvider
+     *    - Can call getLiveAddress() directly
+     *    - No async initialization needed
+     *
+     * 2. DAPI CLIENT WRAPPER (asynchronous):
+     *    - DAPIClient instance with getAddressProvider() method
+     *    - May be resolving DNS lookups for hostname-based seeds
+     *    - First call waits for DNS resolution (10-100ms)
+     *    - Subsequent calls use cached provider (instant)
+     *
+     * IMPLEMENTATION:
+     * We check for the presence of getAddressProvider() method using duck typing:
+     * - If the method exists, it's a DAPIClient wrapper → call it
+     * - If the method doesn't exist, it's a direct provider → use as-is
+     *
+     * WHY NOT isinstance CHECK?
+     * Duck typing is simpler and more flexible. It doesn't require importing
+     * DAPIClient class, avoids circular dependencies, and works with any
+     * object that implements the getAddressProvider() interface.
+     *
+     * PERFORMANCE IMPACT:
+     * - IP-based seeds: No delay (DNS skipped)
+     * - Hostname seeds (first request): ~10-100ms DNS latency
+     * - Hostname seeds (subsequent requests): <1ms (cached provider)
+     *
+     * See: packages/js-dapi-client/docs/DNS_RESOLUTION.md
+     */
+    if (dapiAddressProvider && typeof dapiAddressProvider.getAddressProvider === 'function') {
+      dapiAddressProvider = await dapiAddressProvider.getAddressProvider();
+    }
 
     const address = await dapiAddressProvider.getLiveAddress();
 

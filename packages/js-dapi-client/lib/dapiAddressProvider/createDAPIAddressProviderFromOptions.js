@@ -11,6 +11,7 @@ const createMasternodeListStreamFactory = require('../SimplifiedMasternodeListPr
 const DAPIClientError = require('../errors/DAPIClientError');
 
 const networkConfigs = require('../networkConfigs');
+const resolveDAPIAddress = require('./resolveDAPIAddress');
 
 /**
  * @typedef {createDAPIAddressProviderFromOptions}
@@ -74,27 +75,71 @@ function createDAPIAddressProviderFromOptions(options) {
       dapiAddressesWhiteList = networkConfigs.testnet.dapiAddressesWhiteList;
     }
 
-    const listDAPIAddressProvider = new ListDAPIAddressProvider(
-      options.seeds.map((rawAddress) => new DAPIAddress(rawAddress)),
-      options,
-    );
+    /**
+     * ASYNC DNS RESOLUTION PATTERN
+     *
+     * WHY CRITICAL: DAPI server TLS certificates are REGISTERED TO IP ADDRESSES,
+     * not to DNS hostnames. We MUST resolve hostnames to IP addresses BEFORE
+     * connecting, or TLS certificate validation will fail.
+     *
+     * We wrap seed resolution in Promise.all() to:
+     * 1. Resolve all seed hostnames to IP addresses in parallel (not sequentially)
+     * 2. Convert DNS hostnames to IP addresses BEFORE creating the provider
+     * 3. Return a Promise that resolves to the fully initialized provider
+     *
+     * Why Promises?
+     * DNS lookups are I/O operations that can block if done synchronously.
+     * This allows the constructor to return immediately while DNS resolution
+     * happens in the background. The first actual gRPC request will wait for
+     * DNS to complete if needed, but application startup is not blocked.
+     *
+     * Why Promise.all()?
+     * Multiple seeds can be resolved in parallel. If we have 3 seeds, Promise.all()
+     * resolves them all simultaneously (faster) rather than sequentially.
+     * Total time = slowest DNS lookup, not sum of all lookups.
+     *
+     * Why return a Promise?
+     * createDAPIAddressProviderFromOptions() can return either:
+     * - A synchronous provider (for IP addresses, pre-resolved configs)
+     * - A Promise that resolves to a provider (for hostname seeds)
+     *
+     * The caller (DAPIClient) detects this with instanceof Promise check
+     * and handles async initialization appropriately.
+     *
+     * See: packages/js-dapi-client/docs/DNS_RESOLUTION.md
+     */
+    const resolvedSeeds = Promise.all(
+      options.seeds.map(async (rawAddress) => {
+        const dapiAddr = new DAPIAddress(rawAddress);
+        return resolveDAPIAddress(dapiAddr, {
+          loggerIdentifier: options.loggerOptions?.identifier,
+        });
+      })
+    ).then((resolvedAddresses) => {
+      const listDAPIAddressProvider = new ListDAPIAddressProvider(
+        resolvedAddresses,
+        options,
+      );
 
-    const createStream = createMasternodeListStreamFactory(
-      createDAPIAddressProviderFromOptions,
-      listDAPIAddressProvider,
-      options,
-    );
+      const createStream = createMasternodeListStreamFactory(
+        createDAPIAddressProviderFromOptions,
+        listDAPIAddressProvider,
+        options,
+      );
 
-    const smlProvider = new SimplifiedMasternodeListProvider(
-      createStream,
-      options,
-    );
+      const smlProvider = new SimplifiedMasternodeListProvider(
+        createStream,
+        options,
+      );
 
-    return new SimplifiedMasternodeListDAPIAddressProvider(
-      smlProvider,
-      listDAPIAddressProvider,
-      dapiAddressesWhiteList.map((rawAddress) => new DAPIAddress(rawAddress)),
-    );
+      return new SimplifiedMasternodeListDAPIAddressProvider(
+        smlProvider,
+        listDAPIAddressProvider,
+        dapiAddressesWhiteList.map((rawAddress) => new DAPIAddress(rawAddress)),
+      );
+    });
+
+    return resolvedSeeds;
   }
 
   if (options.network) {

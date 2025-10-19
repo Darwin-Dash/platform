@@ -44,14 +44,48 @@ class DAPIClient extends EventEmitter {
       this.options.loggerOptions.level,
     );
 
-    this.dapiAddressProvider = createDAPIAddressProviderFromOptions({
+    /**
+     * ASYNC INITIALIZATION FOR DNS RESOLUTION
+     *
+     * The address provider creation can return either:
+     * 1. A synchronous provider (for IP-based seeds or network configs)
+     * 2. A Promise that resolves to a provider (for hostname-based seeds)
+     *
+     * This dual-mode pattern:
+     * - Maintains backward compatibility with synchronous configurations
+     * - Enables parallel DNS resolution for hostnames in the background
+     * - Allows the constructor to return immediately (non-blocking)
+     * - Handles both cases transparently in the transport layers
+     *
+     * DNS Resolution Pattern:
+     * - createDAPIAddressProviderFromOptions() detects hostname seeds
+     * - Wraps them in Promise.all() for parallel DNS lookups
+     * - Returns a Promise that resolves when all DNS lookups complete
+     * - If all inputs are IPs or pre-resolved, returns provider immediately
+     *
+     * See: packages/js-dapi-client/docs/DNS_RESOLUTION.md
+     */
+    const addressProviderResult = createDAPIAddressProviderFromOptions({
       ...this.options,
       logger: this.logger,
     });
 
+    // Detect async initialization (Promise) vs synchronous provider
+    if (addressProviderResult instanceof Promise) {
+      // Store Promise for later resolution when getAddressProvider() is called
+      this.dapiAddressProviderPromise = addressProviderResult;
+      // For synchronous compatibility, set to undefined initially
+      // getAddressProvider() will await the promise and cache the result
+      this.dapiAddressProvider = undefined;
+    } else {
+      // Synchronous provider - store directly and wrap in resolved Promise
+      this.dapiAddressProvider = addressProviderResult;
+      this.dapiAddressProviderPromise = Promise.resolve(addressProviderResult);
+    }
+
     const grpcTransport = new GrpcTransport(
       createDAPIAddressProviderFromOptions,
-      this.dapiAddressProvider,
+      this,
       createGrpcTransportError,
       this.options,
     );
@@ -59,7 +93,7 @@ class DAPIClient extends EventEmitter {
     const jsonRpcTransport = new JsonRpcTransport(
       createDAPIAddressProviderFromOptions,
       requestJsonRpc,
-      this.dapiAddressProvider,
+      this,
       createJsonTransportError,
       this.options,
     );
@@ -68,6 +102,50 @@ class DAPIClient extends EventEmitter {
     this.platform = new PlatformMethodsFacade(grpcTransport);
 
     this.initBlockHeadersProvider();
+  }
+
+  /**
+   * Get the current address provider (awaits if async initialization in progress)
+   *
+   * This method handles both synchronous and asynchronous initialization:
+   *
+   * SYNCHRONOUS PATH (IP addresses or pre-resolved config):
+   * - dapiAddressProvider is already set from constructor
+   * - Returns immediately without awaiting
+   * - No latency from DNS resolution
+   *
+   * ASYNCHRONOUS PATH (hostname seeds):
+   * - dapiAddressProvider is undefined initially
+   * - Awaits dapiAddressProviderPromise which is resolving DNS lookups
+   * - First call waits for DNS resolution to complete
+   * - Caches result in dapiAddressProvider for subsequent calls
+   * - Subsequent calls return cached value immediately
+   *
+   * CACHING PATTERN:
+   * The provider is cached after first resolution to avoid redundant work.
+   * This is safe because the address provider doesn't change after initialization.
+   *
+   * USED BY:
+   * - GrpcTransport: Calls before each gRPC request
+   * - JsonRpcTransport: Calls before each JSON-RPC request
+   * - disconnect(): Calls during cleanup
+   *
+   * @private
+   * @returns {Promise<DAPIAddressProvider>} Resolves to the initialized address provider
+   */
+  async getAddressProvider() {
+    // Fast path: provider already cached
+    if (this.dapiAddressProvider) {
+      return this.dapiAddressProvider;
+    }
+
+    // Slow path: await DNS resolution (only happens first time with hostnames)
+    const provider = await this.dapiAddressProviderPromise;
+
+    // Cache for next calls
+    this.dapiAddressProvider = provider;
+
+    return provider;
   }
 
   /**
@@ -87,6 +165,12 @@ class DAPIClient extends EventEmitter {
 
   /**
    * Close all open connections
+   *
+   * Properly handles both synchronous and asynchronous address provider initialization:
+   * - If address provider is already initialized: uses cached instance immediately
+   * - If DNS resolution is still pending: awaits completion before cleanup
+   * - Ensures all resources are properly released
+   *
    * @returns {Promise<void>}
    */
   async disconnect() {
@@ -94,8 +178,10 @@ class DAPIClient extends EventEmitter {
     await this.blockHeadersProvider.stop();
 
     // Stop masternode list provider
-    if (this.dapiAddressProvider.smlProvider) {
-      await this.dapiAddressProvider.smlProvider.unsubscribe();
+    // Using getAddressProvider() handles both sync and async initialization
+    const addressProvider = await this.getAddressProvider();
+    if (addressProvider && addressProvider.smlProvider) {
+      await addressProvider.smlProvider.unsubscribe();
     }
   }
 }
