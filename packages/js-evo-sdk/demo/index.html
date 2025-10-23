@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>js-evo-sdk Demo - Dash Platform Connection</title>
+    <title>Dash Platform Status</title>
     <style>
         * {
             margin: 0;
@@ -16,337 +16,457 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 900px;
-            width: 100%;
-            overflow: hidden;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
             text-align: center;
+            color: white;
+            margin-bottom: 30px;
         }
 
         .header h1 {
-            font-size: 28px;
+            font-size: 32px;
             margin-bottom: 8px;
+            font-weight: 700;
         }
 
         .header p {
+            font-size: 14px;
             opacity: 0.9;
-            font-size: 14px;
         }
 
-        .content {
-            padding: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .section {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .section h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: #333;
-            font-weight: 600;
-        }
-
-        .status-box {
-            background: #f5f5f5;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-
-        .status-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .status-label {
-            font-weight: 600;
-            color: #666;
-            min-width: 100px;
-        }
-
-        .status-value {
-            color: #333;
-            word-break: break-all;
-        }
-
-        .status {
+        .status-badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 6px 16px;
             border-radius: 20px;
-            font-weight: 600;
             font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .status.connecting {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status.connected {
+        .status-badge.connected {
             background: #d4edda;
             color: #155724;
         }
 
-        .status.error {
+        .status-badge.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.error {
             background: #f8d7da;
             color: #721c24;
         }
 
-        .disconnected {
-            background: #e2e3e5;
-            color: #383d41;
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
 
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
 
-        button {
-            flex: 1;
-            padding: 12px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
+        .metric-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .metric-subvalue {
+            font-size: 13px;
+            color: #666;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-card h3 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 16px;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        #connectBtn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        #connectBtn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        #connectBtn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        #queryBtn {
-            background: #17a2b8;
-            color: white;
-        }
-
-        #queryBtn:hover:not(:disabled) {
-            background: #138496;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(23, 162, 184, 0.4);
-        }
-
-        #queryBtn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .logs-section {
-            grid-column: 1 / -1;
-        }
-
-        #logs {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            border-radius: 6px;
-            padding: 12px;
-            height: 200px;
-            overflow-y: auto;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-            word-wrap: break-word;
-        }
-
-        .log-info {
-            color: #9cdcfe;
-        }
-
-        .log-success {
-            color: #4ec9b0;
-        }
-
-        .log-error {
-            color: #f48771;
-        }
-
-        .log-warning {
-            color: #dcdcaa;
-        }
-
-        #results {
-            min-height: 150px;
-            background: #f9f9f9;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-        }
-
-        .result-section {
-            margin-bottom: 16px;
-        }
-
-        .result-section h3 {
-            color: #333;
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             margin-bottom: 12px;
-            font-size: 14px;
+            font-size: 13px;
+            line-height: 1.4;
         }
 
-        .result-section dl {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 8px 12px;
+        .info-item:last-child {
+            margin-bottom: 0;
         }
 
-        .result-section dt {
-            font-weight: 600;
-            color: #666;
+        .info-label {
+            color: #999;
+            font-weight: 500;
+            margin-right: 12px;
+            min-width: 120px;
         }
 
-        .result-section dd {
+        .info-value {
             color: #333;
-        }
-
-        .result-section code {
-            background: #f0f0f0;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 12px;
+            text-align: right;
+            flex: 1;
             word-break: break-all;
         }
 
-        .error-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 6px;
-            padding: 12px;
-            color: #856404;
-            font-size: 13px;
-        }
-
-        .error-box strong {
-            display: block;
-            margin-bottom: 8px;
-        }
-
         .footer {
-            background: #f5f5f5;
-            border-top: 1px solid #e0e0e0;
-            padding: 16px 30px;
             text-align: center;
+            color: white;
             font-size: 12px;
-            color: #666;
+            margin-top: 40px;
+            opacity: 0.8;
         }
 
         .footer a {
-            color: #667eea;
+            color: white;
             text-decoration: none;
+            font-weight: 500;
         }
 
         .footer a:hover {
             text-decoration: underline;
+        }
+
+        .footer .last-updated {
+            margin-top: 12px;
+            margin-bottom: 0;
+        }
+
+        .network-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .network-selector label {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .network-selector select {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .network-selector select:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .network-selector select option {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 16px;
+            padding: 40px 20px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .refresh-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .refresh-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .refresh-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .refresh-button.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .refresh-button .spinner-small {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .update-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-value {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>js-evo-sdk Demo</h1>
-            <p>Standalone HTML demo connecting to Dash Platform using the JavaScript SDK</p>
+            <h1>Dash Platform Status</h1>
+            <p id="networkDescription">Testnet Live Status Dashboard</p>
+            <span id="connectionStatus" class="status-badge connecting">Connecting...</span>
         </div>
 
-        <div class="content">
-            <div class="section">
-                <h2>Connection Status</h2>
-                <div class="status-box">
-                    <div class="status-item">
-                        <span class="status-label">Status:</span>
-                        <span id="status" class="status disconnected">Disconnected</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="status-label">SDK Version:</span>
-                        <span class="status-value" id="version">—</span>
-                    </div>
+        <div class="network-selector">
+            <label for="networkSelect">Network:</label>
+            <select id="networkSelect">
+                <option value="testnet">Testnet</option>
+                <option value="mainnet">Mainnet</option>
+            </select>
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="loading" class="loading">
+            <span class="spinner"></span>
+            <span>Connecting to Dash Platform...</span>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Block Height</div>
+                    <div class="metric-value" id="blockHeight">—</div>
+                    <div class="metric-subvalue" id="blockSync">—</div>
                 </div>
-                <div class="controls">
-                    <button id="connectBtn">Connect to Dash Platform</button>
+                <div class="metric-card">
+                    <div class="metric-label">Connected Peers</div>
+                    <div class="metric-value" id="peersCount">—</div>
+                    <div class="metric-subvalue">Network nodes connected</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Network</div>
+                    <div class="metric-value" id="network">—</div>
+                    <div class="metric-subvalue" id="networkStatus">—</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Sync Status</div>
+                    <div class="metric-value" id="syncStatus">—</div>
+                    <div class="metric-subvalue" id="syncInfo">—</div>
                 </div>
             </div>
 
-            <div class="section">
-                <h2>Query Data</h2>
-                <div class="status-box">
-                    <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
-                        Once connected, fetch platform status to verify connectivity.
-                    </p>
-                    <div class="controls">
-                        <button id="queryBtn" disabled>Fetch Status</button>
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>Software Versions</h3>
+                    <div class="info-item">
+                        <span class="info-label">SDK</span>
+                        <span class="info-value" id="versionSDK">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">DAPI</span>
+                        <span class="info-value" id="versionDAPI">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Drive</span>
+                        <span class="info-value" id="versionDrive">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tenderdash</span>
+                        <span class="info-value" id="versionTenderdash">—</span>
                     </div>
                 </div>
-            </div>
 
-            <div class="section logs-section">
-                <h2>Activity Log</h2>
-                <div id="logs"></div>
-            </div>
+                <div class="info-card">
+                    <h3>Protocol</h3>
+                    <div class="info-item">
+                        <span class="info-label">Tenderdash P2P</span>
+                        <span class="info-value" id="protocolP2P">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tenderdash Block</span>
+                        <span class="info-value" id="protocolBlock">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Drive Current</span>
+                        <span class="info-value" id="protocolDriveCurrent">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Drive Latest</span>
+                        <span class="info-value" id="protocolDriveLatest">—</span>
+                    </div>
+                </div>
 
-            <div class="section logs-section">
-                <h2>Query Results</h2>
-                <div id="results">
-                    <p style="color: #999; font-size: 13px;">Results will appear here after performing a query</p>
+                <div class="info-card">
+                    <h3>Chain Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Latest Hash</span>
+                        <span class="info-value" id="latestHash" style="font-size: 11px; font-family: monospace;">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Max Peer Height</span>
+                        <span class="info-value" id="maxPeerHeight">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Core Chain Locked</span>
+                        <span class="info-value" id="coreChainLocked">—</span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>Node Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Node ID</span>
+                        <span class="info-value" id="nodeId" style="font-size: 11px; font-family: monospace;">—</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Listening</span>
+                        <span class="info-value" id="listening">—</span>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="footer">
-            Built with <a href="https://github.com/dashevo/js-evo-sdk">js-evo-sdk</a> |
-            <a href="https://github.com/dashevo">Dash Platform</a>
+    <div class="footer">
+        Built with <a href="https://github.com/dashevo/js-evo-sdk">js-evo-sdk</a> |
+        <a href="https://github.com/dashevo">Dash Platform</a> |
+        Testnet Status Monitor
+        <div class="last-updated" id="lastUpdated">
+            <span class="update-indicator">
+                <span class="pulse"></span>
+                <span id="lastUpdatedText">Initializing...</span>
+            </span>
         </div>
     </div>
 

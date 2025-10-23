@@ -1,120 +1,215 @@
-// Wait for the SDK to be available globally (loaded from evo-sdk.module.js)
+// Auto-refresh status dashboard
 async function initDashboardWhenReady() {
   // DOM elements
-  const statusElement = document.getElementById('status');
-  const versionElement = document.getElementById('version');
-  const resultsElement = document.getElementById('results');
-  const logsElement = document.getElementById('logs');
-  const connectBtn = document.getElementById('connectBtn');
-  const queryBtn = document.getElementById('queryBtn');
+  const loadingElement = document.getElementById('loading');
+  const dashboardElement = document.getElementById('dashboard');
+  const errorElement = document.getElementById('error');
+  const connectionStatusElement = document.getElementById('connectionStatus');
+  const lastUpdatedElement = document.getElementById('lastUpdated');
 
-  // Logging utility
-  function log(message, type = 'info') {
+  // Metric elements
+  const blockHeightElement = document.getElementById('blockHeight');
+  const blockSyncElement = document.getElementById('blockSync');
+  const peersCountElement = document.getElementById('peersCount');
+  const networkElement = document.getElementById('network');
+  const networkStatusElement = document.getElementById('networkStatus');
+  const syncStatusElement = document.getElementById('syncStatus');
+  const syncInfoElement = document.getElementById('syncInfo');
+
+  // Info elements
+  const versionSDKElement = document.getElementById('versionSDK');
+  const versionDAPIElement = document.getElementById('versionDAPI');
+  const versionDriveElement = document.getElementById('versionDrive');
+  const versionTenderdashElement = document.getElementById('versionTenderdash');
+  const protocolP2PElement = document.getElementById('protocolP2P');
+  const protocolBlockElement = document.getElementById('protocolBlock');
+  const protocolDriveCurrentElement = document.getElementById('protocolDriveCurrent');
+  const protocolDriveLatestElement = document.getElementById('protocolDriveLatest');
+  const latestHashElement = document.getElementById('latestHash');
+  const maxPeerHeightElement = document.getElementById('maxPeerHeight');
+  const coreChainLockedElement = document.getElementById('coreChainLocked');
+  const nodeIdElement = document.getElementById('nodeId');
+  const listeningElement = document.getElementById('listening');
+
+  // Initialize SDK
+  let sdk = null;
+  let isConnected = false;
+  let lastUpdateTime = null;
+  let sdkVersion = '2.1.0-rc.1'; // SDK version from package.json
+  let currentNetwork = 'testnet';
+  let refreshIntervalHandle = null;
+
+  // Get DOM elements
+  const lastUpdatedText = document.getElementById('lastUpdatedText');
+  const networkSelect = document.getElementById('networkSelect');
+  const networkDescription = document.getElementById('networkDescription');
+
+  // Format hash for display (first and last 12 chars)
+  function formatHash(hash) {
+    if (!hash || hash.length < 24) return hash;
+    return `${hash.slice(0, 12)}...${hash.slice(-12)}`;
+  }
+
+  // Update last updated timestamp
+  function updateTimestamp() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
-    const timestamp = `${hours}:${minutes}:${seconds}`;
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry log-${type}`;
-    logEntry.textContent = `[${timestamp}] ${message}`;
-    logsElement.appendChild(logEntry);
-    logsElement.scrollTop = logsElement.scrollHeight;
+    lastUpdateTime = `${hours}:${minutes}:${seconds}`;
+    lastUpdatedText.textContent = `Last updated: ${lastUpdateTime}`;
   }
 
   // Initialize SDK
-  let sdk = null;
-
   async function initializeSDK() {
     try {
-      // Disable connect button immediately to prevent multiple clicks
-      connectBtn.disabled = true;
+      console.log(`Initializing SDK for ${currentNetwork}...`);
 
-      log('Initializing SDK...', 'info');
-
-      // Access the EvoSDK from the global scope (loaded via script tag)
-      // The SDK should be available as a module after loading evo-sdk.module.js
+      // Access the EvoSDK from the global scope
       const module = await import('../dist/evo-sdk.module.js');
       const { EvoSDK } = module;
 
-      log('SDK loaded, creating testnet instance...', 'info');
-
-      // Create SDK instance connected to testnet
-      sdk = EvoSDK.testnetTrusted();
-
-      log('SDK created, connecting to testnet...', 'info');
-      statusElement.textContent = 'Connecting...';
-      statusElement.className = 'status connecting';
+      // Create SDK instance based on selected network
+      if (currentNetwork === 'mainnet') {
+        sdk = EvoSDK.mainnetTrusted();
+      } else {
+        sdk = EvoSDK.testnetTrusted();
+      }
 
       // Connect to the network
       await sdk.connect();
+      isConnected = true;
+      connectionStatusElement.textContent = 'Connected';
+      connectionStatusElement.className = 'status-badge connected';
 
-      log('Connected to Dash Platform testnet', 'success');
-      statusElement.textContent = 'Connected';
-      statusElement.className = 'status connected';
-
-      // Get and display version
-      const version = sdk.version();
-      versionElement.textContent = version;
-      log(`SDK Version: ${version}`, 'success');
-
-      // Get platform status
-      const platformStatus = await sdk.system.status();
-      log(`Platform Status: ${JSON.stringify(platformStatus)}`, 'success');
-
-      queryBtn.disabled = false;
+      console.log(`SDK initialized and connected to ${currentNetwork}`);
 
     } catch (error) {
-      log(`Error: ${error.message}`, 'error');
-      statusElement.textContent = 'Connection Failed';
-      statusElement.className = 'status error';
-      console.error(error);
-      // Keep button disabled on error (user needs to refresh to retry)
+      console.error('Initialization error:', error);
+      isConnected = false;
+      connectionStatusElement.textContent = 'Connection Failed';
+      connectionStatusElement.className = 'status-badge error';
+      errorElement.textContent = `Connection Error: ${error.message}`;
+      errorElement.style.display = 'block';
     }
   }
 
-  async function performQuery() {
-    if (!sdk) {
-      log('SDK not initialized. Click "Connect" first.', 'error');
+  // Fetch and update platform status
+  async function updateStatus() {
+    if (!sdk || !isConnected) {
       return;
     }
 
     try {
-      log('Fetching platform status...', 'info');
-      resultsElement.innerHTML = '<p>Loading...</p>';
+      errorElement.style.display = 'none';
 
       // Get system status
-      const systemStatus = await sdk.system.status();
+      const status = await sdk.system.status();
 
-      log('Successfully fetched system information', 'success');
+      // Extract and display metrics
+      const blockHeight = status.chain?.latestBlockHeight || '—';
+      const maxPeerHeight = status.chain?.maxPeerBlockHeight || '—';
+      const peersCount = status.network?.peersCount || '—';
+      const chainId = status.network?.chainId?.split('-')[1] || '—';
+      const listening = status.network?.listening ? 'Yes' : 'No';
+      const catchingUp = status.chain?.catchingUp ? 'Catching Up' : 'Synced';
 
-      // Display results
-      const results = document.createElement('div');
-      results.className = 'result-section';
-      results.innerHTML = `
-        <h3>System Information</h3>
-        <pre>${JSON.stringify(systemStatus, null, 2)}</pre>
-      `;
-      resultsElement.innerHTML = '';
-      resultsElement.appendChild(results);
+      blockHeightElement.textContent = blockHeight;
+      blockSyncElement.textContent = `${blockHeight === '—' ? '—' : `Network max: ${maxPeerHeight}`}`;
+      peersCountElement.textContent = peersCount;
+      networkElement.textContent = chainId || 'testnet';
+      networkStatusElement.textContent = listening === 'Yes' ? 'Listening' : 'Not Listening';
+      syncStatusElement.textContent = catchingUp;
+      syncInfoElement.textContent = catchingUp === 'Synced' ? 'Network is fully synced' : 'Syncing with network';
+
+      // Software versions
+      versionSDKElement.textContent = sdkVersion;
+      versionDAPIElement.textContent = status.version?.software?.dapi || '—';
+      versionDriveElement.textContent = status.version?.software?.drive || '—';
+      versionTenderdashElement.textContent = status.version?.software?.tenderdash || '—';
+
+      // Protocol versions
+      protocolP2PElement.textContent = status.version?.protocol?.tenderdash?.p2p || '—';
+      protocolBlockElement.textContent = status.version?.protocol?.tenderdash?.block || '—';
+      protocolDriveCurrentElement.textContent = status.version?.protocol?.drive?.current || '—';
+      protocolDriveLatestElement.textContent = status.version?.protocol?.drive?.latest || '—';
+
+      // Chain information
+      latestHashElement.textContent = formatHash(status.chain?.latestBlockHash);
+      maxPeerHeightElement.textContent = maxPeerHeight;
+      coreChainLockedElement.textContent = status.chain?.coreChainLockedHeight || '—';
+
+      // Node information
+      nodeIdElement.textContent = status.node?.id ? status.node.id.slice(0, 12) + '...' : '—';
+      listeningElement.textContent = listening;
+
+      updateTimestamp();
+
+      // Show dashboard and hide loading
+      loadingElement.style.display = 'none';
+      dashboardElement.style.display = 'block';
 
     } catch (error) {
-      log(`Query error: ${error.message}`, 'error');
-      resultsElement.innerHTML = `<div class="error-box">
-        <strong>Query Error:</strong><br>
-        ${error.message}
-      </div>`;
-      console.error(error);
+      console.error('Status update error:', error);
+      errorElement.textContent = `Error fetching status: ${error.message}`;
+      errorElement.style.display = 'block';
     }
   }
 
-  // Event listeners
-  connectBtn.addEventListener('click', initializeSDK);
-  queryBtn.addEventListener('click', performQuery);
+  // Handle network selection change
+  async function handleNetworkChange(network) {
+    currentNetwork = network;
+    networkDescription.textContent = `${network.charAt(0).toUpperCase() + network.slice(1)} Live Status Dashboard`;
 
-  // Log initial state
-  log('Demo ready. Click "Connect to Dash Platform" to begin.', 'info');
-  log('This demo uses the js-evo-sdk to connect to Dash Platform testnet.', 'info');
+    // Clear the existing interval if there is one
+    if (refreshIntervalHandle) {
+      clearInterval(refreshIntervalHandle);
+    }
+
+    // Reset connection status
+    connectionStatusElement.textContent = 'Connecting...';
+    connectionStatusElement.className = 'status-badge connecting';
+    loadingElement.style.display = 'block';
+    dashboardElement.style.display = 'none';
+    errorElement.style.display = 'none';
+
+    // Disconnect existing SDK if connected
+    if (sdk && isConnected) {
+      try {
+        await sdk.disconnect();
+      } catch (error) {
+        console.error('Error disconnecting:', error);
+      }
+    }
+
+    // Re-initialize with new network
+    await initializeSDK();
+    if (isConnected) {
+      await updateStatus();
+      refreshIntervalHandle = setInterval(updateStatus, 30000);
+    } else {
+      loadingElement.style.display = 'none';
+    }
+  }
+
+  // Setup network selector listener
+  if (networkSelect) {
+    networkSelect.addEventListener('change', (e) => {
+      handleNetworkChange(e.target.value);
+    });
+  }
+
+  // Initialize SDK and start auto-refresh
+  await initializeSDK();
+  if (isConnected) {
+    // Initial update
+    await updateStatus();
+
+    // Auto-refresh every 30 seconds
+    refreshIntervalHandle = setInterval(updateStatus, 30000);
+  } else {
+    loadingElement.style.display = 'none';
+  }
 }
 
 // Initialize when DOM is ready
