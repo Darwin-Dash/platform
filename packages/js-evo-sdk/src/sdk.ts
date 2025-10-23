@@ -29,11 +29,14 @@ export interface ConnectionOptions {
 export interface EvoSDKOptions extends ConnectionOptions {
   network?: 'testnet' | 'mainnet';
   trusted?: boolean;
+  // Custom masternode addresses. When provided, network and trusted options are ignored.
+  // Example: ['https://127.0.0.1:1443', 'https://192.168.1.100:1443']
+  addresses?: string[];
 }
 
 export class EvoSDK {
   private wasmSdk?: wasm.WasmSdk;
-  private options: Required<Pick<EvoSDKOptions, 'network' | 'trusted'>> & ConnectionOptions;
+  private options: Required<Pick<EvoSDKOptions, 'network' | 'trusted'>> & ConnectionOptions & { addresses?: string[] };
 
   public documents!: DocumentsFacade;
   public identities!: IdentitiesFacade;
@@ -45,11 +48,10 @@ export class EvoSDK {
   public system!: SystemFacade;
   public group!: GroupFacade;
   public voting!: VotingFacade;
-
   constructor(options: EvoSDKOptions = {}) {
     // Apply defaults while preserving any future connection options
-    const { network = 'testnet', trusted = false, ...connection } = options;
-    this.options = { network, trusted, ...connection };
+    const { network = 'testnet', trusted = false, addresses, ...connection } = options;
+    this.options = { network, trusted, addresses, ...connection };
 
     this.documents = new DocumentsFacade(this);
     this.identities = new IdentitiesFacade(this);
@@ -81,10 +83,20 @@ export class EvoSDK {
     if (this.wasmSdk) return; // idempotent
     await initWasm();
 
-    const { network, trusted, version, proofs, settings, logs } = this.options;
+    const { network, trusted, version, proofs, settings, logs, addresses } = this.options;
 
     let builder: wasm.WasmSdkBuilder;
-    if (network === 'mainnet') {
+
+    // If specific addresses are provided, use them instead of network presets
+    if (addresses && addresses.length > 0) {
+      // Prefetch trusted quorums for the network before creating builder with addresses
+      if (network === 'mainnet') {
+        await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
+      } else if (network === 'testnet') {
+        await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
+      }
+      builder = wasm.WasmSdkBuilder.withAddresses(addresses, network);
+    } else if (network === 'mainnet') {
       await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
 
       builder = trusted ? wasm.WasmSdkBuilder.mainnetTrusted() : wasm.WasmSdkBuilder.mainnet();
@@ -113,11 +125,43 @@ export class EvoSDK {
     return sdk;
   }
 
+  version(): number {
+    return this.wasm.version();
+  }
+
+  static async setLogLevel(levelOrFilter: string): Promise<void> {
+    await initWasm();
+    wasm.WasmSdk.setLogLevel(levelOrFilter);
+  }
+
+  static async getLatestVersionNumber(): Promise<number> {
+    await initWasm();
+    return wasm.WasmSdkBuilder.getLatestVersionNumber();
+  }
+
   // Factory helpers that return configured instances (not connected)
   static testnet(options: ConnectionOptions = {}): EvoSDK { return new EvoSDK({ network: 'testnet', ...options }); }
   static mainnet(options: ConnectionOptions = {}): EvoSDK { return new EvoSDK({ network: 'mainnet', ...options }); }
   static testnetTrusted(options: ConnectionOptions = {}): EvoSDK { return new EvoSDK({ network: 'testnet', trusted: true, ...options }); }
   static mainnetTrusted(options: ConnectionOptions = {}): EvoSDK { return new EvoSDK({ network: 'mainnet', trusted: true, ...options }); }
+
+  /**
+   * Create an EvoSDK instance configured with specific masternode addresses.
+   *
+   * @param addresses - Array of HTTPS URLs to masternodes (e.g., ['https://127.0.0.1:1443'])
+   * @param network - Network identifier: 'mainnet', 'testnet' (default: 'testnet')
+   * @param options - Additional connection options
+   * @returns A configured EvoSDK instance (not yet connected - call .connect() to establish connection)
+   *
+   * @example
+   * ```typescript
+   * const sdk = EvoSDK.withAddresses(['https://52.12.176.90:1443'], 'testnet');
+   * await sdk.connect();
+   * ```
+   */
+  static withAddresses(addresses: string[], network: 'mainnet' | 'testnet' = 'testnet', options: ConnectionOptions = {}): EvoSDK {
+    return new EvoSDK({ addresses, network, ...options });
+  }
 }
 
 export { DocumentsFacade } from './documents/facade.js';
@@ -130,4 +174,5 @@ export { ProtocolFacade } from './protocol/facade.js';
 export { SystemFacade } from './system/facade.js';
 export { GroupFacade } from './group/facade.js';
 export { VotingFacade } from './voting/facade.js';
-// For error types, import directly from '@dashevo/wasm-sdk/errors'
+export { wallet } from './wallet/functions.js';
+export * from './wasm.js';

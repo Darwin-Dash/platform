@@ -30,6 +30,8 @@ members = [
     "packages/wallet-utils-contract",
     "packages/token-history-contract",
     "packages/keyword-search-contract",
+    "packages/rs-dapi",
+    "packages/rs-dash-event-bus",
     "packages/rs-platform-wallet",
     "packages/wasm-sdk",
 ]

@@ -1,3 +1,4 @@
+import * as wasm from '../wasm.js';
 import { asJsonString } from '../util.js';
 import type { EvoSDK } from '../sdk.js';
 
@@ -6,6 +7,11 @@ export class TokensFacade {
 
   constructor(sdk: EvoSDK) {
     this.sdk = sdk;
+  }
+
+  async calculateId(contractId: string, tokenPosition: number): Promise<string> {
+    await wasm.ensureInitialized();
+    return wasm.WasmSdk.calculateTokenIdFromContract(contractId, tokenPosition);
   }
 
   // Queries
@@ -42,6 +48,16 @@ export class TokensFacade {
   async balancesWithProof(identityIds: string[], tokenId: string): Promise<any> {
     const w = await this.sdk.getWasmSdkConnected();
     return w.getIdentitiesTokenBalancesWithProofInfo(identityIds, tokenId);
+  }
+
+  async identityBalances(identityId: string, tokenIds: string[]): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalances(identityId, tokenIds);
+  }
+
+  async identityBalancesWithProof(identityId: string, tokenIds: string[]): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalancesWithProofInfo(identityId, tokenIds);
   }
 
   async identityTokenInfos(identityId: string, tokenIds: string[], _opts: { limit?: number; offset?: number } = {}): Promise<any> {

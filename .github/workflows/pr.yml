@@ -32,8 +32,9 @@ jobs:
           # Configure which scopes are allowed (newline-delimited).
           # These are regex patterns auto-wrapped in `^ $`.
           scopes: |
-            ci
+            sdk
             dapi
+            rs-dapi
             platform
             drive
             drive-abci

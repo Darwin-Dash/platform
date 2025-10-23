@@ -1,16 +1,16 @@
 {
   "name": "@dashevo/evo-sdk",
-  "version": "2.0.0",
+  "version": "2.1.0-rc.1",
   "type": "module",
-  "main": "./dist/sdk.js",
+  "main": "./dist/evo-sdk.module.js",
   "types": "./dist/sdk.d.ts",
   "exports": {
     ".": {
       "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "import": "./dist/evo-sdk.module.js"
     },
     "./module": {
-      "import": "./dist/sdk.js"
+      "import": "./dist/evo-sdk.module.js"
     }
   },
   "sideEffects": false,
@@ -29,8 +29,7 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.*js\"",
     "test": "yarn run test:unit && yarn run test:functional",
     "test:unit": "mocha tests/unit/**/*.spec.mjs && karma start ./tests/karma/karma.conf.cjs --single-run",
-    "test:functional": "mocha tests/functional/**/*.spec.mjs --exit --timeout 90000  && karma start ./tests/karma/karma.functional.conf.cjs --single-run",
-    "prepack": "yarn build"
+    "test:functional": "mocha tests/functional/**/*.spec.mjs --exit --timeout 90000  && karma start ./tests/karma/karma.functional.conf.cjs --single-run"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.55.0",
