@@ -1,5 +1,0 @@
-mod contested_resource_identity_votes;
-mod contested_resource_vote_state;
-mod contested_resource_voters_for_identity;
-mod contested_resources;
-mod vote_polls_by_end_date_query;

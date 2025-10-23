@@ -1,7 +1,0 @@
-/.env
-
-# Node.JS
-node_modules
-
-# Jet Brains
-.idea
