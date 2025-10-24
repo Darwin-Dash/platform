@@ -10,27 +10,73 @@ import { test, expect } from '@playwright/test';
  * 4. Data presentation and formatting
  * 5. Error handling
  * 6. Responsiveness across viewports
+ *
+ * Console Logging:
+ * - All console messages (errors, warnings, logs, infos, debugs) are captured in page.consoleLogs
+ * - Access via: page.consoleLogs.errors, page.consoleLogs.warnings, page.consoleLogs.logs, etc.
+ * - Useful for debugging test failures
  */
+
+/**
+ * Helper function to print console logs for debugging
+ * @param {Object} consoleLogs - The consoleLogs object from page
+ * @param {string} testName - Name of the test for context
+ */
+function printConsoleLogs(consoleLogs, testName) {
+  const hasAnyLogs = Object.values(consoleLogs).some(arr => arr.length > 0);
+  if (hasAnyLogs) {
+    console.log(`\n=== Console Logs for: ${testName} ===`);
+    if (consoleLogs.errors.length > 0) console.log('ERRORS:', consoleLogs.errors);
+    if (consoleLogs.warnings.length > 0) console.log('WARNINGS:', consoleLogs.warnings);
+    if (consoleLogs.logs.length > 0) console.log('LOGS:', consoleLogs.logs);
+    if (consoleLogs.infos.length > 0) console.log('INFOS:', consoleLogs.infos);
+    if (consoleLogs.debugs.length > 0) console.log('DEBUGS:', consoleLogs.debugs);
+  }
+}
 
 test.describe('Dash Platform Status Dashboard', () => {
   test.beforeEach(async ({ page }) => {
+    // Set up global console logging for troubleshooting
+    const consoleLogs = {
+      errors: [],
+      warnings: [],
+      logs: [],
+      infos: [],
+      debugs: []
+    };
+
+    page.on('console', (msg) => {
+      const type = msg.type();
+      const text = msg.text();
+
+      if (type === 'error') {
+        consoleLogs.errors.push(text);
+      } else if (type === 'warning') {
+        consoleLogs.warnings.push(text);
+      } else if (type === 'log') {
+        consoleLogs.logs.push(text);
+      } else if (type === 'info') {
+        consoleLogs.infos.push(text);
+      } else if (type === 'debug') {
+        consoleLogs.debugs.push(text);
+      }
+    });
+
+    // Attach to page object for access in tests
+    page.consoleLogs = consoleLogs;
+
     // Navigate to the page (baseURL is http://localhost:8000/)
     await page.goto('/');
   });
 
   test.describe('Page Load & Auto-Connection', () => {
     test('should load without console errors', async ({ page }) => {
-      const errors = [];
-      page.on('console', (msg) => {
-        if (msg.type() === 'error') {
-          // DO NOT filter out SDK module loading errors - these are critical failures
-          errors.push(msg.text());
-        }
-      });
-
       // Wait for initial load and connection attempt
       await page.waitForTimeout(2000);
-      expect(errors).toEqual([], `Expected no console errors, but got: ${errors.join('; ')}`);
+
+      // Check errors captured by global console logger
+      expect(page.consoleLogs.errors).toEqual([],
+        `Expected no console errors, but got: ${page.consoleLogs.errors.join('; ')}`);
     });
 
     test('should display correct page title', async ({ page }) => {
@@ -51,9 +97,15 @@ test.describe('Dash Platform Status Dashboard', () => {
       const connectionStatus = page.locator('#connectionStatus');
 
       // Should transition from "Connecting" to either "Connected" or show error
-      await expect(connectionStatus).toContainText(/Connecting|Connected|Connection Failed/, {
-        timeout: 8000
-      });
+      try {
+        await expect(connectionStatus).toContainText(/Connecting|Connected|Connection Failed/, {
+          timeout: 8000
+        });
+      } catch (error) {
+        // Log console messages for debugging connection failures
+        printConsoleLogs(page.consoleLogs, 'auto-connect test');
+        throw error;
+      }
     });
 
     test('should display connection status badge', async ({ page }) => {
@@ -91,8 +143,14 @@ test.describe('Dash Platform Status Dashboard', () => {
 
       // The status should be one of these - NOT a module loading error
       const validStates = ['Connecting...', 'Connected', 'Connection Failed'];
-      expect(validStates).toContain(statusText,
-        `SDK should load successfully. Status: ${statusText}`);
+      try {
+        expect(validStates).toContain(statusText,
+          `SDK should load successfully. Status: ${statusText}`);
+      } catch (error) {
+        // Log console messages for debugging SDK loading issues
+        printConsoleLogs(page.consoleLogs, 'SDK initialization test');
+        throw error;
+      }
 
       // If status is "Connection Failed", verify it's not due to SDK module loading
       if (statusText === 'Connection Failed') {
