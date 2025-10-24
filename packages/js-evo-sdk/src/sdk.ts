@@ -176,3 +176,5 @@ export { GroupFacade } from './group/facade.js';
 export { VotingFacade } from './voting/facade.js';
 export { wallet } from './wallet/functions.js';
 export * from './wasm.js';
+export * from './types/index.js';
+export * from './errors.js';
