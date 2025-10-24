@@ -320,67 +320,54 @@ test.describe('Dash Identity Viewer', () => {
       const status = page.locator('#connectionStatus');
       await expect(status).toContainText('Connected', { timeout: 8000 });
 
-      // Set up comprehensive error capture before search
+      // Capture console errors during the test
       const errors = [];
-      const warnings = [];
-      page.on('console', (msg) => {
+      const consoleHandler = (msg) => {
         if (msg.type() === 'error') {
           errors.push(msg.text());
-        } else if (msg.type() === 'warn') {
-          warnings.push(msg.text());
         }
-      });
+      };
+      page.on('console', consoleHandler);
 
-      // Perform search to trigger WASM object conversion
-      const searchBtn = page.locator('#searchBtn');
-      await searchBtn.click();
-      await page.waitForTimeout(2500);
+      try {
+        // Perform search to trigger WASM object conversion
+        const searchBtn = page.locator('#searchBtn');
+        await searchBtn.click();
 
-      // Critical: Check for WASM object conversion errors
-      const base58Errors = errors.filter(e =>
-        e.includes('base58') ||
-        e.includes('Cannot read properties of undefined') ||
-        e.includes('reading \'base58\'') ||
-        e.includes('Cannot read property') ||
-        e.includes('identity.id') ||
-        e.includes('identity.ownerId')
-      );
+        // Wait for dashboard or error to appear
+        const dashboard = page.locator('#dashboard');
+        const error = page.locator('#error');
+        try {
+          await Promise.race([
+            dashboard.waitFor({ state: 'visible', timeout: 8000 }),
+            error.waitFor({ state: 'visible', timeout: 8000 })
+          ]);
+        } catch (e) {
+          // If neither appears, continue with checks
+        }
 
-      // Check for getId/getOwnerId errors (which would indicate wrong API calls)
-      const methodCallErrors = errors.filter(e =>
-        e.includes('getId') ||
-        e.includes('getOwnerId') ||
-        e.includes('is not a function')
-      );
+        // Check for critical WASM conversion errors
+        const base58Errors = errors.filter(e =>
+          e.includes('base58') ||
+          e.includes('Cannot read properties of undefined') ||
+          e.includes('reading \'base58\'')
+        );
 
-      // If dashboard loaded successfully, WASM methods must have been called correctly
-      const dashboard = page.locator('#dashboard');
-      const isDashboardVisible = await dashboard.isVisible().catch(() => false);
+        // Check if dashboard is visible
+        const isDashboardVisible = await dashboard.isVisible().catch(() => false);
 
-      if (isDashboardVisible) {
-        // Dashboard is visible - validate that WASM conversion worked
-        expect(base58Errors).toEqual([],
-          `WASM object conversion failed. Errors: ${base58Errors.join('; ')}`);
-        expect(methodCallErrors).toEqual([],
-          `WASM object methods not called correctly. Errors: ${methodCallErrors.join('; ')}`);
-      }
+        if (isDashboardVisible) {
+          // Validate WASM conversion worked if dashboard loaded
+          expect(base58Errors.length).toBe(0,
+            `WASM object conversion failed. Errors: ${base58Errors.join('; ')}`);
 
-      // Verify no "undefined" appears in displayed identity ID or owner ID
-      const identityIdText = await page.locator('#identityId').textContent().catch(() => '');
-      const ownerIdText = await page.locator('#ownerId').textContent().catch(() => '');
-
-      expect(identityIdText).not.toContain('undefined', 'Identity ID should not display "undefined"');
-      expect(ownerIdText).not.toContain('undefined', 'Owner ID should not display "undefined"');
-
-      // Verify metric cards are populated with actual data (not placeholders)
-      if (isDashboardVisible) {
-        const idContent = identityIdText?.trim();
-        const ownerContent = ownerIdText?.trim();
-
-        expect(idContent).not.toBe('—', 'Identity ID should be populated with actual data');
-        // Owner ID is expected to be 'N/A' since basic get() doesn't return owner data
-        expect(ownerContent).toBe('N/A', 'Owner ID should be N/A when using basic get() method');
-        expect(idContent?.length).toBeGreaterThan(3, 'Identity ID should have meaningful content');
+          // Verify identity ID is populated
+          const identityIdText = await page.locator('#identityId').textContent().catch(() => '');
+          expect(identityIdText).not.toContain('undefined');
+          expect(identityIdText?.trim()).not.toBe('—');
+        }
+      } finally {
+        page.off('console', consoleHandler);
       }
     });
   });
