@@ -111,14 +111,27 @@ async function initDashboardWhenReady() {
       const blockHeight = status.chain?.latestBlockHeight || '—';
       const maxPeerHeight = status.chain?.maxPeerBlockHeight || '—';
       const peersCount = status.network?.peersCount || '—';
-      const chainId = status.network?.chainId?.split('-')[1] || '—';
+
+      // Extract network name - try chainId first, fall back to currentNetwork
+      let networkName = '—';
+      if (status.network?.chainId && typeof status.network.chainId === 'string') {
+        const parts = status.network.chainId.split('-');
+        if (parts.length > 1) {
+          networkName = parts[1];
+        }
+      }
+      // Use currentNetwork as fallback if chainId parsing failed
+      if (networkName === '—') {
+        networkName = currentNetwork;
+      }
+
       const listening = status.network?.listening ? 'Yes' : 'No';
       const catchingUp = status.chain?.catchingUp ? 'Catching Up' : 'Synced';
 
       blockHeightElement.textContent = blockHeight;
       blockSyncElement.textContent = `${blockHeight === '—' ? '—' : `Network max: ${maxPeerHeight}`}`;
       peersCountElement.textContent = peersCount;
-      networkElement.textContent = chainId || 'testnet';
+      networkElement.textContent = networkName;
       networkStatusElement.textContent = listening === 'Yes' ? 'Listening' : 'Not Listening';
       syncStatusElement.textContent = catchingUp;
       syncInfoElement.textContent = catchingUp === 'Synced' ? 'Network is fully synced' : 'Syncing with network';
