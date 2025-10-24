@@ -41,8 +41,9 @@ async function initDashboardWhenReady() {
 
   // Get DOM elements
   const lastUpdatedText = document.getElementById('lastUpdatedText');
-  const networkSelect = document.getElementById('networkSelect');
+  const networkToggle = document.getElementById('networkToggle');
   const networkDescription = document.getElementById('networkDescription');
+  const footerNetworkText = document.getElementById('footerNetworkText');
 
   // Format hash for display (first and last 12 chars)
   function formatHash(hash) {
@@ -66,7 +67,7 @@ async function initDashboardWhenReady() {
       console.log(`Initializing SDK for ${currentNetwork}...`);
 
       // Access the EvoSDK from the global scope
-      const module = await import('../dist/evo-sdk.module.js');
+      const module = await import('../../dist/evo-sdk.module.js');
       const { EvoSDK } = module;
 
       // Create SDK instance based on selected network
@@ -159,7 +160,13 @@ async function initDashboardWhenReady() {
   // Handle network selection change
   async function handleNetworkChange(network) {
     currentNetwork = network;
-    networkDescription.textContent = `${network.charAt(0).toUpperCase() + network.slice(1)} Live Status Dashboard`;
+    const networkName = network.charAt(0).toUpperCase() + network.slice(1);
+    networkDescription.textContent = `${networkName} Live Status Dashboard`;
+    networkToggle.textContent = networkName;
+    footerNetworkText.textContent = `${networkName} Status Monitor`;
+
+    // Update button class for network-specific styling
+    networkToggle.className = network;
 
     // Clear the existing interval if there is one
     if (refreshIntervalHandle) {
@@ -192,11 +199,14 @@ async function initDashboardWhenReady() {
     }
   }
 
-  // Setup network selector listener
-  if (networkSelect) {
-    networkSelect.addEventListener('change', (e) => {
-      handleNetworkChange(e.target.value);
+  // Setup network toggle listener
+  if (networkToggle) {
+    networkToggle.addEventListener('click', () => {
+      const newNetwork = currentNetwork === 'testnet' ? 'mainnet' : 'testnet';
+      handleNetworkChange(newNetwork);
     });
+    // Set initial network styling
+    networkToggle.className = currentNetwork;
   }
 
   // Initialize SDK and start auto-refresh

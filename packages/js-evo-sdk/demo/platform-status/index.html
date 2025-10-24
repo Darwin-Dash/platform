@@ -176,42 +176,61 @@
             margin-bottom: 0;
         }
 
-        .network-selector {
+        .network-toggle {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 8px;
             margin-bottom: 20px;
         }
 
-        .network-selector label {
+        .network-toggle button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             color: white;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .network-selector select {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .network-selector select:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.5);
+        .network-toggle button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
-        .network-selector select option {
-            background: #667eea;
-            color: white;
+        .network-toggle button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .network-toggle button.testnet {
+            background: rgba(255, 167, 38, 0.2);
+            border-color: rgba(255, 167, 38, 0.5);
+            color: #ffa726;
+        }
+
+        .network-toggle button.testnet:hover {
+            background: rgba(255, 167, 38, 0.35);
+            border-color: rgba(255, 167, 38, 0.8);
+            color: #ffb74d;
+        }
+
+        .network-toggle button.mainnet {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5);
+            color: #10b981;
+        }
+
+        .network-toggle button.mainnet:hover {
+            background: rgba(16, 185, 129, 0.35);
+            border-color: rgba(16, 185, 129, 0.8);
+            color: #34d399;
         }
 
         .loading {
@@ -347,12 +366,8 @@
             <span id="connectionStatus" class="status-badge connecting">Connecting...</span>
         </div>
 
-        <div class="network-selector">
-            <label for="networkSelect">Network:</label>
-            <select id="networkSelect">
-                <option value="testnet">Testnet</option>
-                <option value="mainnet">Mainnet</option>
-            </select>
+        <div class="network-toggle">
+            <button id="networkToggle">Testnet</button>
         </div>
 
         <div id="error" class="error-message" style="display: none;"></div>
@@ -461,7 +476,7 @@
     <div class="footer">
         Built with <a href="https://github.com/dashevo/js-evo-sdk">js-evo-sdk</a> |
         <a href="https://github.com/dashevo">Dash Platform</a> |
-        Testnet Status Monitor
+        <span id="footerNetworkText">Testnet Status Monitor</span>
         <div class="last-updated" id="lastUpdated">
             <span class="update-indicator">
                 <span class="pulse"></span>
@@ -470,6 +485,6 @@
         </div>
     </div>
 
-    <script type="module" src="./demo.js"></script>
+    <script type="module" src="./platform-status.js"></script>
 </body>
 </html>
