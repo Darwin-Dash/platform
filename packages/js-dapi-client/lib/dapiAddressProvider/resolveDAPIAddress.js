@@ -22,10 +22,22 @@
  * IP addresses are passed through unchanged (skip DNS lookup).
  * Includes error handling with fallback to original hostname if DNS fails.
  *
+ * For browsers: DNS resolution is skipped (browsers don't have dns module).
+ * Demo uses direct IP addresses or relies on browser's native DNS resolution.
+ *
  * See: packages/js-dapi-client/docs/DNS_RESOLUTION.md for complete documentation
  */
 
-const dns = require('dns').promises;
+// DNS module only available in Node.js
+let dns = null;
+if (typeof require !== 'undefined') {
+  try {
+    dns = require('dns').promises;
+  } catch (e) {
+    // dns not available (browser environment)
+    dns = null;
+  }
+}
 
 const logger = require('../logger');
 
@@ -61,6 +73,13 @@ async function resolveDAPIAddress(dapiAddress, options = {}) {
   // Check if it's already an IP address
   if (isIPAddress(host)) {
     log.debug(`Address ${host} is already an IP, skipping DNS resolution`);
+    return dapiAddress;
+  }
+
+  // In browser environment, dns module is not available
+  // Rely on browser's native DNS resolution or direct IP usage
+  if (!dns) {
+    log.debug(`DNS module not available (browser environment), using hostname: ${host}`);
     return dapiAddress;
   }
 
