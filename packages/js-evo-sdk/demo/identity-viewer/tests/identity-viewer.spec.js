@@ -32,7 +32,19 @@ test.describe('Dash Identity Viewer', () => {
       });
 
       // Wait for initial load and SDK initialization
-      await page.waitForTimeout(3000);
+      // Use a more robust wait - look for either the connecting or connected status
+      try {
+        await page.waitForFunction(
+          () => {
+            const status = document.getElementById('connectionStatus');
+            return status && (status.textContent.includes('Connecting') || status.textContent.includes('Connected') || status.textContent.includes('Connection Failed'));
+          },
+          { timeout: 5000 }
+        );
+      } catch (e) {
+        // If the SDK doesn't initialize, that's also valid state for this test
+        console.log('SDK initialization not complete, continuing anyway');
+      }
 
       // Report any errors (but don't fail yet - we might have network errors in testing)
       if (errors.length > 0) {
@@ -49,8 +61,19 @@ test.describe('Dash Identity Viewer', () => {
         }
       });
 
-      // Wait for initial load
-      await page.waitForTimeout(2000);
+      // Wait for initial load and SDK status to show (either connection state)
+      try {
+        await page.waitForFunction(
+          () => {
+            const status = document.getElementById('connectionStatus');
+            return status && status.textContent.trim().length > 0;
+          },
+          { timeout: 5000 }
+        );
+      } catch (e) {
+        // SDK may not be loading, that's OK for this test
+      }
+
       expect(errors).toEqual([], `Expected no console errors, but got: ${errors.join('; ')}`);
     });
 
@@ -85,9 +108,6 @@ test.describe('Dash Identity Viewer', () => {
     });
 
     test('should show initial activity log messages', async ({ page }) => {
-      // Wait a moment for the page to render initial state
-      await page.waitForTimeout(500);
-
       // Verify that the page structure is present
       const loading = page.locator('#loading');
       const dashboard = page.locator('#dashboard');
@@ -108,10 +128,12 @@ test.describe('Dash Identity Viewer', () => {
     });
 
     test('should have SDK available in initialization context', async ({ page }) => {
-      // Wait for SDK initialization
-      await page.waitForTimeout(3000);
-
+      // Wait for SDK initialization status to appear
       const connectionStatus = page.locator('#connectionStatus');
+      await expect(connectionStatus).not.toContainText('Connecting', { timeout: 8000 }).catch(() => {
+        // If it times out waiting for status change, it may still be connecting - that's OK
+      });
+
       const statusText = await connectionStatus.textContent();
 
       // The status should indicate SDK loaded successfully
@@ -139,8 +161,9 @@ test.describe('Dash Identity Viewer', () => {
     });
 
     test('should populate with default identity on load', async ({ page }) => {
-      await page.waitForTimeout(2000);
       const input = page.locator('#identityInput');
+      // Wait for the input field to have a value
+      await expect(input).toHaveValue(/.+/, { timeout: 5000 });
       const value = await input.inputValue();
 
       // Should have some default identity value
@@ -161,15 +184,20 @@ test.describe('Dash Identity Viewer', () => {
         const searchBtn = page.locator('#searchBtn');
         await searchBtn.click();
 
-        // Wait for identity data to load (increased timeout for async operations)
-        await page.waitForTimeout(6000);
-
-        // Dashboard should be visible if successful
+        // Wait for either dashboard or error to appear
         const dashboard = page.locator('#dashboard');
-        const isVisible = await dashboard.isVisible().catch(() => false);
-
-        // Either dashboard is visible (success) or error is shown
         const error = page.locator('#error');
+
+        try {
+          await Promise.race([
+            dashboard.waitFor({ state: 'visible', timeout: 8000 }),
+            error.waitFor({ state: 'visible', timeout: 8000 })
+          ]);
+        } catch (e) {
+          // If neither appears, that's OK - just check current state
+        }
+
+        const isVisible = await dashboard.isVisible().catch(() => false);
         const errorVisible = await error.isVisible().catch(() => false);
 
         expect(isVisible || errorVisible).toBe(true);
@@ -186,11 +214,18 @@ test.describe('Dash Identity Viewer', () => {
         const input = page.locator('#identityInput');
         await input.press('Enter');
 
-        // Increased timeout for async SDK operations
-        await page.waitForTimeout(6000);
-
+        // Wait for either dashboard or error to appear
         const dashboard = page.locator('#dashboard');
         const error = page.locator('#error');
+
+        try {
+          await Promise.race([
+            dashboard.waitFor({ state: 'visible', timeout: 8000 }),
+            error.waitFor({ state: 'visible', timeout: 8000 })
+          ]);
+        } catch (e) {
+          // If neither appears, that's OK - just check current state
+        }
 
         const dashboardVisible = await dashboard.isVisible().catch(() => false);
         const errorVisible = await error.isVisible().catch(() => false);
@@ -227,7 +262,9 @@ test.describe('Dash Identity Viewer', () => {
       const searchBtn = page.locator('#searchBtn');
       await searchBtn.click();
 
-      await page.waitForTimeout(5000); // Wait for async data loading
+      // Wait for dashboard to appear with data
+      const dashboard = page.locator("#dashboard");
+      await expect(dashboard).toBeVisible({ timeout: 8000 }).catch(() => {});
 
       // Check metrics are present (they might show "—" if not connected)
       await expect(page.locator('#identityId')).toBeVisible();
@@ -269,11 +306,14 @@ test.describe('Dash Identity Viewer', () => {
       const searchBtn = page.locator('#searchBtn');
       await searchBtn.click();
 
-      await page.waitForTimeout(2000);
+      // Wait for dashboard to be visible (which contains the public keys list)
+      const dashboard = page.locator('#dashboard');
+      await expect(dashboard).toBeVisible({ timeout: 8000 });
 
-      // Public keys list should be present
+      // Public keys list should be present and have content
       const publicKeysList = page.locator('#publicKeysList');
-      await expect(publicKeysList).toBeVisible();
+      // The list should have actual content (not just the placeholder "—")
+      await expect(publicKeysList).toContainText(/Key|No public keys/, { timeout: 5000 });
     });
 
     test('should validate WASM object methods are called correctly', async ({ page }) => {
