@@ -1,0 +1,218 @@
+<testsuites id="" name="" tests="33" failures="1" skipped="0" errors="0" time="134.120641">
+<testsuite name="debug-console.spec.js" timestamp="2025-10-24T11:59:27.748Z" hostname="chromium" tests="1" failures="0" skipped="0" time="15.412" errors="0">
+<testcase name="Console Error Debugger › capture all console output and SDK behavior" classname="debug-console.spec.js" time="15.412">
+<system-out>
+<![CDATA[
+=== Loading Identity Viewer ===
+[BROWSER LOG] [initializeSDK] Starting initialization for testnet...
+[BROWSER LOG] [initializeSDK] Importing SDK module...
+=== Waiting for page initialization (10 seconds) ===
+[BROWSER LOG] [initializeSDK] Module imported: Module
+[BROWSER LOG] [initializeSDK] EvoSDK extracted: SUCCESS
+[BROWSER LOG] [initializeSDK] Creating testnet SDK instance...
+[BROWSER LOG] [initializeSDK] SDK instance created: SUCCESS
+[BROWSER LOG] [initializeSDK] Connecting to network...
+[BROWSER LOG] [initializeSDK] Connection successful
+[BROWSER LOG] [initializeSDK] SDK initialized and connected to testnet
+[BROWSER LOG] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[BROWSER LOG] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[BROWSER LOG] [loadIdentity] Fetching identity with proof...
+[BROWSER LOG] [loadIdentity] Identity with proof fetched: SUCCESS
+[BROWSER LOG] [loadIdentity] Current identity stored with proof
+[BROWSER LOG] [loadIdentity] Fetching balance and revision...
+[BROWSER LOG] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}
+[BROWSER LOG] [loadIdentity] Parsed balance: 6367055292 revision: 0
+[BROWSER LOG] [loadIdentity] Fetching public keys...
+[BROWSER LOG] [loadIdentity] Public keys: [Object, Object, Object, Object]
+[BROWSER LOG] [loadIdentity] Public keys count: 4
+[BROWSER LOG] [loadIdentity] Updating UI with data...
+[BROWSER LOG] [loadIdentity] Metrics updated
+[BROWSER LOG] [loadIdentity] Displaying public keys...
+[BROWSER LOG] [loadIdentity] Showing dashboard
+[BROWSER LOG] [loadIdentity] SUCCESS - Identity loaded and displayed
+Connection Status: Connected
+Default Identity ID in input: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+Dashboard visible: true
+Loading visible: false
+Error visible: false
+Balance: 6,367,055,292
+Revision: 0
+Public Keys Count: 4
+
+=== Attempting Manual Identity Fetch ===
+[BROWSER LOG] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[BROWSER LOG] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[BROWSER LOG] [loadIdentity] Fetching identity with proof...
+[BROWSER LOG] [loadIdentity] Identity with proof fetched: SUCCESS
+[BROWSER LOG] [loadIdentity] Current identity stored with proof
+[BROWSER LOG] [loadIdentity] Fetching balance and revision...
+[BROWSER LOG] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}
+[BROWSER LOG] [loadIdentity] Parsed balance: 6367055292 revision: 0
+[BROWSER LOG] [loadIdentity] Fetching public keys...
+[BROWSER LOG] [loadIdentity] Public keys: [Object, Object, Object, Object]
+[BROWSER LOG] [loadIdentity] Public keys count: 4
+[BROWSER LOG] [loadIdentity] Updating UI with data...
+[BROWSER LOG] [loadIdentity] Metrics updated
+[BROWSER LOG] [loadIdentity] Displaying public keys...
+[BROWSER LOG] [loadIdentity] Showing dashboard
+[BROWSER LOG] [loadIdentity] SUCCESS - Identity loaded and displayed
+Dashboard visible after fetch: true
+Balance after fetch: 6,367,055,292
+Revision after fetch: 0
+Public Keys Count after fetch: 4
+
+=== CONSOLE MESSAGES ===
+[0] [log] [initializeSDK] Starting initialization for testnet...
+[1] [log] [initializeSDK] Importing SDK module...
+[2] [log] [initializeSDK] Module imported: Module
+[3] [log] [initializeSDK] EvoSDK extracted: SUCCESS
+[4] [log] [initializeSDK] Creating testnet SDK instance...
+[5] [log] [initializeSDK] SDK instance created: SUCCESS
+[6] [log] [initializeSDK] Connecting to network...
+[7] [log] [initializeSDK] Connection successful
+[8] [log] [initializeSDK] SDK initialized and connected to testnet
+[9] [log] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[10] [log] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[11] [log] [loadIdentity] Fetching identity with proof...
+[12] [log] [loadIdentity] Identity with proof fetched: SUCCESS
+[13] [log] [loadIdentity] Current identity stored with proof
+[14] [log] [loadIdentity] Fetching balance and revision...
+[15] [log] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}
+[16] [log] [loadIdentity] Parsed balance: 6367055292 revision: 0
+[17] [log] [loadIdentity] Fetching public keys...
+[18] [log] [loadIdentity] Public keys: [Object, Object, Object, Object]
+[19] [log] [loadIdentity] Public keys count: 4
+[20] [log] [loadIdentity] Updating UI with data...
+[21] [log] [loadIdentity] Metrics updated
+[22] [log] [loadIdentity] Displaying public keys...
+[23] [log] [loadIdentity] Showing dashboard
+[24] [log] [loadIdentity] SUCCESS - Identity loaded and displayed
+[25] [log] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[26] [log] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq
+[27] [log] [loadIdentity] Fetching identity with proof...
+[28] [log] [loadIdentity] Identity with proof fetched: SUCCESS
+[29] [log] [loadIdentity] Current identity stored with proof
+[30] [log] [loadIdentity] Fetching balance and revision...
+[31] [log] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}
+[32] [log] [loadIdentity] Parsed balance: 6367055292 revision: 0
+[33] [log] [loadIdentity] Fetching public keys...
+[34] [log] [loadIdentity] Public keys: [Object, Object, Object, Object]
+[35] [log] [loadIdentity] Public keys count: 4
+[36] [log] [loadIdentity] Updating UI with data...
+[37] [log] [loadIdentity] Metrics updated
+[38] [log] [loadIdentity] Displaying public keys...
+[39] [log] [loadIdentity] Showing dashboard
+[40] [log] [loadIdentity] SUCCESS - Identity loaded and displayed
+
+=== ERRORS ===
+No errors captured
+
+=== WARNINGS ===
+No warnings captured
+
+=== NETWORK FAILURES ===
+No network failures
+
+=== SUMMARY ===
+Total console messages: 41
+Errors: 0
+Warnings: 0
+Network failures: 0
+Connection Status: Connected
+Dashboard Loaded: true
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="identity-viewer.spec.js" timestamp="2025-10-24T11:59:27.748Z" hostname="chromium" tests="32" failures="1" skipped="0" time="117.62" errors="0">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should capture all console errors during initialization" classname="identity-viewer.spec.js" time="3.18">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load without console errors" classname="identity-viewer.spec.js" time="2.175">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should display correct page title" classname="identity-viewer.spec.js" time="0.196">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show all required UI elements" classname="identity-viewer.spec.js" time="0.212">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have initial disconnected state" classname="identity-viewer.spec.js" time="0.179">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show initial activity log messages" classname="identity-viewer.spec.js" time="0.707">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load SDK module successfully" classname="identity-viewer.spec.js" time="0.185">
+</testcase>
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have SDK available in initialization context" classname="identity-viewer.spec.js" time="3.18">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should display search input field" classname="identity-viewer.spec.js" time="0.194">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should populate with default identity on load" classname="identity-viewer.spec.js" time="2.179">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should fetch identity on search button click" classname="identity-viewer.spec.js" time="8.089">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should allow search via Enter key" classname="identity-viewer.spec.js" time="8.016">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should show error for invalid identity ID" classname="identity-viewer.spec.js" time="2.087">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Data Display › should display identity metrics" classname="identity-viewer.spec.js" time="7.044">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Data Display › should display public keys section" classname="identity-viewer.spec.js" time="4.893">
+</testcase>
+<testcase name="Dash Identity Viewer › Identity Data Display › should validate WASM object methods are called correctly" classname="identity-viewer.spec.js" time="30.519">
+<failure message="identity-viewer.spec.js:279:9 should validate WASM object methods are called correctly" type="FAILURE">
+<![CDATA[  [chromium] › identity-viewer.spec.js:279:9 › Dash Identity Viewer › Identity Data Display › should validate WASM object methods are called correctly 
+
+    Test timeout of 30000ms exceeded.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm]]
+
+[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Dash Identity Viewer › Network Toggle Component › should display network toggle buttons" classname="identity-viewer.spec.js" time="0.251">
+</testcase>
+<testcase name="Dash Identity Viewer › Network Toggle Component › should default to testnet" classname="identity-viewer.spec.js" time="0.192">
+</testcase>
+<testcase name="Dash Identity Viewer › Network Toggle Component › should update description on network selection" classname="identity-viewer.spec.js" time="0.18">
+</testcase>
+<testcase name="Dash Identity Viewer › Network Toggle Component › should toggle network when button clicked" classname="identity-viewer.spec.js" time="4.281">
+</testcase>
+<testcase name="Dash Identity Viewer › Network Toggle Component › should show connecting state when switching networks" classname="identity-viewer.spec.js" time="0.25">
+</testcase>
+<testcase name="Dash Identity Viewer › Refresh Functionality › should display refresh button" classname="identity-viewer.spec.js" time="0.188">
+</testcase>
+<testcase name="Dash Identity Viewer › Refresh Functionality › should refresh current identity" classname="identity-viewer.spec.js" time="6.08">
+</testcase>
+<testcase name="Dash Identity Viewer › Refresh Functionality › should update timestamp after refresh" classname="identity-viewer.spec.js" time="4.076">
+</testcase>
+<testcase name="Dash Identity Viewer › Error Handling › should display error messages in error container" classname="identity-viewer.spec.js" time="2.101">
+</testcase>
+<testcase name="Dash Identity Viewer › Error Handling › should show error styling on connection failure" classname="identity-viewer.spec.js" time="5.135">
+</testcase>
+<testcase name="Dash Identity Viewer › Error Handling › should allow retry after error" classname="identity-viewer.spec.js" time="5.061">
+</testcase>
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on mobile viewport" classname="identity-viewer.spec.js" time="0.098">
+</testcase>
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on tablet viewport" classname="identity-viewer.spec.js" time="0.162">
+</testcase>
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on desktop viewport" classname="identity-viewer.spec.js" time="0.299">
+</testcase>
+<testcase name="Dash Identity Viewer › Integration Tests › should complete flow: connect and search identity" classname="identity-viewer.spec.js" time="8.082">
+</testcase>
+<testcase name="Dash Identity Viewer › Integration Tests › should handle network switching gracefully" classname="identity-viewer.spec.js" time="8.149">
+</testcase>
+</testsuite>
+</testsuites>

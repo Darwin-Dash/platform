@@ -1,0 +1,1664 @@
+{
+  "config": {
+    "configFile": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/playwright.config.js",
+    "rootDir": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/junit.xml"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.spec.js"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 1,
+    "webServer": {
+      "command": "cd .. && python3 -m http.server 8000",
+      "url": "http://localhost:8000/identity-viewer/index.html",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "debug-console.spec.js",
+      "file": "debug-console.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Console Error Debugger",
+          "file": "debug-console.spec.js",
+          "line": 8,
+          "column": 6,
+          "specs": [
+            {
+              "title": "capture all console output and SDK behavior",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15412,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n=== Loading Identity Viewer ===\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Starting initialization for testnet...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Importing SDK module...\n"
+                        },
+                        {
+                          "text": "=== Waiting for page initialization (10 seconds) ===\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Module imported: Module\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] EvoSDK extracted: SUCCESS\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Creating testnet SDK instance...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] SDK instance created: SUCCESS\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Connecting to network...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] Connection successful\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [initializeSDK] SDK initialized and connected to testnet\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching identity with proof...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Identity with proof fetched: SUCCESS\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Current identity stored with proof\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching balance and revision...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Parsed balance: 6367055292 revision: 0\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching public keys...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Public keys: [Object, Object, Object, Object]\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Public keys count: 4\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Updating UI with data...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Metrics updated\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Displaying public keys...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Showing dashboard\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] SUCCESS - Identity loaded and displayed\n"
+                        },
+                        {
+                          "text": "Connection Status: Connected\n"
+                        },
+                        {
+                          "text": "Default Identity ID in input: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "Dashboard visible: true\n"
+                        },
+                        {
+                          "text": "Loading visible: false\n"
+                        },
+                        {
+                          "text": "Error visible: false\n"
+                        },
+                        {
+                          "text": "Balance: 6,367,055,292\n"
+                        },
+                        {
+                          "text": "Revision: 0\n"
+                        },
+                        {
+                          "text": "Public Keys Count: 4\n"
+                        },
+                        {
+                          "text": "\n=== Attempting Manual Identity Fetch ===\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching identity with proof...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Identity with proof fetched: SUCCESS\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Current identity stored with proof\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching balance and revision...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Parsed balance: 6367055292 revision: 0\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Fetching public keys...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Public keys: [Object, Object, Object, Object]\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Public keys count: 4\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Updating UI with data...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Metrics updated\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Displaying public keys...\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] Showing dashboard\n"
+                        },
+                        {
+                          "text": "[BROWSER LOG] [loadIdentity] SUCCESS - Identity loaded and displayed\n"
+                        },
+                        {
+                          "text": "Dashboard visible after fetch: true\n"
+                        },
+                        {
+                          "text": "Balance after fetch: 6,367,055,292\n"
+                        },
+                        {
+                          "text": "Revision after fetch: 0\n"
+                        },
+                        {
+                          "text": "Public Keys Count after fetch: 4\n"
+                        },
+                        {
+                          "text": "\n=== CONSOLE MESSAGES ===\n"
+                        },
+                        {
+                          "text": "[0] [log] [initializeSDK] Starting initialization for testnet...\n"
+                        },
+                        {
+                          "text": "[1] [log] [initializeSDK] Importing SDK module...\n"
+                        },
+                        {
+                          "text": "[2] [log] [initializeSDK] Module imported: Module\n"
+                        },
+                        {
+                          "text": "[3] [log] [initializeSDK] EvoSDK extracted: SUCCESS\n"
+                        },
+                        {
+                          "text": "[4] [log] [initializeSDK] Creating testnet SDK instance...\n"
+                        },
+                        {
+                          "text": "[5] [log] [initializeSDK] SDK instance created: SUCCESS\n"
+                        },
+                        {
+                          "text": "[6] [log] [initializeSDK] Connecting to network...\n"
+                        },
+                        {
+                          "text": "[7] [log] [initializeSDK] Connection successful\n"
+                        },
+                        {
+                          "text": "[8] [log] [initializeSDK] SDK initialized and connected to testnet\n"
+                        },
+                        {
+                          "text": "[9] [log] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[10] [log] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[11] [log] [loadIdentity] Fetching identity with proof...\n"
+                        },
+                        {
+                          "text": "[12] [log] [loadIdentity] Identity with proof fetched: SUCCESS\n"
+                        },
+                        {
+                          "text": "[13] [log] [loadIdentity] Current identity stored with proof\n"
+                        },
+                        {
+                          "text": "[14] [log] [loadIdentity] Fetching balance and revision...\n"
+                        },
+                        {
+                          "text": "[15] [log] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}\n"
+                        },
+                        {
+                          "text": "[16] [log] [loadIdentity] Parsed balance: 6367055292 revision: 0\n"
+                        },
+                        {
+                          "text": "[17] [log] [loadIdentity] Fetching public keys...\n"
+                        },
+                        {
+                          "text": "[18] [log] [loadIdentity] Public keys: [Object, Object, Object, Object]\n"
+                        },
+                        {
+                          "text": "[19] [log] [loadIdentity] Public keys count: 4\n"
+                        },
+                        {
+                          "text": "[20] [log] [loadIdentity] Updating UI with data...\n"
+                        },
+                        {
+                          "text": "[21] [log] [loadIdentity] Metrics updated\n"
+                        },
+                        {
+                          "text": "[22] [log] [loadIdentity] Displaying public keys...\n"
+                        },
+                        {
+                          "text": "[23] [log] [loadIdentity] Showing dashboard\n"
+                        },
+                        {
+                          "text": "[24] [log] [loadIdentity] SUCCESS - Identity loaded and displayed\n"
+                        },
+                        {
+                          "text": "[25] [log] [loadIdentity] Starting with ID: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[26] [log] [loadIdentity] Fetching identity: DcoJJ3W9JauwLD51vzNuXJ9vnaZT7mprVm7wbgVYifNq\n"
+                        },
+                        {
+                          "text": "[27] [log] [loadIdentity] Fetching identity with proof...\n"
+                        },
+                        {
+                          "text": "[28] [log] [loadIdentity] Identity with proof fetched: SUCCESS\n"
+                        },
+                        {
+                          "text": "[29] [log] [loadIdentity] Current identity stored with proof\n"
+                        },
+                        {
+                          "text": "[30] [log] [loadIdentity] Fetching balance and revision...\n"
+                        },
+                        {
+                          "text": "[31] [log] [loadIdentity] Balance and revision data: {balance: 6367055292, revision: 0}\n"
+                        },
+                        {
+                          "text": "[32] [log] [loadIdentity] Parsed balance: 6367055292 revision: 0\n"
+                        },
+                        {
+                          "text": "[33] [log] [loadIdentity] Fetching public keys...\n"
+                        },
+                        {
+                          "text": "[34] [log] [loadIdentity] Public keys: [Object, Object, Object, Object]\n"
+                        },
+                        {
+                          "text": "[35] [log] [loadIdentity] Public keys count: 4\n"
+                        },
+                        {
+                          "text": "[36] [log] [loadIdentity] Updating UI with data...\n"
+                        },
+                        {
+                          "text": "[37] [log] [loadIdentity] Metrics updated\n"
+                        },
+                        {
+                          "text": "[38] [log] [loadIdentity] Displaying public keys...\n"
+                        },
+                        {
+                          "text": "[39] [log] [loadIdentity] Showing dashboard\n"
+                        },
+                        {
+                          "text": "[40] [log] [loadIdentity] SUCCESS - Identity loaded and displayed\n"
+                        },
+                        {
+                          "text": "\n=== ERRORS ===\n"
+                        },
+                        {
+                          "text": "No errors captured\n"
+                        },
+                        {
+                          "text": "\n=== WARNINGS ===\n"
+                        },
+                        {
+                          "text": "No warnings captured\n"
+                        },
+                        {
+                          "text": "\n=== NETWORK FAILURES ===\n"
+                        },
+                        {
+                          "text": "No network failures\n"
+                        },
+                        {
+                          "text": "\n=== SUMMARY ===\n"
+                        },
+                        {
+                          "text": "Total console messages: 41\n"
+                        },
+                        {
+                          "text": "Errors: 0\n"
+                        },
+                        {
+                          "text": "Warnings: 0\n"
+                        },
+                        {
+                          "text": "Network failures: 0\n"
+                        },
+                        {
+                          "text": "Connection Status: Connected\n"
+                        },
+                        {
+                          "text": "Dashboard Loaded: true\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-24T11:59:27.967Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "08fc5fd8a6cd762a98b0-07aee2520aab1a039bec",
+              "file": "debug-console.spec.js",
+              "line": 9,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "identity-viewer.spec.js",
+      "file": "identity-viewer.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Dash Identity Viewer",
+          "file": "identity-viewer.spec.js",
+          "line": 16,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Page Load & Initial State",
+              "file": "identity-viewer.spec.js",
+              "line": 22,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should capture all console errors during initialization",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 3180,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:43.587Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-42cc431967bd3719e493",
+                  "file": "identity-viewer.spec.js",
+                  "line": 23,
+                  "column": 9
+                },
+                {
+                  "title": "should load without console errors",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2175,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:46.772Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-116e8cc3ba33eaf4cdb0",
+                  "file": "identity-viewer.spec.js",
+                  "line": 43,
+                  "column": 9
+                },
+                {
+                  "title": "should display correct page title",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 196,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:48.952Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-470422b095f07518df02",
+                  "file": "identity-viewer.spec.js",
+                  "line": 57,
+                  "column": 9
+                },
+                {
+                  "title": "should show all required UI elements",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 212,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:49.152Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-d5b707a56042a26e9ddf",
+                  "file": "identity-viewer.spec.js",
+                  "line": 62,
+                  "column": 9
+                },
+                {
+                  "title": "should have initial disconnected state",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 179,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:49.369Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-21bd4b8a20ed703c3786",
+                  "file": "identity-viewer.spec.js",
+                  "line": 79,
+                  "column": 9
+                },
+                {
+                  "title": "should show initial activity log messages",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 707,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:49.552Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-1ed97962f2143dc02c6e",
+                  "file": "identity-viewer.spec.js",
+                  "line": 87,
+                  "column": 9
+                },
+                {
+                  "title": "should load SDK module successfully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 185,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:50.263Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-cfa333d39eb183bd9587",
+                  "file": "identity-viewer.spec.js",
+                  "line": 103,
+                  "column": 9
+                },
+                {
+                  "title": "should have SDK available in initialization context",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 3180,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:50.453Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-8617954609a80af21064",
+                  "file": "identity-viewer.spec.js",
+                  "line": 110,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Identity Search Functionality",
+              "file": "identity-viewer.spec.js",
+              "line": 134,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display search input field",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 194,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:53.637Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-f21495b6eece6d94cd5e",
+                  "file": "identity-viewer.spec.js",
+                  "line": 135,
+                  "column": 9
+                },
+                {
+                  "title": "should populate with default identity on load",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2179,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:53.835Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-d87a062e2fc7c7256e79",
+                  "file": "identity-viewer.spec.js",
+                  "line": 141,
+                  "column": 9
+                },
+                {
+                  "title": "should fetch identity on search button click",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 8089,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T11:59:56.018Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-6e266f1439dc1d25e396",
+                  "file": "identity-viewer.spec.js",
+                  "line": 150,
+                  "column": 9
+                },
+                {
+                  "title": "should allow search via Enter key",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 8016,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:04.111Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-a416e08b604c5ab54ea4",
+                  "file": "identity-viewer.spec.js",
+                  "line": 179,
+                  "column": 9
+                },
+                {
+                  "title": "should show error for invalid identity ID",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2087,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:12.131Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-090031da0e040293e6d2",
+                  "file": "identity-viewer.spec.js",
+                  "line": 202,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Identity Data Display",
+              "file": "identity-viewer.spec.js",
+              "line": 221,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display identity metrics",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 7044,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:14.221Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-0d4702e72c3200acadbe",
+                  "file": "identity-viewer.spec.js",
+                  "line": 222,
+                  "column": 9
+                },
+                {
+                  "title": "should display public keys section",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4893,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:21.269Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-d6a66c1cfcc2543c6372",
+                  "file": "identity-viewer.spec.js",
+                  "line": 265,
+                  "column": 9
+                },
+                {
+                  "title": "should validate WASM object methods are called correctly",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "timedOut",
+                          "duration": 30519,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:26.166Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png"
+                            },
+                            {
+                              "name": "video",
+                              "contentType": "video/webm",
+                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-53b2bacd16f6ad474d6c",
+                  "file": "identity-viewer.spec.js",
+                  "line": 279,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Network Toggle Component",
+              "file": "identity-viewer.spec.js",
+              "line": 348,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display network toggle buttons",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 251,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:57.015Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-3948d15c7bf90ebfd188",
+                  "file": "identity-viewer.spec.js",
+                  "line": 349,
+                  "column": 9
+                },
+                {
+                  "title": "should default to testnet",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 192,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:57.354Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-ead9b467443cbabf4c13",
+                  "file": "identity-viewer.spec.js",
+                  "line": 357,
+                  "column": 9
+                },
+                {
+                  "title": "should update description on network selection",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 180,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:57.551Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-0a7fb21355038cc452b6",
+                  "file": "identity-viewer.spec.js",
+                  "line": 365,
+                  "column": 9
+                },
+                {
+                  "title": "should toggle network when button clicked",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4281,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:00:57.735Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-d0ab40da4ff165bd4dac",
+                  "file": "identity-viewer.spec.js",
+                  "line": 372,
+                  "column": 9
+                },
+                {
+                  "title": "should show connecting state when switching networks",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 250,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:02.020Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-cb4642170434cd122e9b",
+                  "file": "identity-viewer.spec.js",
+                  "line": 392,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Refresh Functionality",
+              "file": "identity-viewer.spec.js",
+              "line": 405,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display refresh button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 188,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:02.275Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-52b6646926e68e010522",
+                  "file": "identity-viewer.spec.js",
+                  "line": 406,
+                  "column": 9
+                },
+                {
+                  "title": "should refresh current identity",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 6080,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:02.466Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-98522924d07440b2f629",
+                  "file": "identity-viewer.spec.js",
+                  "line": 411,
+                  "column": 9
+                },
+                {
+                  "title": "should update timestamp after refresh",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4076,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:08.550Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-30f86fc45d571ab4cd4c",
+                  "file": "identity-viewer.spec.js",
+                  "line": 435,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Error Handling",
+              "file": "identity-viewer.spec.js",
+              "line": 452,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display error messages in error container",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2101,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:12.632Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-40b9466fbcf79cb9c5b5",
+                  "file": "identity-viewer.spec.js",
+                  "line": 453,
+                  "column": 9
+                },
+                {
+                  "title": "should show error styling on connection failure",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 5135,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:14.738Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-d4a8e1c62a5f6de61da9",
+                  "file": "identity-viewer.spec.js",
+                  "line": 469,
+                  "column": 9
+                },
+                {
+                  "title": "should allow retry after error",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 5061,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:19.877Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-972643a5dca2f158c4c2",
+                  "file": "identity-viewer.spec.js",
+                  "line": 482,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "UI Responsiveness",
+              "file": "identity-viewer.spec.js",
+              "line": 511,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should be responsive on mobile viewport",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 98,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:24.942Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-a354fac1168e9839384b",
+                  "file": "identity-viewer.spec.js",
+                  "line": 512,
+                  "column": 9
+                },
+                {
+                  "title": "should be responsive on tablet viewport",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 162,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:25.044Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-30b7a3292e0465adf9d3",
+                  "file": "identity-viewer.spec.js",
+                  "line": 521,
+                  "column": 9
+                },
+                {
+                  "title": "should be responsive on desktop viewport",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 299,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:25.210Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-9b301b8b052a9b810fee",
+                  "file": "identity-viewer.spec.js",
+                  "line": 530,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Integration Tests",
+              "file": "identity-viewer.spec.js",
+              "line": 541,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should complete flow: connect and search identity",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 8082,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:25.513Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-c15c6b360a2c26812609",
+                  "file": "identity-viewer.spec.js",
+                  "line": 542,
+                  "column": 9
+                },
+                {
+                  "title": "should handle network switching gracefully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "chromium",
+                      "projectName": "chromium",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 8149,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2025-10-24T12:01:33.599Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "7344fc0aa4e250cee4fa-fe53fff65f8356855bdb",
+                  "file": "identity-viewer.spec.js",
+                  "line": 565,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-10-24T11:59:27.655Z",
+    "duration": 134120.641,
+    "expected": 32,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

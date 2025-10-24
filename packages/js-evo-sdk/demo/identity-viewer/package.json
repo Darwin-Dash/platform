@@ -1,0 +1,13 @@
+{
+  "name": "js-evo-sdk-identity-viewer",
+  "version": "1.0.0",
+  "description": "Standalone HTML demo for viewing Dash Platform identities",
+  "private": true,
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
