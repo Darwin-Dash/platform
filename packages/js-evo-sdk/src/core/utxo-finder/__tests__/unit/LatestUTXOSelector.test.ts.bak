@@ -1,0 +1,397 @@
+/**
+ * Unit tests for LatestUTXOSelector
+ * Tests UTXO selection algorithms and sorting
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { LatestUTXOSelector } from '../../src/LatestUTXOSelector';
+import { MOCK_UTXOS, UTXO_SETS, createUTXO } from '../fixtures/utxos';
+import { TESTNET_ADDRESSES } from '../fixtures/addresses';
+
+describe('LatestUTXOSelector', () => {
+  describe('select - get latest single UTXO', () => {
+    it('should select latest UTXO by block height', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest).toBeDefined();
+      expect(latest.txId).toBe(MOCK_UTXOS.unspent3.txId);
+      expect(latest.blockHeight).toBe(510);
+    });
+
+    it('should select from single UTXO', () => {
+      const utxos = UTXO_SETS.single;
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest).toEqual(MOCK_UTXOS.unspent1);
+    });
+
+    it('should select highest block height when multiple', () => {
+      const utxos = [
+        createUTXO({ blockHeight: 500 }),
+        createUTXO({ blockHeight: 600, txId: 'newer' }),
+        createUTXO({ blockHeight: 550, txId: 'middle' }),
+      ];
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest.blockHeight).toBe(600);
+      expect(latest.txId).toBe('newer');
+    });
+
+    it('should use block time as tiebreaker when heights equal', () => {
+      const now = Date.now();
+      const utxos = [
+        createUTXO({
+          blockHeight: 500,
+          blockTime: new Date(now),
+          txId: 'tx1',
+        }),
+        createUTXO({
+          blockHeight: 500,
+          blockTime: new Date(now + 1000),
+          txId: 'tx2',
+        }),
+      ];
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest.txId).toBe('tx2');
+    });
+
+    it('should use satoshis as final tiebreaker', () => {
+      const blockTime = new Date('2024-01-01T10:00:00Z');
+      const utxos = [
+        createUTXO({
+          blockHeight: 500,
+          blockTime,
+          satoshis: 100000,
+          txId: 'tx1',
+        }),
+        createUTXO({
+          blockHeight: 500,
+          blockTime,
+          satoshis: 200000,
+          txId: 'tx2',
+        }),
+      ];
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest.txId).toBe('tx2');
+      expect(latest.satoshis).toBe(200000);
+    });
+
+    it('should throw when no spendable UTXOs', () => {
+      const utxos = UTXO_SETS.empty;
+
+      expect(() => LatestUTXOSelector.select(utxos)).toThrow(
+        'No spendable UTXOs available'
+      );
+    });
+
+    it('should throw when only unconfirmed UTXOs', () => {
+      const utxos = UTXO_SETS.onlyUnconfirmed;
+
+      expect(() => LatestUTXOSelector.select(utxos)).toThrow(
+        'No spendable UTXOs available'
+      );
+    });
+
+    it('should skip unconfirmed when confirmed available', () => {
+      const utxos = UTXO_SETS.withUnconfirmed;
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest.blockHeight).toBeGreaterThan(0);
+      expect(latest.txId).toBe(MOCK_UTXOS.unspent3.txId);
+    });
+
+    it('should check required amount', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      expect(() => LatestUTXOSelector.select(utxos, 999999999)).toThrow(
+        'Insufficient funds'
+      );
+    });
+
+    it('should accept when amount is available', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const selected = LatestUTXOSelector.select(utxos, 100000);
+
+      expect(selected).toBeDefined();
+      expect(selected.satoshis).toBeGreaterThanOrEqual(100000);
+    });
+
+    it('should accept when amount exactly matches', () => {
+      const utxos = [createUTXO({ satoshis: 100000 })];
+
+      const selected = LatestUTXOSelector.select(utxos, 100000);
+
+      expect(selected.satoshis).toBe(100000);
+    });
+  });
+
+  describe('getAllSpendable - get all spendable UTXOs', () => {
+    it('should return all confirmed UTXOs sorted by recency', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(3);
+      // Should be sorted with newest first
+      expect(spendable[0].blockHeight).toBeGreaterThanOrEqual(
+        spendable[1].blockHeight
+      );
+    });
+
+    it('should exclude unconfirmed from spendable', () => {
+      const utxos = UTXO_SETS.withUnconfirmed;
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      const hasUnconfirmed = spendable.some((u) => u.blockHeight === 0);
+      expect(hasUnconfirmed).toBe(false);
+    });
+
+    it('should return empty array when no spendable', () => {
+      const utxos = UTXO_SETS.onlyUnconfirmed;
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toEqual([]);
+    });
+
+    it('should sort by height descending (newest first)', () => {
+      const utxos = [
+        createUTXO({ blockHeight: 100, txId: 'old' }),
+        createUTXO({ blockHeight: 500, txId: 'middle' }),
+        createUTXO({ blockHeight: 1000, txId: 'new' }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable[0].txId).toBe('new');
+      expect(spendable[1].txId).toBe('middle');
+      expect(spendable[2].txId).toBe('old');
+    });
+
+    it('should maintain consistent ordering', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const spendable1 = LatestUTXOSelector.getAllSpendable(utxos);
+      const spendable2 = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable1.map((u) => u.txId)).toEqual(
+        spendable2.map((u) => u.txId)
+      );
+    });
+  });
+
+  describe('selectForAmount - coin selection', () => {
+    it('should select single UTXO covering amount', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 20000);
+
+      expect(selected.length).toBeGreaterThan(0);
+      const total = selected.reduce((sum, u) => sum + u.satoshis, 0);
+      expect(total).toBeGreaterThanOrEqual(20000);
+    });
+
+    it('should select multiple UTXOs if needed', () => {
+      const utxos = UTXO_SETS.smallValues;
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 30000);
+
+      expect(selected.length).toBeGreaterThan(0);
+      const total = selected.reduce((sum, u) => sum + u.satoshis, 0);
+      expect(total).toBeGreaterThanOrEqual(30000);
+    });
+
+    it('should throw when insufficient funds', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      expect(() =>
+        LatestUTXOSelector.selectForAmount(utxos, 999999999)
+      ).toThrow('Insufficient funds');
+    });
+
+    it('should select minimum set needed', () => {
+      const utxos = [
+        createUTXO({ satoshis: 100000, txId: 'tx1' }),
+        createUTXO({ satoshis: 50000, txId: 'tx2' }),
+        createUTXO({ satoshis: 25000, txId: 'tx3' }),
+      ];
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 30000);
+
+      // Should pick smallest that covers (tx2 = 50000)
+      expect(selected.length).toBe(1);
+      expect(selected[0].satoshis).toBeGreaterThanOrEqual(30000);
+    });
+
+    it('should exclude unconfirmed from selection', () => {
+      const utxos = UTXO_SETS.withUnconfirmed;
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 100000);
+
+      const hasUnconfirmed = selected.some((u) => u.blockHeight === 0);
+      expect(hasUnconfirmed).toBe(false);
+    });
+
+    it('should handle zero amount', () => {
+      const utxos = UTXO_SETS.multiple;
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 0);
+
+      expect(selected.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should select exactly matching amount', () => {
+      const utxos = [createUTXO({ satoshis: 100000 })];
+
+      const selected = LatestUTXOSelector.selectForAmount(utxos, 100000);
+
+      expect(selected).toHaveLength(1);
+      expect(selected[0].satoshis).toBe(100000);
+    });
+  });
+
+  describe('spendability checking', () => {
+    it('should consider chain-locked UTXO as spendable', () => {
+      const utxos = [
+        createUTXO({
+          blockHeight: 500,
+          isChainLocked: true,
+          isInstantLocked: false,
+        }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(1);
+    });
+
+    it('should consider instant-locked UTXO as spendable', () => {
+      const utxos = [
+        createUTXO({
+          blockHeight: 100,
+          isChainLocked: false,
+          isInstantLocked: true,
+        }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(1);
+    });
+
+    it('should consider unconfirmed without locks as non-spendable', () => {
+      const utxos = [
+        createUTXO({
+          blockHeight: 0,
+          isChainLocked: false,
+          isInstantLocked: false,
+        }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(0);
+    });
+
+    it('should consider unconfirmed with instant-lock as spendable', () => {
+      const utxos = [
+        createUTXO({
+          blockHeight: 0,
+          isChainLocked: false,
+          isInstantLocked: true,
+        }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(1);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle single UTXO set', () => {
+      const utxos = UTXO_SETS.single;
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(1);
+    });
+
+    it('should handle empty set', () => {
+      const utxos = UTXO_SETS.empty;
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toEqual([]);
+    });
+
+    it('should handle high value UTXOs', () => {
+      const utxos = UTXO_SETS.highValue;
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest).toBeDefined();
+      expect(latest.satoshis).toBeGreaterThan(100000);
+    });
+
+    it('should handle dust amounts', () => {
+      const utxos = [
+        createUTXO({ satoshis: 546 }), // Bitcoin dust limit
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(1);
+    });
+
+    it('should handle very large UTXO sets', () => {
+      const utxos = Array.from({ length: 1000 }, (_, i) =>
+        createUTXO({
+          satoshis: 10000 * (i + 1),
+          blockHeight: 500 + i,
+          txId: `tx${i}`,
+        })
+      );
+
+      const latest = LatestUTXOSelector.select(utxos);
+
+      expect(latest).toBeDefined();
+      expect(latest.blockHeight).toBe(1499); // Newest
+    });
+  });
+
+  describe('sorting stability', () => {
+    it('should maintain order with identical heights and times', () => {
+      const blockTime = new Date('2024-01-01T10:00:00Z');
+      const utxos = [
+        createUTXO({
+          blockHeight: 500,
+          blockTime,
+          satoshis: 100000,
+          txId: 'tx1',
+        }),
+        createUTXO({
+          blockHeight: 500,
+          blockTime,
+          satoshis: 100000,
+          txId: 'tx2',
+        }),
+      ];
+
+      const spendable = LatestUTXOSelector.getAllSpendable(utxos);
+
+      expect(spendable).toHaveLength(2);
+    });
+  });
+});

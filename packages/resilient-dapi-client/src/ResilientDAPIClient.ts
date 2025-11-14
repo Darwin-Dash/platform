@@ -32,35 +32,102 @@ export class ResilientDAPIClient extends EventEmitter {
   private retryStrategy: AdaptiveRetryStrategy;
   private degradation: GracefulDegradation;
   private config: Required<ResilientConfig>;
+  private ownsDAPIClient: boolean;
 
-  constructor(config: ResilientConfig) {
+  /**
+   * Create a new ResilientDAPIClient
+   *
+   * @param configOrClient - Either a ResilientConfig object (production) or a DAPIClient instance (testing)
+   * @param options - Optional config when passing a DAPIClient instance
+   *
+   * @example Production usage:
+   * ```typescript
+   * const client = new ResilientDAPIClient({
+   *   network: 'testnet',
+   *   dapiAddresses: ['node1:1443', 'node2:1443'],
+   *   maxRetryAttempts: 10
+   * });
+   * ```
+   *
+   * @example Test usage with injected DAPIClient:
+   * ```typescript
+   * const dapiClient = new DAPIClient({ seeds: ['node1'] });
+   * const proxy = createFailureProxy(dapiClient);
+   * const client = new ResilientDAPIClient(dapiClient, {
+   *   maxRetryAttempts: 10
+   * });
+   * ```
+   */
+  constructor(configOrClient: ResilientConfig | DAPIClient, options?: Partial<ResilientConfig>) {
     super();
 
-    // Apply defaults (from payment-monitor pattern)
-    this.config = {
-      // Standard DAPI defaults
-      timeout: 60000,
-      retries: 5,
-      baseBanTime: 60000,
+    // Determine if we're in test mode (DAPIClient injection) or production mode
+    // Check if it's a DAPIClient by looking for core/platform properties (duck typing)
+    // This works with both real DAPIClient and ControllableMockDAPIClient
+    const isDAPIClientInjection =
+      configOrClient instanceof DAPIClient ||
+      (typeof configOrClient === 'object' && 'core' in configOrClient && 'platform' in configOrClient);
 
-      // Resilience defaults
-      logLevel: 'error',
-      enableObservability: true,
-      enableGracefulDegradation: true,
-      enableAdaptiveRetry: true,
-      maxRetryDelay: 30000,
-      retryBaseDelay: 1000,
-      nodeRetryDelay: 300000,
-      maxRetryAttempts: 10,
+    if (isDAPIClientInjection) {
+      // Test mode: use provided DAPIClient (allows failure proxy wrapping)
+      this.dapiClient = configOrClient;
+      this.ownsDAPIClient = false;
 
-      ...config,
-    } as Required<ResilientConfig>;
+      // Apply defaults with optional overrides
+      this.config = {
+        // Standard DAPI defaults
+        timeout: 60000,
+        retries: 5,
+        baseBanTime: 60000,
+
+        // Resilience defaults
+        logLevel: 'error',
+        enableObservability: true,
+        enableGracefulDegradation: true,
+        enableAdaptiveRetry: true,
+        maxRetryDelay: 30000,
+        retryBaseDelay: 1000,
+        nodeRetryDelay: 300000,
+        maxRetryAttempts: 10,
+
+        ...options,
+      } as Required<ResilientConfig>;
+    } else {
+      // Production mode: create own DAPIClient
+      this.ownsDAPIClient = true;
+
+      // Apply defaults (from payment-monitor pattern)
+      this.config = {
+        // Standard DAPI defaults
+        timeout: 60000,
+        retries: 5,
+        baseBanTime: 60000,
+
+        // Resilience defaults
+        logLevel: 'error',
+        enableObservability: true,
+        enableGracefulDegradation: true,
+        enableAdaptiveRetry: true,
+        maxRetryDelay: 30000,
+        retryBaseDelay: 1000,
+        nodeRetryDelay: 300000,
+        maxRetryAttempts: 10,
+
+        ...configOrClient,
+      } as Required<ResilientConfig>;
+
+      // Create underlying DAPI client
+      this.dapiClient = this.createDAPIClient();
+    }
 
     this.logger = createLogger('ResilientDAPI', this.config.logLevel);
 
     // Initialize strategies
+    // Note: In test mode with injected client, dapiAddresses might not be in config
+    // Use empty array as fallback since node pool isn't used when client is injected
+    const addresses = this.config.dapiAddresses || [];
     this.nodePool = new NodePoolManager(
-      this.config.dapiAddresses,
+      addresses,
       this.config.nodeRetryDelay,
       this.logger
     );
@@ -79,9 +146,6 @@ export class ResilientDAPIClient extends EventEmitter {
       this.config.enableGracefulDegradation,
       this.logger
     );
-
-    // Create underlying DAPI client
-    this.dapiClient = this.createDAPIClient();
 
     this.logger.info('ResilientDAPIClient initialized');
   }
@@ -244,11 +308,19 @@ export class ResilientDAPIClient extends EventEmitter {
    * Get current resilience status
    */
   getStatus(): ResilientStatus {
+    const poolSize = this.nodePool.getPoolSize();
+    const failedCount = this.nodePool.getFailedNodeCount();
+
     return {
       ...this.degradation.getStatus(),
       currentNode: this.nodePool.getCurrentNode(),
-      nodePoolSize: this.nodePool.getPoolSize(),
+      nodePoolSize: poolSize,
       failureCount: this.retryStrategy.getFailureCount(),
+      nodePool: {
+        total: poolSize,
+        available: poolSize - failedCount,
+        blacklisted: failedCount,
+      },
     };
   }
 
@@ -267,5 +339,26 @@ export class ResilientDAPIClient extends EventEmitter {
     this.degradation.reset();
     this.nodePool.clearFailedNodes();
     this.logger.info('Resilience state reset');
+  }
+
+  /**
+   * Destroy the client and clean up resources
+   * Only destroys the underlying DAPIClient if we created it (production mode)
+   */
+  destroy(): void {
+    if (this.ownsDAPIClient) {
+      // We own the DAPIClient, safe to destroy it
+      const client = this.dapiClient as any;
+      if (client && typeof client.disconnect === 'function') {
+        client.disconnect();
+      }
+      this.logger.info('ResilientDAPIClient destroyed (owned client cleaned up)');
+    } else {
+      // DAPIClient was injected (test mode), don't destroy it
+      this.logger.info('ResilientDAPIClient destroyed (injected client not cleaned up)');
+    }
+
+    // Clear all event listeners
+    this.removeAllListeners();
   }
 }

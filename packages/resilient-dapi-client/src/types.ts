@@ -89,6 +89,11 @@ export interface ResilientStatus {
   currentNode: string | null;
   nodePoolSize: number;
   failureCount: number;
+  nodePool: {
+    total: number;
+    available: number;
+    blacklisted: number;
+  };
 }
 
 /**
