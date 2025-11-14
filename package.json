@@ -18,7 +18,7 @@
     "test:dpp": "ultra -r test",
     "test:grpc-common": "ultra -r --filter \"packages/@(js-grpc-common|dapi-grpc|dapi|js-dapi-client|js-dash-sdk|wallet-lib)\" test",
     "test:wallet-lib": "ultra -r --filter \"packages/@(wallet-lib|js-dash-sdk)\" test",
-    "build": "ultra --recursive $* --build",
+    "build": "ultra --recursive $* --build && bash scripts/post-build-cleanup.sh",
     "lint": "ultra --recursive $* lint",
     "configure": "yarn exec ./scripts/configure.sh",
     "clean": "yarn run build",
@@ -57,7 +57,8 @@
     "packages/token-history-contract",
     "packages/keyword-search-contract",
     "packages/wasm-sdk",
-    "packages/js-evo-sdk"
+    "packages/js-evo-sdk",
+    "packages/dash-utxo-finder"
   ],
   "resolutions": {
     "pbkdf2": "^3.1.3",

@@ -1,0 +1,33 @@
+{
+  "name": "@dashevo/resilient-dapi-client",
+  "version": "1.0.0",
+  "description": "Production-ready DAPI client wrapper with resilience features from payment-monitor",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [
+    "dash",
+    "dapi",
+    "resilience",
+    "failover",
+    "retry",
+    "blockchain"
+  ],
+  "author": "Dash Core Group",
+  "license": "MIT",
+  "dependencies": {
+    "@dashevo/dapi-client": "^2.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.9",
+    "@vitest/coverage-v8": "^2.1.9"
+  }
+}
