@@ -1,14 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
 
 /**
- * Playwright configuration for js-evo-sdk demo E2E tests
+ * Playwright configuration for Dash Platform Status Dashboard E2E tests
  *
  * Tests run against:
  * - Chromium (desktop)
- * - Firefox (desktop)
- * - WebKit (mobile Safari simulation)
+ * - Mobile Chrome (mobile simulation)
  *
- * Base URL: http://localhost:8000 (started with: python3 -m http.server 8000)
+ * Server: Started from demo directory at http://localhost:8000/
+ * Base URL: http://localhost:8000/platform-status/
  */
 
 export default defineConfig({
@@ -38,7 +39,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:8000/demo',
+    baseURL: 'http://localhost:8000/',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -56,17 +57,12 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'cd .. && python3 -m http.server 8000',
-    url: 'http://localhost:8000/demo',
+    command: 'python3 -m http.server 8000',
+    url: 'http://localhost:8000/index.html',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

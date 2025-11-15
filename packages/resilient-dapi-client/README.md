@@ -277,11 +277,64 @@ setInterval(() => {
 
 ## Testing
 
+### Unit Tests
+
 ```bash
 npm test              # Run unit tests
 npm run test:coverage # With coverage report
 npm run test:watch    # Watch mode
 ```
+
+### Integration Tests - Testnet Validation
+
+Comprehensive testnet validation suite that validates all resilience features against real Dash testnet DAPI nodes.
+
+```bash
+# Run all testnet integration tests (~90 minutes)
+npm test tests/integration/
+
+# Run specific test suites
+npm test tests/integration/testnet-basic.spec.ts      # ~5 min - Basic connectivity
+npm test tests/integration/testnet-retry.spec.ts      # ~10 min - Adaptive retry
+npm test tests/integration/testnet-failover.spec.ts   # ~15 min - Node failover
+npm test tests/integration/testnet-stability.spec.ts  # ~30 min - Long-running stability
+```
+
+**What's Validated:**
+- ✅ Automatic retry with exponential backoff (1s → 2s → 4s → 8s)
+- ✅ Node failover and blacklisting (5-minute cooldown)
+- ✅ Graceful degradation (platform failures while core continues)
+- ✅ Concurrent operation handling (10-100 simultaneous requests)
+- ✅ Memory leak detection over 30-minute continuous operation
+- ✅ Real-world failure scenarios with comprehensive reporting
+
+**Failure Report:**
+
+The stability test generates a detailed Markdown report documenting all failures encountered and how the resilient client recovered:
+
+```
+test-results/testnet-resilience-report-2025-11-14T10-30-00.md
+```
+
+**Example Report Summary:**
+```markdown
+# Testnet Resilience Validation Report
+
+## Executive Summary
+
+**Overall Grade:** 🟢 Excellent
+
+This report documents 523 operations over 30m 15s against Dash testnet.
+Success Rate: 96.37%
+
+**Key Findings:**
+- Recovered from 48 failures via retry/failover
+- Average recovery time: 2,150ms
+- Blacklisted 3 underperforming nodes
+- Memory stable (growth: 2.3%)
+```
+
+**See:** [tests/integration/README.md](./tests/integration/README.md) for complete documentation.
 
 ## License
 

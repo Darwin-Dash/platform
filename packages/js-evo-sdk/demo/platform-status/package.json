@@ -1,5 +1,5 @@
 {
-  "name": "js-evo-sdk-demo",
+  "name": "js-evo-sdk-platform-status",
   "version": "1.0.0",
   "description": "Standalone HTML demo showing js-evo-sdk connection to Dash Platform",
   "private": true,

@@ -101,7 +101,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 15412,
+                      "duration": 15448,
                       "errors": [],
                       "stdout": [
                         {
@@ -440,7 +440,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-10-24T11:59:27.967Z",
+                      "startTime": "2025-10-24T12:46:16.954Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -493,12 +493,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 3180,
+                          "duration": 204,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:43.587Z",
+                          "startTime": "2025-10-24T12:46:32.632Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -527,12 +527,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 2175,
+                          "duration": 194,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:46.772Z",
+                          "startTime": "2025-10-24T12:46:32.842Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -542,7 +542,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-116e8cc3ba33eaf4cdb0",
                   "file": "identity-viewer.spec.js",
-                  "line": 43,
+                  "line": 55,
                   "column": 9
                 },
                 {
@@ -561,12 +561,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 196,
+                          "duration": 198,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:48.952Z",
+                          "startTime": "2025-10-24T12:46:33.042Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -576,7 +576,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-470422b095f07518df02",
                   "file": "identity-viewer.spec.js",
-                  "line": 57,
+                  "line": 80,
                   "column": 9
                 },
                 {
@@ -595,12 +595,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 212,
+                          "duration": 214,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:49.152Z",
+                          "startTime": "2025-10-24T12:46:33.245Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -610,7 +610,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-d5b707a56042a26e9ddf",
                   "file": "identity-viewer.spec.js",
-                  "line": 62,
+                  "line": 85,
                   "column": 9
                 },
                 {
@@ -629,12 +629,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 179,
+                          "duration": 189,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:49.369Z",
+                          "startTime": "2025-10-24T12:46:33.464Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -644,7 +644,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-21bd4b8a20ed703c3786",
                   "file": "identity-viewer.spec.js",
-                  "line": 79,
+                  "line": 102,
                   "column": 9
                 },
                 {
@@ -663,12 +663,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 707,
+                          "duration": 193,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:49.552Z",
+                          "startTime": "2025-10-24T12:46:33.658Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -678,7 +678,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-1ed97962f2143dc02c6e",
                   "file": "identity-viewer.spec.js",
-                  "line": 87,
+                  "line": 110,
                   "column": 9
                 },
                 {
@@ -697,12 +697,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 185,
+                          "duration": 213,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:50.263Z",
+                          "startTime": "2025-10-24T12:46:33.856Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -712,7 +712,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-cfa333d39eb183bd9587",
                   "file": "identity-viewer.spec.js",
-                  "line": 103,
+                  "line": 123,
                   "column": 9
                 },
                 {
@@ -731,12 +731,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 3180,
+                          "duration": 2045,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:50.453Z",
+                          "startTime": "2025-10-24T12:46:34.073Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -746,7 +746,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-8617954609a80af21064",
                   "file": "identity-viewer.spec.js",
-                  "line": 110,
+                  "line": 130,
                   "column": 9
                 }
               ]
@@ -754,7 +754,7 @@
             {
               "title": "Identity Search Functionality",
               "file": "identity-viewer.spec.js",
-              "line": 134,
+              "line": 156,
               "column": 8,
               "specs": [
                 {
@@ -773,12 +773,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 194,
+                          "duration": 195,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:53.637Z",
+                          "startTime": "2025-10-24T12:46:36.123Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -788,7 +788,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-f21495b6eece6d94cd5e",
                   "file": "identity-viewer.spec.js",
-                  "line": 135,
+                  "line": 157,
                   "column": 9
                 },
                 {
@@ -807,12 +807,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 2179,
+                          "duration": 2047,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:53.835Z",
+                          "startTime": "2025-10-24T12:46:36.323Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -822,7 +822,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-d87a062e2fc7c7256e79",
                   "file": "identity-viewer.spec.js",
-                  "line": 141,
+                  "line": 163,
                   "column": 9
                 },
                 {
@@ -841,12 +841,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 8089,
+                          "duration": 4818,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T11:59:56.018Z",
+                          "startTime": "2025-10-24T12:46:38.374Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -856,7 +856,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-6e266f1439dc1d25e396",
                   "file": "identity-viewer.spec.js",
-                  "line": 150,
+                  "line": 173,
                   "column": 9
                 },
                 {
@@ -875,12 +875,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 8016,
+                          "duration": 4787,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:04.111Z",
+                          "startTime": "2025-10-24T12:46:43.196Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -890,7 +890,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-a416e08b604c5ab54ea4",
                   "file": "identity-viewer.spec.js",
-                  "line": 179,
+                  "line": 207,
                   "column": 9
                 },
                 {
@@ -909,12 +909,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 2087,
+                          "duration": 2455,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:12.131Z",
+                          "startTime": "2025-10-24T12:46:47.990Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -924,7 +924,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-090031da0e040293e6d2",
                   "file": "identity-viewer.spec.js",
-                  "line": 202,
+                  "line": 237,
                   "column": 9
                 }
               ]
@@ -932,7 +932,7 @@
             {
               "title": "Identity Data Display",
               "file": "identity-viewer.spec.js",
-              "line": 221,
+              "line": 256,
               "column": 8,
               "specs": [
                 {
@@ -951,12 +951,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 7044,
+                          "duration": 3904,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:14.221Z",
+                          "startTime": "2025-10-24T12:46:50.454Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -966,7 +966,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-0d4702e72c3200acadbe",
                   "file": "identity-viewer.spec.js",
-                  "line": 222,
+                  "line": 257,
                   "column": 9
                 },
                 {
@@ -985,12 +985,12 @@
                           "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 4893,
+                          "duration": 4904,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:21.269Z",
+                          "startTime": "2025-10-24T12:46:54.363Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1000,12 +1000,12 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-d6a66c1cfcc2543c6372",
                   "file": "identity-viewer.spec.js",
-                  "line": 265,
+                  "line": 302,
                   "column": 9
                 },
                 {
                   "title": "should validate WASM object methods are called correctly",
-                  "ok": false,
+                  "ok": true,
                   "tags": [],
                   "tests": [
                     {
@@ -1018,47 +1018,23 @@
                         {
                           "workerIndex": 0,
                           "parallelIndex": 0,
-                          "status": "timedOut",
-                          "duration": 30519,
-                          "error": {
-                            "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                            "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                          },
-                          "errors": [
-                            {
-                              "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                            }
-                          ],
+                          "status": "passed",
+                          "duration": 4366,
+                          "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:26.166Z",
+                          "startTime": "2025-10-24T12:46:59.272Z",
                           "annotations": [],
-                          "attachments": [
-                            {
-                              "name": "screenshot",
-                              "contentType": "image/png",
-                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png"
-                            },
-                            {
-                              "name": "video",
-                              "contentType": "video/webm",
-                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm"
-                            },
-                            {
-                              "name": "error-context",
-                              "contentType": "text/markdown",
-                              "path": "/Users/user/Sync/Code/Dash/platform-feat-js-evo-sdk-identities/packages/js-evo-sdk/demo/identity-viewer/test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md"
-                            }
-                          ]
+                          "attachments": []
                         }
                       ],
-                      "status": "unexpected"
+                      "status": "expected"
                     }
                   ],
                   "id": "7344fc0aa4e250cee4fa-53b2bacd16f6ad474d6c",
                   "file": "identity-viewer.spec.js",
-                  "line": 279,
+                  "line": 319,
                   "column": 9
                 }
               ]
@@ -1066,7 +1042,7 @@
             {
               "title": "Network Toggle Component",
               "file": "identity-viewer.spec.js",
-              "line": 348,
+              "line": 375,
               "column": 8,
               "specs": [
                 {
@@ -1082,15 +1058,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 251,
+                          "duration": 222,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:57.015Z",
+                          "startTime": "2025-10-24T12:47:03.643Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1100,7 +1076,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-3948d15c7bf90ebfd188",
                   "file": "identity-viewer.spec.js",
-                  "line": 349,
+                  "line": 376,
                   "column": 9
                 },
                 {
@@ -1116,15 +1092,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 192,
+                          "duration": 202,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:57.354Z",
+                          "startTime": "2025-10-24T12:47:03.871Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1134,7 +1110,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-ead9b467443cbabf4c13",
                   "file": "identity-viewer.spec.js",
-                  "line": 357,
+                  "line": 384,
                   "column": 9
                 },
                 {
@@ -1150,15 +1126,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 180,
+                          "duration": 226,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:57.551Z",
+                          "startTime": "2025-10-24T12:47:04.078Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1168,7 +1144,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-0a7fb21355038cc452b6",
                   "file": "identity-viewer.spec.js",
-                  "line": 365,
+                  "line": 392,
                   "column": 9
                 },
                 {
@@ -1184,15 +1160,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 4281,
+                          "duration": 4274,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:00:57.735Z",
+                          "startTime": "2025-10-24T12:47:04.310Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1202,7 +1178,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-d0ab40da4ff165bd4dac",
                   "file": "identity-viewer.spec.js",
-                  "line": 372,
+                  "line": 399,
                   "column": 9
                 },
                 {
@@ -1218,15 +1194,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 250,
+                          "duration": 254,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:02.020Z",
+                          "startTime": "2025-10-24T12:47:08.588Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1236,7 +1212,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-cb4642170434cd122e9b",
                   "file": "identity-viewer.spec.js",
-                  "line": 392,
+                  "line": 419,
                   "column": 9
                 }
               ]
@@ -1244,7 +1220,7 @@
             {
               "title": "Refresh Functionality",
               "file": "identity-viewer.spec.js",
-              "line": 405,
+              "line": 432,
               "column": 8,
               "specs": [
                 {
@@ -1260,7 +1236,7 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
                           "duration": 188,
@@ -1268,7 +1244,7 @@
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:02.275Z",
+                          "startTime": "2025-10-24T12:47:08.846Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1278,7 +1254,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-52b6646926e68e010522",
                   "file": "identity-viewer.spec.js",
-                  "line": 406,
+                  "line": 433,
                   "column": 9
                 },
                 {
@@ -1294,15 +1270,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 6080,
+                          "duration": 6090,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:02.466Z",
+                          "startTime": "2025-10-24T12:47:09.038Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1312,7 +1288,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-98522924d07440b2f629",
                   "file": "identity-viewer.spec.js",
-                  "line": 411,
+                  "line": 438,
                   "column": 9
                 },
                 {
@@ -1328,15 +1304,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 4076,
+                          "duration": 4086,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:08.550Z",
+                          "startTime": "2025-10-24T12:47:15.132Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1346,7 +1322,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-30f86fc45d571ab4cd4c",
                   "file": "identity-viewer.spec.js",
-                  "line": 435,
+                  "line": 462,
                   "column": 9
                 }
               ]
@@ -1354,7 +1330,7 @@
             {
               "title": "Error Handling",
               "file": "identity-viewer.spec.js",
-              "line": 452,
+              "line": 479,
               "column": 8,
               "specs": [
                 {
@@ -1370,15 +1346,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 2101,
+                          "duration": 2133,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:12.632Z",
+                          "startTime": "2025-10-24T12:47:19.223Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1388,7 +1364,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-40b9466fbcf79cb9c5b5",
                   "file": "identity-viewer.spec.js",
-                  "line": 453,
+                  "line": 480,
                   "column": 9
                 },
                 {
@@ -1404,15 +1380,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 5135,
+                          "duration": 5131,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:14.738Z",
+                          "startTime": "2025-10-24T12:47:21.360Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1422,7 +1398,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-d4a8e1c62a5f6de61da9",
                   "file": "identity-viewer.spec.js",
-                  "line": 469,
+                  "line": 496,
                   "column": 9
                 },
                 {
@@ -1438,15 +1414,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 5061,
+                          "duration": 5091,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:19.877Z",
+                          "startTime": "2025-10-24T12:47:26.495Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1456,7 +1432,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-972643a5dca2f158c4c2",
                   "file": "identity-viewer.spec.js",
-                  "line": 482,
+                  "line": 509,
                   "column": 9
                 }
               ]
@@ -1464,7 +1440,7 @@
             {
               "title": "UI Responsiveness",
               "file": "identity-viewer.spec.js",
-              "line": 511,
+              "line": 538,
               "column": 8,
               "specs": [
                 {
@@ -1480,15 +1456,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 98,
+                          "duration": 107,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:24.942Z",
+                          "startTime": "2025-10-24T12:47:31.591Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1498,7 +1474,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-a354fac1168e9839384b",
                   "file": "identity-viewer.spec.js",
-                  "line": 512,
+                  "line": 539,
                   "column": 9
                 },
                 {
@@ -1514,15 +1490,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 162,
+                          "duration": 172,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:25.044Z",
+                          "startTime": "2025-10-24T12:47:31.702Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1532,7 +1508,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-30b7a3292e0465adf9d3",
                   "file": "identity-viewer.spec.js",
-                  "line": 521,
+                  "line": 548,
                   "column": 9
                 },
                 {
@@ -1548,15 +1524,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 299,
+                          "duration": 307,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:25.210Z",
+                          "startTime": "2025-10-24T12:47:31.879Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1566,7 +1542,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-9b301b8b052a9b810fee",
                   "file": "identity-viewer.spec.js",
-                  "line": 530,
+                  "line": 557,
                   "column": 9
                 }
               ]
@@ -1574,7 +1550,7 @@
             {
               "title": "Integration Tests",
               "file": "identity-viewer.spec.js",
-              "line": 541,
+              "line": 568,
               "column": 8,
               "specs": [
                 {
@@ -1590,15 +1566,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 8082,
+                          "duration": 8088,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:25.513Z",
+                          "startTime": "2025-10-24T12:47:32.190Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1608,7 +1584,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-c15c6b360a2c26812609",
                   "file": "identity-viewer.spec.js",
-                  "line": 542,
+                  "line": 569,
                   "column": 9
                 },
                 {
@@ -1624,15 +1600,15 @@
                       "projectName": "chromium",
                       "results": [
                         {
-                          "workerIndex": 1,
+                          "workerIndex": 0,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 8149,
+                          "duration": 8163,
                           "errors": [],
                           "stdout": [],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2025-10-24T12:01:33.599Z",
+                          "startTime": "2025-10-24T12:47:40.282Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1642,7 +1618,7 @@
                   ],
                   "id": "7344fc0aa4e250cee4fa-fe53fff65f8356855bdb",
                   "file": "identity-viewer.spec.js",
-                  "line": 565,
+                  "line": 592,
                   "column": 9
                 }
               ]
@@ -1654,11 +1630,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-10-24T11:59:27.655Z",
-    "duration": 134120.641,
-    "expected": 32,
+    "startTime": "2025-10-24T12:46:10.090Z",
+    "duration": 98392.76699999999,
+    "expected": 33,
     "skipped": 0,
-    "unexpected": 1,
+    "unexpected": 0,
     "flaky": 0
   }
 }

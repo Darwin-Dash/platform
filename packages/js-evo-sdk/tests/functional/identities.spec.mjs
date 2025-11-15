@@ -10,14 +10,16 @@ describe('Identities', function identitiesSuite() {
     await sdk.connect();
   });
 
-  it('fetch() returns identity', async () => {
-    const res = await sdk.identities.fetch(TEST_IDS.identityId);
+  it('get() returns identity', async () => {
+    const res = await sdk.identities.get(TEST_IDS.identityId);
     expect(res).to.exist();
+    expect(res).to.be.an('object');
   });
 
-  it('fetchWithProof() returns proof info', async () => {
-    const res = await sdk.identities.fetchWithProof(TEST_IDS.identityId);
+  it('getWithProof() returns proof info', async () => {
+    const res = await sdk.identities.getWithProof(TEST_IDS.identityId);
     expect(res).to.exist();
+    expect(res).to.be.an('object');
   });
 
   it('getKeys({ keyRequestType: "all" }) returns keys', async () => {
@@ -28,6 +30,9 @@ describe('Identities', function identitiesSuite() {
       offset: 0,
     });
     expect(res).to.exist();
+    expect(res).to.be.an('object');
+    expect(res.keys).to.be.an('array');
+    expect(res.keys.length).to.be.greaterThan(0, 'Identity should have at least one public key');
   });
 
   it('getKeysWithProof({ keyRequestType: "all" }) returns proof info', async () => {

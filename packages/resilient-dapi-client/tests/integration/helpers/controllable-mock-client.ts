@@ -108,6 +108,37 @@ export class ControllableMockDAPIClient {
         return this.mockResponses.get('platform.getDocuments') || [];
       });
     },
+
+    getIdentityNonce: async (identityId: string): Promise<number> => {
+      return this.executeMethod('platform', 'getIdentityNonce', async () => {
+        return this.mockResponses.get('platform.getIdentityNonce') || 0;
+      });
+    },
+
+    broadcastStateTransition: async (stateTransition: any): Promise<string> => {
+      return this.executeMethod('platform', 'broadcastStateTransition', async () => {
+        return this.mockResponses.get('platform.broadcastStateTransition') || 'mock-state-transition-hash-1234567890';
+      });
+    },
+
+    waitForStateTransitionResult: async (hash: string, options?: any): Promise<any> => {
+      return this.executeMethod('platform', 'waitForStateTransitionResult', async () => {
+        return this.mockResponses.get('platform.waitForStateTransitionResult') || {
+          hash,
+          status: 'confirmed',
+          blockHeight: 2000100,
+        };
+      });
+    },
+
+    getEpochsInfo: async (startEpoch?: number, count?: number, ascending?: boolean): Promise<any> => {
+      return this.executeMethod('platform', 'getEpochsInfo', async () => {
+        return this.mockResponses.get('platform.getEpochsInfo') || {
+          epoch: 100,
+          chainLockedHeight: 2000050,
+        };
+      });
+    },
   };
 
   /**
@@ -280,6 +311,10 @@ export class ControllableMockDAPIClient {
     this.mockResponses.set('platform.getIdentity', { balance: 1000 });
     this.mockResponses.set('platform.getDataContract', { version: 1 });
     this.mockResponses.set('platform.getDocuments', []);
+    this.mockResponses.set('platform.getIdentityNonce', 0);
+    this.mockResponses.set('platform.broadcastStateTransition', 'mock-state-transition-hash-1234567890');
+    this.mockResponses.set('platform.waitForStateTransitionResult', { status: 'confirmed', blockHeight: 2000100 });
+    this.mockResponses.set('platform.getEpochsInfo', { epoch: 100, chainLockedHeight: 2000050 });
   }
 
   /**

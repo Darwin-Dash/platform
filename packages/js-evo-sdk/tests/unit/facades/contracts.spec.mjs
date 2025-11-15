@@ -25,14 +25,14 @@ describe('ContractsFacade', () => {
     this.sinon.stub(wasmSdk, 'contractUpdate').resolves(true);
   });
 
-  it('fetch() forwards to instance getDataContract', async () => {
-    const result = await client.contracts.fetch('c');
+  it('get() forwards to instance getDataContract', async () => {
+    const result = await client.contracts.get('c');
     expect(wasmSdk.getDataContract).to.be.calledOnceWithExactly('c');
     expect(result).to.be.instanceOf(wasmSDKPackage.DataContract);
   });
 
-  it('fetchWithProof() forwards to instance getDataContractWithProofInfo', async () => {
-    await client.contracts.fetchWithProof('c2');
+  it('getWithProof() forwards to instance getDataContractWithProofInfo', async () => {
+    await client.contracts.getWithProof('c2');
     expect(wasmSdk.getDataContractWithProofInfo).to.be.calledOnceWithExactly('c2');
   });
 

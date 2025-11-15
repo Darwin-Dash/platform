@@ -138,6 +138,43 @@ Stability validation with sustained operations:
 npm test tests/integration/testnet-stability.spec.ts
 ```
 
+### 🌐 Real-World Testnet Validation (`testnet-realworld-validation.spec.ts`)
+**Duration:** 30-120 minutes (configurable) | **Operations:** 500-2000+ | **Real Testnet**
+
+Extended validation against real Dash testnet to measure actual resilience:
+- Continuous operations against real DAPI nodes
+- Encounters and reports actual network failures
+- Tracks retry, failover, and degradation in production conditions
+- Generates comprehensive Markdown report with:
+  - Success rate over time
+  - Actual failures encountered and recovery actions
+  - Node reliability ranking
+  - Latency distributions
+  - Recommendations for production deployment
+
+**Configuration (in .env):**
+```bash
+REALWORLD_TEST_DURATION_MINUTES=30  # Test duration (default: 30)
+REALWORLD_TEST_MIN_OPERATIONS=500   # Minimum operations
+REALWORLD_TEST_REPORT_DIR=./test-results  # Report output
+```
+
+**Run:**
+```bash
+# Quick validation (5 minutes, 100 ops)
+REALWORLD_TEST_DURATION_MINUTES=5 REALWORLD_TEST_MIN_OPERATIONS=100 \
+  npm test tests/integration/testnet-realworld-validation.spec.ts
+
+# Standard validation (30 minutes, 500 ops)
+npm test tests/integration/testnet-realworld-validation.spec.ts
+
+# Extended validation (2 hours, 2000 ops)
+REALWORLD_TEST_DURATION_MINUTES=120 REALWORLD_TEST_MIN_OPERATIONS=2000 \
+  npm test tests/integration/testnet-realworld-validation.spec.ts
+```
+
+**Report Output:** `test-results/testnet-resilience-report-{timestamp}.md`
+
 ## Setup
 
 ### Prerequisites
@@ -293,25 +330,42 @@ await client.core.getBestBlockHeight();
 
 ## CI/CD Integration
 
-### Quick Validation (CI)
-Run subset of tests for PR validation:
+### Quick Validation (CI/PR)
+Run mock client tests for PR validation:
 ```bash
-npm test tests/integration/testnet-basic.spec.ts \
-         tests/integration/testnet-retry.spec.ts \
-         tests/integration/testnet-failover.spec.ts
+npm test tests/integration/testnet-retry.spec.ts \
+         tests/integration/testnet-degradation.spec.ts \
+         tests/integration/testnet-core-ops.spec.ts
 ```
-**Duration:** ~3-4 minutes (basic:16s, retry:175s, failover:<1s)
+**Duration:** ~3 minutes | **Purpose:** Fast, deterministic validation
 
-### Full Validation
-Run complete suite including all mock client tests:
+### Full Mock Suite
+Run all mock client tests:
 ```bash
-npm test tests/integration/
+npm test tests/integration/testnet-*.spec.ts --exclude="*realworld*"
 ```
-**Duration:** ~3-4 minutes (47 tests across 8 suites)
+**Duration:** ~3-4 minutes (47 tests) | **Purpose:** Complete feature validation
+
+### Real Testnet Validation (Nightly/Manual)
+Run extended validation against real testnet:
+```bash
+# Quick check (5 min)
+REALWORLD_TEST_DURATION_MINUTES=5 REALWORLD_TEST_MIN_OPERATIONS=100 \
+  npm test tests/integration/testnet-realworld-validation.spec.ts
+
+# Standard validation (30 min)
+npm test tests/integration/testnet-realworld-validation.spec.ts
+
+# Full validation (2 hours)
+REALWORLD_TEST_DURATION_MINUTES=120 REALWORLD_TEST_MIN_OPERATIONS=2000 \
+  npm test tests/integration/testnet-realworld-validation.spec.ts
+```
+**Purpose:** Validate real-world resilience and generate production readiness report
 
 **Test Suite Performance:**
-- Mock client tests: <5 seconds each (retry: 175s due to max retries test)
+- Mock client tests: <5 seconds each (retry: 175s includes max retries test)
 - Real testnet tests: 15-30 seconds each (basic, concurrent)
+- Real-world validation: 5-120 minutes (configurable, generates report)
 
 ### GitHub Actions Example
 ```yaml

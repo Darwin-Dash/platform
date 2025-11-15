@@ -138,11 +138,9 @@ export interface PublicKeyInfo {
 
 /**
  * Identity keys response
+ * Note: The WASM implementation returns an array of keys directly, not wrapped in an object
  */
-export interface IdentityKeys {
-  keys?: PublicKeyInfo[];
-  [key: string]: any;
-}
+export type IdentityKeys = PublicKeyInfo[];
 
 /**
  * Token balance information

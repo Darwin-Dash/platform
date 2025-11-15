@@ -15,14 +15,14 @@ export class ContractsFacade {
     this.sdk = sdk;
   }
 
-  async fetch(contractId: string): Promise<DataContract> {
+  async get(contractId: string): Promise<DataContract> {
     return withErrorHandling('fetch contract', async () => {
       const w = await this.sdk.getWasmSdkConnected();
       return w.getDataContract(contractId);
     }, contractId);
   }
 
-  async fetchWithProof(contractId: string): Promise<WithProof<DataContract>> {
+  async getWithProof(contractId: string): Promise<WithProof<DataContract>> {
     return withErrorHandling('fetch contract with proof', async () => {
       const w = await this.sdk.getWasmSdkConnected();
       return w.getDataContractWithProofInfo(contractId);

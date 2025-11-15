@@ -1,6 +1,6 @@
-# js-evo-sdk Standalone Demo
+# Dash Platform Status Dashboard
 
-A **standalone HTML demo** that demonstrates connecting to Dash Platform using the **js-evo-sdk** JavaScript library. This is a single-file, production-ready demo that requires no build process or dependencies.
+A **standalone HTML demo** that demonstrates connecting to Dash Platform using the **js-evo-sdk** JavaScript library. This is a production-ready platform status dashboard that requires no build process or dependencies.
 
 ## What This Demo Does
 
@@ -15,9 +15,9 @@ This demo shows:
 ## Project Structure
 
 ```
-demo/
+platform-status/
 ├── index.html           # Main HTML interface with all styles
-├── demo.js              # SDK initialization and connection logic
+├── platform-status.js   # SDK initialization and connection logic
 ├── package.json         # Metadata (scripts for serving)
 └── README.md           # This file
 ```
@@ -32,84 +32,69 @@ demo/
 
 ### Running the Demo
 
-⚠️ **CRITICAL: The server MUST be run from the SDK root directory**, not from the demo directory.
+#### Recommended: Using npm serve script
 
-#### Why Run from SDK Root?
-
-The demo loads the SDK from `../dist/evo-sdk.module.js` (parent directory). Browsers **cannot access parent directories** when using HTTP servers due to security restrictions. By serving from the SDK root:
-
-```
-js-evo-sdk/                 ← Start HTTP server HERE
-├── dist/
-│   └── evo-sdk.module.js  ← SDK is accessible at /dist/evo-sdk.module.js
-└── demo/
-    ├── index.html          ← Demo is accessible at /demo/index.html
-    └── demo.js             ← Can import from ../dist/ (which becomes /dist/)
-```
-
-#### Recommended: Local HTTP Server
+The dashboard includes an npm script that runs the HTTP server from the demo folder:
 
 ```bash
-# Navigate to SDK root directory (NOT demo directory!)
-cd packages/js-evo-sdk
+cd packages/js-evo-sdk/demo/platform-status
+npm run serve
+```
 
-# Start HTTP server from root
+Then open in your browser:
+```
+http://localhost:8000/platform-status/
+```
+
+This script runs `python3 -m http.server 8000` from the demo directory, making both `platform-status/` and `identity-viewer/` accessible.
+
+#### Alternative: Manual HTTP Server
+
+```bash
+# Navigate to demo directory
+cd packages/js-evo-sdk/demo
+
+# Start HTTP server
 python3 -m http.server 8000
 ```
 
 Then open in your browser:
 ```
-http://localhost:8000/demo/
+http://localhost:8000/platform-status/
 ```
 
-❌ **WRONG - Don't run server from demo directory:**
-```bash
-cd packages/js-evo-sdk/demo  # ← This is the WRONG place
-python3 -m http.server 8000  # ← SDK won't be accessible
+#### Why Run from Demo Folder?
+
+The dashboard loads the SDK from `../dist/evo-sdk.module.js` (one level up). By serving from the demo folder:
+
+```
+demo/                    ← Start HTTP server HERE
+├── dist/ (symlink)
+│   └── evo-sdk.module.js  ← SDK is accessible at /dist/evo-sdk.module.js
+├── platform-status/
+│   ├── index.html        ← Dashboard is accessible at /platform-status/index.html
+│   └── platform-status.js  ← Can import from ../dist/
+└── identity-viewer/
+    └── (similar structure)
 ```
 
-✅ **CORRECT - Run server from SDK root:**
-```bash
-cd packages/js-evo-sdk       # ← This is the CORRECT place
-python3 -m http.server 8000  # ← Both demo/ and dist/ are accessible
-```
-
-**This is how static hosts like S3, Netlify, and GitHub Pages serve it** - they all use HTTP protocol with proper directory structure, which allows ES6 module imports.
-
-#### Alternative: Using npm serve script
-
-The demo includes an npm script that automatically serves from the correct directory:
-
-```bash
-cd packages/js-evo-sdk/demo
-npm run serve
-```
-
-This script internally runs `cd .. && python3 -m http.server 8000`, which:
-1. Changes to the parent (SDK root) directory
-2. Starts the HTTP server from there
-3. Makes both `demo/` and `dist/` accessible
+**Note:** The `dist/` folder in the demo directory is typically a symlink to the actual SDK build. If it doesn't exist, run `npm run build` from the SDK root first.
 
 ## How It Works
 
 ### Connection Flow
 
-1. **Click "Connect to Dash Platform"** button
+1. Page loads automatically
 2. The demo dynamically imports the EvoSDK module from `../dist/evo-sdk.module.js`
 3. SDK initializes and connects to the Dash Platform testnet
 4. Platform status is fetched and displayed
-5. Activity log shows the connection progress in real-time
+5. Dashboard shows the connection status and metrics in real-time
 
-### Performing a Query
+### Network Switching
 
-After connecting:
-
-1. **Click "Fetch Status"** button
-2. The demo queries the platform for system information
-3. Results are displayed showing:
-   - Current block height
-   - Protocol version
-   - Network timestamp
+1. Click testnet or mainnet button
+2. The demo reconnects to the selected network
+3. Status and metrics are refreshed for the new network
 
 ## Technical Details
 
@@ -151,9 +136,9 @@ console.log(status); // Platform status information
 
 ### Error: "Failed to resolve module specifier" / CORS error
 
-This error has TWO possible causes:
+This error has one main cause:
 
-**Cause 1: Opened HTML file directly with `file://` protocol**
+**Opened HTML file directly with `file://` protocol**
 
 ❌ **Wrong:**
 ```bash
@@ -162,28 +147,19 @@ open index.html  # Opens as file:// - CORS blocks module imports
 
 ✅ **Correct:**
 ```bash
-cd packages/js-evo-sdk  # SDK root, not demo directory!
-python3 -m http.server 8000
-# Then open: http://localhost:8000/demo/
+cd packages/js-evo-sdk/demo
+npm run serve
+# Then open: http://localhost:8000/platform-status/
 ```
 
-**Cause 2: HTTP server running from wrong directory**
-
-❌ **Wrong - Server in demo directory:**
+Or manually:
 ```bash
-cd packages/js-evo-sdk/demo  # Wrong!
+cd packages/js-evo-sdk/demo
 python3 -m http.server 8000
-# Browser cannot access ../dist/evo-sdk.module.js
+# Then open: http://localhost:8000/platform-status/
 ```
 
-✅ **Correct - Server in SDK root:**
-```bash
-cd packages/js-evo-sdk  # Correct!
-python3 -m http.server 8000
-# Browser CAN access /dist/evo-sdk.module.js and /demo/index.html
-```
-
-**Why?** Modern browsers block ES6 module imports when using `file://` protocol for security reasons. Additionally, HTTP servers cannot serve files from parent directories (`../`). The solution is to serve from the SDK root where both `dist/` and `demo/` are accessible as subdirectories.
+**Why?** Modern browsers block ES6 module imports when using `file://` protocol for security reasons. Always use an HTTP server for local development.
 
 ### "Cannot find module '../dist/evo-sdk.module.js'"
 
@@ -383,7 +359,7 @@ First, ensure you have dependencies installed:
 
 ```bash
 # Install Playwright and test dependencies
-cd packages/js-evo-sdk/demo
+cd packages/js-evo-sdk/demo/platform-status
 npm install
 ```
 
@@ -508,10 +484,10 @@ If tests fail:
 
 1. **Check testnet connectivity**:
    ```bash
-   # From SDK root directory
-   cd packages/js-evo-sdk
-   python3 -m http.server 8000
-   # Manually test: Open http://localhost:8000/demo/ and try connecting
+   # From demo directory
+   cd packages/js-evo-sdk/demo
+   npm run serve
+   # Manually test: Open http://localhost:8000/platform-status/ and verify it connects
    ```
 
 2. **Run in headed mode to see what's happening**:
@@ -557,10 +533,11 @@ See [Playwright docs](https://playwright.dev) for more information.
 
 ## Tips for Success
 
-- **ALWAYS run HTTP server from SDK root directory**: `cd packages/js-evo-sdk && python3 -m http.server 8000`
+- **Run HTTP server from demo directory**: `cd packages/js-evo-sdk/demo && python3 -m http.server 8000`
+- Or use the npm script: `cd packages/js-evo-sdk/demo/platform-status && npm run serve`
 - Always rebuild the SDK after pulling changes: `cd packages/js-evo-sdk && npm run build`
-- Access demo at: `http://localhost:8000/demo/` (note the `/demo/` path!)
-- Check the Activity Log in the demo UI for detailed progress information
+- Access demo at: `http://localhost:8000/platform-status/`
+- Check the dashboard status badge for connection status
 - Open Developer Console (F12) for advanced debugging
 - The demo works completely offline after SDK loads (no CDN required)
-- Run tests regularly to catch regressions: `cd demo && npm test`
+- Run tests regularly to catch regressions: `cd platform-status && npm test`

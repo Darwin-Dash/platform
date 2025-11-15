@@ -72,6 +72,10 @@ export class EvoSDK {
 
   get isConnected(): boolean { return !!this.wasmSdk; }
 
+  get networkConfig(): { network: 'testnet' | 'mainnet' } {
+    return { network: this.options.network };
+  }
+
   async getWasmSdkConnected(): Promise<wasm.WasmSdk> {
     if (!this.wasmSdk) {
       await this.connect();

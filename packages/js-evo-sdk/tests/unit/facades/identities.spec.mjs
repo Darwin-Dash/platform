@@ -41,9 +41,9 @@ describe('IdentitiesFacade', () => {
     this.sinon.stub(wasmSdk, 'identityUpdate').resolves('ok');
   });
 
-  it('fetch() and fetchWithProof() forward to instance methods', async () => {
-    await client.identities.fetch('id');
-    await client.identities.fetchWithProof('id2');
+  it('get() and getWithProof() forward to instance methods', async () => {
+    await client.identities.get('id');
+    await client.identities.getWithProof('id2');
     expect(wasmSdk.getIdentity).to.be.calledOnceWithExactly('id');
     expect(wasmSdk.getIdentityWithProofInfo).to.be.calledOnceWithExactly('id2');
   });

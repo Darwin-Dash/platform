@@ -1,6 +1,6 @@
-<testsuites id="" name="" tests="33" failures="1" skipped="0" errors="0" time="134.120641">
-<testsuite name="debug-console.spec.js" timestamp="2025-10-24T11:59:27.748Z" hostname="chromium" tests="1" failures="0" skipped="0" time="15.412" errors="0">
-<testcase name="Console Error Debugger › capture all console output and SDK behavior" classname="debug-console.spec.js" time="15.412">
+<testsuites id="" name="" tests="33" failures="0" skipped="0" errors="0" time="98.39276699999999">
+<testsuite name="debug-console.spec.js" timestamp="2025-10-24T12:46:16.703Z" hostname="chromium" tests="1" failures="0" skipped="0" time="15.448" errors="0">
+<testcase name="Console Error Debugger › capture all console output and SDK behavior" classname="debug-console.spec.js" time="15.448">
 <system-out>
 <![CDATA[
 === Loading Identity Viewer ===
@@ -124,95 +124,70 @@ Dashboard Loaded: true
 </system-out>
 </testcase>
 </testsuite>
-<testsuite name="identity-viewer.spec.js" timestamp="2025-10-24T11:59:27.748Z" hostname="chromium" tests="32" failures="1" skipped="0" time="117.62" errors="0">
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should capture all console errors during initialization" classname="identity-viewer.spec.js" time="3.18">
+<testsuite name="identity-viewer.spec.js" timestamp="2025-10-24T12:46:16.703Z" hostname="chromium" tests="32" failures="0" skipped="0" time="75.66" errors="0">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should capture all console errors during initialization" classname="identity-viewer.spec.js" time="0.204">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load without console errors" classname="identity-viewer.spec.js" time="2.175">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load without console errors" classname="identity-viewer.spec.js" time="0.194">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should display correct page title" classname="identity-viewer.spec.js" time="0.196">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should display correct page title" classname="identity-viewer.spec.js" time="0.198">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show all required UI elements" classname="identity-viewer.spec.js" time="0.212">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show all required UI elements" classname="identity-viewer.spec.js" time="0.214">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have initial disconnected state" classname="identity-viewer.spec.js" time="0.179">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have initial disconnected state" classname="identity-viewer.spec.js" time="0.189">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show initial activity log messages" classname="identity-viewer.spec.js" time="0.707">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should show initial activity log messages" classname="identity-viewer.spec.js" time="0.193">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load SDK module successfully" classname="identity-viewer.spec.js" time="0.185">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should load SDK module successfully" classname="identity-viewer.spec.js" time="0.213">
 </testcase>
-<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have SDK available in initialization context" classname="identity-viewer.spec.js" time="3.18">
+<testcase name="Dash Identity Viewer › Page Load &amp; Initial State › should have SDK available in initialization context" classname="identity-viewer.spec.js" time="2.045">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Search Functionality › should display search input field" classname="identity-viewer.spec.js" time="0.194">
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should display search input field" classname="identity-viewer.spec.js" time="0.195">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Search Functionality › should populate with default identity on load" classname="identity-viewer.spec.js" time="2.179">
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should populate with default identity on load" classname="identity-viewer.spec.js" time="2.047">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Search Functionality › should fetch identity on search button click" classname="identity-viewer.spec.js" time="8.089">
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should fetch identity on search button click" classname="identity-viewer.spec.js" time="4.818">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Search Functionality › should allow search via Enter key" classname="identity-viewer.spec.js" time="8.016">
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should allow search via Enter key" classname="identity-viewer.spec.js" time="4.787">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Search Functionality › should show error for invalid identity ID" classname="identity-viewer.spec.js" time="2.087">
+<testcase name="Dash Identity Viewer › Identity Search Functionality › should show error for invalid identity ID" classname="identity-viewer.spec.js" time="2.455">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Data Display › should display identity metrics" classname="identity-viewer.spec.js" time="7.044">
+<testcase name="Dash Identity Viewer › Identity Data Display › should display identity metrics" classname="identity-viewer.spec.js" time="3.904">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Data Display › should display public keys section" classname="identity-viewer.spec.js" time="4.893">
+<testcase name="Dash Identity Viewer › Identity Data Display › should display public keys section" classname="identity-viewer.spec.js" time="4.904">
 </testcase>
-<testcase name="Dash Identity Viewer › Identity Data Display › should validate WASM object methods are called correctly" classname="identity-viewer.spec.js" time="30.519">
-<failure message="identity-viewer.spec.js:279:9 should validate WASM object methods are called correctly" type="FAILURE">
-<![CDATA[  [chromium] › identity-viewer.spec.js:279:9 › Dash Identity Viewer › Identity Data Display › should validate WASM object methods are called correctly 
-
-    Test timeout of 30000ms exceeded.
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
-    ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: ../test-results/identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md
-]]>
-</failure>
-<system-out>
-<![CDATA[
-[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/test-failed-1.png]]
-
-[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/video.webm]]
-
-[[ATTACHMENT|identity-viewer-Dash-Ident-9a067-ethods-are-called-correctly-chromium/error-context.md]]
-]]>
-</system-out>
+<testcase name="Dash Identity Viewer › Identity Data Display › should validate WASM object methods are called correctly" classname="identity-viewer.spec.js" time="4.366">
 </testcase>
-<testcase name="Dash Identity Viewer › Network Toggle Component › should display network toggle buttons" classname="identity-viewer.spec.js" time="0.251">
+<testcase name="Dash Identity Viewer › Network Toggle Component › should display network toggle buttons" classname="identity-viewer.spec.js" time="0.222">
 </testcase>
-<testcase name="Dash Identity Viewer › Network Toggle Component › should default to testnet" classname="identity-viewer.spec.js" time="0.192">
+<testcase name="Dash Identity Viewer › Network Toggle Component › should default to testnet" classname="identity-viewer.spec.js" time="0.202">
 </testcase>
-<testcase name="Dash Identity Viewer › Network Toggle Component › should update description on network selection" classname="identity-viewer.spec.js" time="0.18">
+<testcase name="Dash Identity Viewer › Network Toggle Component › should update description on network selection" classname="identity-viewer.spec.js" time="0.226">
 </testcase>
-<testcase name="Dash Identity Viewer › Network Toggle Component › should toggle network when button clicked" classname="identity-viewer.spec.js" time="4.281">
+<testcase name="Dash Identity Viewer › Network Toggle Component › should toggle network when button clicked" classname="identity-viewer.spec.js" time="4.274">
 </testcase>
-<testcase name="Dash Identity Viewer › Network Toggle Component › should show connecting state when switching networks" classname="identity-viewer.spec.js" time="0.25">
+<testcase name="Dash Identity Viewer › Network Toggle Component › should show connecting state when switching networks" classname="identity-viewer.spec.js" time="0.254">
 </testcase>
 <testcase name="Dash Identity Viewer › Refresh Functionality › should display refresh button" classname="identity-viewer.spec.js" time="0.188">
 </testcase>
-<testcase name="Dash Identity Viewer › Refresh Functionality › should refresh current identity" classname="identity-viewer.spec.js" time="6.08">
+<testcase name="Dash Identity Viewer › Refresh Functionality › should refresh current identity" classname="identity-viewer.spec.js" time="6.09">
 </testcase>
-<testcase name="Dash Identity Viewer › Refresh Functionality › should update timestamp after refresh" classname="identity-viewer.spec.js" time="4.076">
+<testcase name="Dash Identity Viewer › Refresh Functionality › should update timestamp after refresh" classname="identity-viewer.spec.js" time="4.086">
 </testcase>
-<testcase name="Dash Identity Viewer › Error Handling › should display error messages in error container" classname="identity-viewer.spec.js" time="2.101">
+<testcase name="Dash Identity Viewer › Error Handling › should display error messages in error container" classname="identity-viewer.spec.js" time="2.133">
 </testcase>
-<testcase name="Dash Identity Viewer › Error Handling › should show error styling on connection failure" classname="identity-viewer.spec.js" time="5.135">
+<testcase name="Dash Identity Viewer › Error Handling › should show error styling on connection failure" classname="identity-viewer.spec.js" time="5.131">
 </testcase>
-<testcase name="Dash Identity Viewer › Error Handling › should allow retry after error" classname="identity-viewer.spec.js" time="5.061">
+<testcase name="Dash Identity Viewer › Error Handling › should allow retry after error" classname="identity-viewer.spec.js" time="5.091">
 </testcase>
-<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on mobile viewport" classname="identity-viewer.spec.js" time="0.098">
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on mobile viewport" classname="identity-viewer.spec.js" time="0.107">
 </testcase>
-<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on tablet viewport" classname="identity-viewer.spec.js" time="0.162">
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on tablet viewport" classname="identity-viewer.spec.js" time="0.172">
 </testcase>
-<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on desktop viewport" classname="identity-viewer.spec.js" time="0.299">
+<testcase name="Dash Identity Viewer › UI Responsiveness › should be responsive on desktop viewport" classname="identity-viewer.spec.js" time="0.307">
 </testcase>
-<testcase name="Dash Identity Viewer › Integration Tests › should complete flow: connect and search identity" classname="identity-viewer.spec.js" time="8.082">
+<testcase name="Dash Identity Viewer › Integration Tests › should complete flow: connect and search identity" classname="identity-viewer.spec.js" time="8.088">
 </testcase>
-<testcase name="Dash Identity Viewer › Integration Tests › should handle network switching gracefully" classname="identity-viewer.spec.js" time="8.149">
+<testcase name="Dash Identity Viewer › Integration Tests › should handle network switching gracefully" classname="identity-viewer.spec.js" time="8.163">
 </testcase>
 </testsuite>
 </testsuites>

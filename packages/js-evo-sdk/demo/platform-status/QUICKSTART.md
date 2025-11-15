@@ -13,6 +13,13 @@
 
 ### HTTP Server (Required)
 
+Option 1: Using npm script (from platform-status directory)
+```bash
+cd packages/js-evo-sdk/demo/platform-status
+npm run serve
+```
+
+Option 2: Manual Python HTTP server (from demo directory)
 ```bash
 cd packages/js-evo-sdk/demo
 python3 -m http.server 8000
@@ -20,10 +27,10 @@ python3 -m http.server 8000
 
 Then open in your browser:
 ```
-http://localhost:8000/index.html
+http://localhost:8000/platform-status/
 ```
 
-Click **"Connect to Dash Platform"** to test the connection.
+The dashboard will auto-connect and display platform status.
 
 ### Why HTTP is Required
 
@@ -35,68 +42,107 @@ This is **identical to how S3, Netlify, and GitHub Pages work** - they all serve
 ## What You Get
 
 A **fully functional demo** that:
-- ✅ Connects to Dash Platform testnet
-- ✅ Displays SDK version
-- ✅ Fetches platform status
-- ✅ Shows real-time activity logs
+- ✅ Connects to Dash Platform testnet (auto-connect on load)
+- ✅ Displays platform metrics (block height, peers, network)
+- ✅ Shows protocol information and chain data
+- ✅ Allows switching between testnet and mainnet
+- ✅ Auto-refreshes status periodically
 - ✅ Works completely offline after initial load
-- ✅ No build tools or npm install required
+- ✅ No build tools or npm install required (except for tests)
 
 ## File Structure
 
 ```
 packages/js-evo-sdk/
 ├── dist/
-│   └── evo-sdk.module.js    ← Built SDK bundle (6.5MB)
+│   └── evo-sdk.module.js         ← Built SDK bundle (6.5MB)
 └── demo/
-    ├── index.html            ← Open this in browser
-    ├── demo.js              ← Connection logic
-    ├── README.md            ← Full documentation
-    └── QUICKSTART.md        ← This file
+    ├── dist -> ../../dist/       ← Symlink to SDK (for HTTP access)
+    ├── platform-status/
+    │   ├── index.html            ← Dashboard UI
+    │   ├── platform-status.js    ← Connection logic
+    │   ├── tests/
+    │   │   └── platform-status.spec.js   ← E2E tests
+    │   ├── package.json          ← npm scripts for serving and testing
+    │   ├── playwright.config.js  ← Test configuration
+    │   ├── README.md             ← Full documentation
+    │   └── QUICKSTART.md         ← This file
+    └── identity-viewer/
+        ├── index.html            ← Identity viewer UI
+        ├── identity-viewer.js    ← Identity lookup logic
+        ├── package.json          ← npm scripts
+        └── README.md             ← Identity viewer documentation
 ```
 
 ## Troubleshooting
 
-**Nothing happens when clicking "Connect"?**
-- Check browser console (F12 → Console tab)
-- Make sure `../dist/evo-sdk.module.js` exists
-
-**Get "Module not found" error?**
-- SDK wasn't built. From js-evo-sdk directory:
+**"Failed to fetch dynamically imported module" error?**
+- The HTTP server isn't running. Use:
   ```bash
+  cd packages/js-evo-sdk/demo/platform-status
+  npm run serve
+  ```
+- Then open: `http://localhost:8000/platform-status/`
+
+**Module not found or SDK path error?**
+- SDK wasn't built or symlink is missing. Run:
+  ```bash
+  cd packages/js-evo-sdk
   npm run build
   ```
+- Then verify the symlink exists in demo folder
 
-**CORS errors when opening file directly?**
-- Use the HTTP server method instead
+**Dashboard shows "Connection Failed"?**
+- Check your internet connection
+- Verify the Dash Platform testnet is accessible
+- Open browser console (F12) for detailed error messages
 
-## How We Built This
+**Nothing displays when opening the page?**
+- Check browser console (F12 → Console tab) for errors
+- Ensure you're using http:// not file:// protocol
+- Try hard-refreshing the page (Ctrl+Shift+R)
 
-1. **Fixed the build issue**: Updated wasm-bindgen-cli from 0.2.100 → 0.2.103
-2. **Built the monorepo**: `yarn build` compiled all packages including Rust → WASM
-3. **Created demo**: Simple HTML + JS that imports the built SDK bundle
-4. **Result**: Standalone demo with no dependencies
+## Key Features
 
-## What Changed from Dev Server Approach
+- **Auto-connect**: Dashboard automatically connects to the platform on page load
+- **Network switching**: Switch between testnet and mainnet with a button click
+- **Real-time updates**: Metrics auto-refresh every 30 seconds
+- **Full transparency**: All data shown with proper formatting and truncation
+- **Responsive design**: Works on mobile, tablet, and desktop
+- **Fully testable**: Comprehensive Playwright E2E test suite included
 
-- ❌ Removed Vite, webpack, all bundlers
-- ❌ Removed node_modules, package-lock.json
-- ✅ Added direct SDK import from dist
-- ✅ Single index.html with inline CSS
-- ✅ Works immediately, no build step
+## Running the Tests
 
-## Key Files
+To run the E2E test suite:
 
-- **index.html** (356 lines): UI + CSS
-- **demo.js** (125 lines): SDK logic
-- **README.md**: Full documentation
-- **evo-sdk.module.js** (6.5MB): Pre-built SDK (loaded from dist)
+```bash
+cd packages/js-evo-sdk/demo/platform-status
+npm install
+npm test
+```
+
+For development:
+```bash
+npm run test:headed    # See the tests run in a browser
+npm run test:ui        # Interactive test UI
+npm run test:debug     # Step-through debugging
+```
 
 ## Next Steps
 
-1. Open `index.html` in your browser
-2. Click "Connect to Dash Platform"
-3. Click "Fetch Status" to query the platform
-4. Check the Activity Log for diagnostics
+1. Run the demo:
+   ```bash
+   cd packages/js-evo-sdk/demo/platform-status && npm run serve
+   ```
 
-Done! You now have a working standalone HTML demo of the js-evo-sdk.
+2. Open in browser:
+   ```
+   http://localhost:8000/platform-status/
+   ```
+
+3. You'll see the dashboard auto-connect and display:
+   - Block height and network metrics
+   - Protocol versions and chain information
+   - Network status with real-time updates
+
+Done! You now have a fully functional standalone Dash Platform status dashboard.

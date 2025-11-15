@@ -58,7 +58,7 @@
     "packages/keyword-search-contract",
     "packages/wasm-sdk",
     "packages/js-evo-sdk",
-    "packages/dash-utxo-finder"
+    "packages/transaction-finder"
   ],
   "resolutions": {
     "pbkdf2": "^3.1.3",

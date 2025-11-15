@@ -11,13 +11,13 @@ describe('Data Contracts', function dataContractsSuite() {
     await sdk.connect();
   });
 
-  it('fetch() returns data contract', async () => {
-    const res = await sdk.contracts.fetch(TEST_IDS.dataContractId);
+  it('get() returns data contract', async () => {
+    const res = await sdk.contracts.get(TEST_IDS.dataContractId);
     expect(res).to.be.instanceOf(DataContract);
   });
 
-  it('fetchWithProof() returns proof info', async () => {
-    const res = await sdk.contracts.fetchWithProof(TEST_IDS.dataContractId);
+  it('getWithProof() returns proof info', async () => {
+    const res = await sdk.contracts.getWithProof(TEST_IDS.dataContractId);
     expect(res).to.exist();
   });
 
