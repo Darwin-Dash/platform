@@ -40,6 +40,10 @@ export class EvoSDK {
   private wasmSdk?: wasm.WasmSdk;
   private options: Required<Pick<EvoSDKOptions, 'network' | 'trusted'>> & ConnectionOptions & { addresses?: string[] };
 
+  // Guard to prevent multiple prefetchTrustedQuorums calls which create conflicting WASM locks
+  // This is a process-level flag because prefetch creates global Rust mutex locks
+  public static prefetchDone = false;
+
   public documents!: DocumentsFacade;
   public identities!: IdentitiesFacade;
   public contracts!: ContractsFacade;
@@ -93,22 +97,31 @@ export class EvoSDK {
 
     let builder: wasm.WasmSdkBuilder;
 
-    // If specific addresses are provided, use them instead of network presets
+    // CRITICAL: Guard prefetch with static flag to prevent "already locked to a reader" errors
+    // Prefetch creates process-level Rust mutex locks that conflict if called multiple times
+    // See: MIGRATE/packages/js-evo-sdk/src/sdk.ts (lines 154-179)
     if (addresses && addresses.length > 0) {
-      // Prefetch trusted quorums for the network before creating builder with addresses
-      if (network === 'mainnet') {
-        await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
-      } else if (network === 'testnet') {
-        await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
+      // Guard prefetch for custom addresses
+      if (!EvoSDK.prefetchDone) {
+        if (network === 'mainnet') {
+          await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
+        } else if (network === 'testnet') {
+          await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
+        }
+        EvoSDK.prefetchDone = true;
       }
       builder = wasm.WasmSdkBuilder.withAddresses(addresses, network);
     } else if (network === 'mainnet') {
-      await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
-
+      if (!EvoSDK.prefetchDone) {
+        await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
+        EvoSDK.prefetchDone = true;
+      }
       builder = trusted ? wasm.WasmSdkBuilder.mainnetTrusted() : wasm.WasmSdkBuilder.mainnet();
     } else if (network === 'testnet') {
-      await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
-
+      if (!EvoSDK.prefetchDone) {
+        await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
+        EvoSDK.prefetchDone = true;
+      }
       builder = trusted ? wasm.WasmSdkBuilder.testnetTrusted() : wasm.WasmSdkBuilder.testnet();
     } else {
       throw new Error(`Unknown network: ${network}`);
