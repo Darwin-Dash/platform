@@ -40,7 +40,7 @@
   },
   "peerDependencies": {
     "@dashevo/dapi-client": "^1.0.0",
-    "@dashevo/dashcore-lib": "^0.20.0",
+    "@dashevo/dashcore-lib": "~0.22.0",
     "@dashevo/resilient-dapi-client": "^1.0.0"
   },
   "peerDependenciesMeta": {

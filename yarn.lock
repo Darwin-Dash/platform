@@ -1614,26 +1614,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dashevo/dashcore-lib@npm:^0.20.0":
-  version: 0.20.10
-  resolution: "@dashevo/dashcore-lib@npm:0.20.10"
-  dependencies:
-    "@dashevo/bls": "npm:~1.2.9"
-    "@dashevo/x11-hash-js": "npm:^1.0.2"
-    "@types/node": "npm:^12.12.47"
-    bloom-filter: "npm:^0.2.0"
-    bn.js: "npm:^4.12.0"
-    bs58: "npm:=4.0.1"
-    elliptic: "npm:^6.5.4"
-    inherits: "npm:=2.0.1"
-    lodash: "npm:^4.17.20"
-    ripemd160: "npm:^2.0.2"
-    tsd: "npm:^0.28.1"
-    unorm: "npm:^1.6.0"
-  checksum: 7b3f882afb0ed53427efc3bfeabf66d684fb26741921e03d6c07ade891919033d680302d2ae3ff1b7aa58afef9e893c1c1628060ca5a4b17ce51a3dc38302236
-  languageName: node
-  linkType: hard
-
 "@dashevo/dashcore-lib@npm:~0.22.0":
   version: 0.22.0
   resolution: "@dashevo/dashcore-lib@npm:0.22.0"
@@ -1725,7 +1705,7 @@ __metadata:
   dependencies:
     "@dashevo/dapi-client": "workspace:*"
     "@dashevo/dash-rpc-client": "file:../dash-rpc-client"
-    "@dashevo/dashcore-lib": "npm:^0.20.0"
+    "@dashevo/dashcore-lib": "npm:~0.22.0"
     "@dashevo/resilient-dapi-client": "file:../resilient-dapi-client"
     "@dashevo/transaction-finder": "workspace:*"
     "@dashevo/wasm-sdk": "workspace:*"
@@ -1895,10 +1875,10 @@ __metadata:
 
 "@dashevo/resilient-dapi-client@file:../resilient-dapi-client::locator=%40dashevo%2Fevo-sdk%40workspace%3Apackages%2Fjs-evo-sdk":
   version: 1.0.0
-  resolution: "@dashevo/resilient-dapi-client@file:../resilient-dapi-client#../resilient-dapi-client::hash=873d77&locator=%40dashevo%2Fevo-sdk%40workspace%3Apackages%2Fjs-evo-sdk"
+  resolution: "@dashevo/resilient-dapi-client@file:../resilient-dapi-client#../resilient-dapi-client::hash=fa3bc4&locator=%40dashevo%2Fevo-sdk%40workspace%3Apackages%2Fjs-evo-sdk"
   dependencies:
     "@dashevo/dapi-client": "npm:^2.0.0"
-  checksum: 3129d2ee93d05822b099408477769865ccb91d6e972a33a05700274557207f01095c7b886f296bab6f89f0880da6e0b59426c52810629ecce88a2074ff9f3ec9
+  checksum: 85cb1c533579529a94654947eac2a14a5bd3158edc03c384eb06256e7bb4f3dde4ec51935a334aede25e04da89792f3beff61de05cf41470ca824f1bbcd3f3ae
   languageName: node
   linkType: hard
 
@@ -1932,7 +1912,7 @@ __metadata:
     vitest: "npm:^2.0.0"
   peerDependencies:
     "@dashevo/dapi-client": ^1.0.0
-    "@dashevo/dashcore-lib": ^0.20.0
+    "@dashevo/dashcore-lib": ~0.22.0
     "@dashevo/resilient-dapi-client": ^1.0.0
   peerDependenciesMeta:
     "@dashevo/dapi-client":

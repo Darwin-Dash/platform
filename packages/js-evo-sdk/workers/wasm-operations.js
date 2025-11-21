@@ -13,6 +13,11 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Mark this process as a WASM worker to prevent prefetch in SDK
+// The parent process already prefetched, so worker must skip prefetch to avoid
+// "already locked to a reader" errors from duplicate prefetch calls
+process.env.WASM_WORKER_CONTEXT = 'true';
+
 // Import operation handlers
 import { operations } from './operations/index.js';
 
@@ -118,22 +123,19 @@ process.on('message', async (msg) => {
       // Import EvoSDK and WASM module in worker process (fresh WASM memory)
       const { EvoSDK } = await import(join(__dirname, '..', 'dist', 'sdk.js'));
       const wasmModule = await import(join(__dirname, '..', 'dist', 'wasm.js'));
-      const { ensureInitialized: initWasm } = wasmModule;
 
-      // CRITICAL: Initialize WASM (NOT prefetch) to ensure __wbindgen_malloc is available
-      // The prefetch methods (prefetchTrustedQuorumsTestnet) create global Rust mutex locks
-      // that persist and conflict with later SDK initialization attempts.
-      // We only need to initialize the WASM module itself, without prefetching.
+      // NOTE: Don't explicitly call initWasm() here
+      // SDK.connect() will call it via ensureInitialized() when needed
+      // Calling it separately before SDK creation causes mutex lock conflicts
       if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] Initializing WASM module (without prefetch)...');
-      }
-      await initWasm();
-      if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] WASM module initialized');
+        console.log('[Worker] WASM module imports ready (lazy initialization by SDK)');
       }
 
       // Create SDK instance for this worker with optional logging
-      const sdkOptions = { network: network || 'testnet', trusted: true };
+      // Use trusted: false in worker to avoid Rust mutex conflicts with trusted quorum caches
+      // The trusted context is process-level and causes "already locked to a reader" errors
+      // when multiple SDK instances try to access it
+      const sdkOptions = { network: network || 'testnet', trusted: false };
       if (logs) {
         sdkOptions.logs = logs;
       }
