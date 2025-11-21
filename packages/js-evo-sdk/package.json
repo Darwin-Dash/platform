@@ -33,7 +33,13 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.*js\"",
     "test": "yarn run test:unit && yarn run test:functional",
     "test:unit": "mocha tests/unit/**/*.spec.mjs && karma start ./tests/karma/karma.conf.cjs --single-run",
-    "test:functional": "mocha tests/functional/**/*.spec.mjs --exit --timeout 90000  && karma start ./tests/karma/karma.functional.conf.cjs --single-run"
+    "test:functional": "mocha tests/functional/**/*.spec.mjs --exit --timeout 90000  && karma start ./tests/karma/karma.functional.conf.cjs --single-run",
+    "test:integration": "vitest run tests/integration",
+    "test:integration:watch": "vitest tests/integration",
+    "test:integration:ui": "vitest --ui tests/integration",
+    "test:integration:operations": "vitest run tests/integration/identity-operations.spec.ts",
+    "test:integration:lifecycle": "vitest run tests/integration/identity-lifecycle.spec.ts",
+    "test:integration:isolation": "vitest run tests/integration/worker-isolation.spec.ts"
   },
   "devDependencies": {
     "@dashevo/dash-rpc-client": "file:../dash-rpc-client",
