@@ -13,11 +13,6 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Mark this process as a WASM worker to prevent prefetch in SDK
-// The parent process already prefetched, so worker must skip prefetch to avoid
-// "already locked to a reader" errors from duplicate prefetch calls
-process.env.WASM_WORKER_CONTEXT = 'true';
-
 // Import operation handlers
 import { operations } from './operations/index.js';
 
@@ -132,10 +127,9 @@ process.on('message', async (msg) => {
       }
 
       // Create SDK instance for this worker with optional logging
-      // Use trusted: false in worker to avoid Rust mutex conflicts with trusted quorum caches
-      // The trusted context is process-level and causes "already locked to a reader" errors
-      // when multiple SDK instances try to access it
-      const sdkOptions = { network: network || 'testnet', trusted: false };
+      // Each worker process has its own WASM instance, so they can independently prefetch
+      // and use trusted mode without mutex conflicts
+      const sdkOptions = { network: network || 'testnet', trusted: true };
       if (logs) {
         sdkOptions.logs = logs;
       }

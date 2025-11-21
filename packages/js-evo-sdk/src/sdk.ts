@@ -99,18 +99,14 @@ export class EvoSDK {
 
     // CRITICAL: Guard prefetch with static flag to prevent "already locked to a reader" errors
     // Prefetch creates process-level Rust mutex locks that conflict if called multiple times
-    // See: MIGRATE/packages/js-evo-sdk/src/sdk.ts (lines 154-179)
-    //
-    // WORKER CONTEXT: Skip prefetch in isolated worker processes (WASM_WORKER_CONTEXT=true)
-    // Workers inherit parent's SDK locks, so they must NOT call prefetch again
-    const isWorkerContext = process.env.WASM_WORKER_CONTEXT === 'true';
-    if (process.env.LOG_LEVEL === 'debug' || isWorkerContext) {
-      console.log(`[SDK] Worker context: ${isWorkerContext}, prefetchDone: ${EvoSDK.prefetchDone}`);
+    // Each process (parent and workers) has its own WASM instance and prefetch independently
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[SDK] Connecting to ${network}, trusted: ${trusted}, prefetchDone: ${EvoSDK.prefetchDone}`);
     }
 
     if (addresses && addresses.length > 0) {
       // Guard prefetch for custom addresses
-      if (!EvoSDK.prefetchDone && !isWorkerContext) {
+      if (!EvoSDK.prefetchDone && trusted) {
         if (network === 'mainnet') {
           await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
         } else if (network === 'testnet') {
@@ -120,19 +116,17 @@ export class EvoSDK {
       }
       builder = wasm.WasmSdkBuilder.withAddresses(addresses, network);
     } else if (network === 'mainnet') {
-      if (!EvoSDK.prefetchDone && !isWorkerContext) {
+      if (!EvoSDK.prefetchDone && trusted) {
         await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
         EvoSDK.prefetchDone = true;
       }
       builder = trusted ? wasm.WasmSdkBuilder.mainnetTrusted() : wasm.WasmSdkBuilder.mainnet();
     } else if (network === 'testnet') {
-      if (!EvoSDK.prefetchDone && !isWorkerContext) {
+      if (!EvoSDK.prefetchDone && trusted) {
         await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
         EvoSDK.prefetchDone = true;
       }
-      // In worker context, use non-trusted builder to avoid lock issues
-      // Trusted builder may try to reuse quorum caches from prefetch
-      builder = isWorkerContext && trusted ? wasm.WasmSdkBuilder.testnet() : (trusted ? wasm.WasmSdkBuilder.testnetTrusted() : wasm.WasmSdkBuilder.testnet());
+      builder = trusted ? wasm.WasmSdkBuilder.testnetTrusted() : wasm.WasmSdkBuilder.testnet();
     } else {
       throw new Error(`Unknown network: ${network}`);
     }
@@ -145,13 +139,13 @@ export class EvoSDK {
       builder = builder.withSettings(connectTimeoutMs ?? null, timeoutMs ?? null, retries ?? null, banFailedAddress ?? null);
     }
 
-    if (process.env.LOG_LEVEL === 'debug' || isWorkerContext) {
-      console.log(`[SDK] Calling builder.build() in worker context: ${isWorkerContext}`);
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[SDK] Calling builder.build()`);
     }
 
     try {
       this.wasmSdk = builder.build();
-      if (process.env.LOG_LEVEL === 'debug' || isWorkerContext) {
+      if (process.env.LOG_LEVEL === 'debug') {
         console.log(`[SDK] builder.build() succeeded`);
       }
     } catch (error) {
