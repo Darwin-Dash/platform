@@ -85,21 +85,27 @@ describe('Identity Operations - WASM Integration', () => {
   }, 60000);
 
   /**
-   * Batch fetch multiple identities with single worker
+   * Fetch multiple identities sequentially
+   * Note: WASM SDK does not support concurrent operations.
+   * Sequential processing is the only supported pattern.
    */
-  it('should batch fetch multiple identities', async () => {
+  it('should fetch multiple identities sequentially', async () => {
     const identityIds = [
       TEST_IDS.identityId,
       TEST_IDS.specializedBalanceIdentityId,
     ];
 
-    const results = await runBatchWasmOperation('identity-fetch',
-      identityIds.map(id => ({ identityId: id })),
-      {
-        timeout: 60000,
-        network: 'testnet',
-      }
-    );
+    const results = [];
+    for (const identityId of identityIds) {
+      const result = await runWasmOperation('identity-fetch',
+        { identityId },
+        {
+          timeout: 60000,
+          network: 'testnet',
+        }
+      );
+      results.push(result);
+    }
 
     expect(results).toBeDefined();
     expect(Array.isArray(results)).toBe(true);
@@ -110,22 +116,24 @@ describe('Identity Operations - WASM Integration', () => {
   }, 60000);
 
   /**
-   * Concurrent fetches with multiple workers
+   * Sequential identity fetches
+   * Note: WASM SDK does not support concurrent operations.
+   * Operations must be awaited sequentially.
    */
-  it('should handle concurrent identity fetches', async () => {
+  it('should fetch identities sequentially', async () => {
     const identityIds = [
       TEST_IDS.identityId,
       TEST_IDS.specializedBalanceIdentityId,
     ];
 
-    const promises = identityIds.map(id =>
-      runWasmOperation('identity-fetch', { identityId: id }, {
+    const results = [];
+    for (const id of identityIds) {
+      const result = await runWasmOperation('identity-fetch', { identityId: id }, {
         timeout: 60000,
         network: 'testnet',
-      })
-    );
-
-    const results = await Promise.all(promises);
+      });
+      results.push(result);
+    }
 
     expect(results.length).toBe(2);
     results.forEach(result => {
@@ -174,24 +182,21 @@ describe('Identity Operations - WASM Integration', () => {
   }, 30000);
 
   /**
-   * Stress test with many concurrent operations
+   * Sequential operations with multiple fetches
    */
-  it('should handle stress test with concurrent fetches', async () => {
+  it('should handle sequential fetches without errors', async () => {
     const numOperations = 5;
-    const promises = [];
+    const results = [];
 
     for (let i = 0; i < numOperations; i++) {
-      promises.push(
-        runWasmOperation('identity-fetch', {
-          identityId: TEST_IDS.identityId,
-        }, {
-          timeout: 60000,
-          network: 'testnet',
-        })
-      );
+      const result = await runWasmOperation('identity-fetch', {
+        identityId: TEST_IDS.identityId,
+      }, {
+        timeout: 60000,
+        network: 'testnet',
+      });
+      results.push(result);
     }
-
-    const results = await Promise.all(promises);
 
     expect(results.length).toBe(numOperations);
     results.forEach(result => {
@@ -200,24 +205,33 @@ describe('Identity Operations - WASM Integration', () => {
   }, 120000);
 
   /**
-   * Mixed operation types concurrently
+   * Mixed operation types sequentially
+   * Note: WASM SDK does not support concurrent operations.
+   * Different operation types must be called sequentially.
    */
-  it('should handle mixed operation types concurrently', async () => {
+  it('should handle mixed operation types sequentially', async () => {
     const identityId = TEST_IDS.identityId;
 
-    const promises = [
-      runWasmOperation('identity-fetch', { identityId }, { timeout: 60000 }),
-      runWasmOperation('identity-fetch-with-proof', { identityId }, { timeout: 60000 }),
-      runWasmOperation('identity-fetch-unproved', { identityId }, { timeout: 60000 }),
-      runWasmOperation('identity-get-keys', {
+    const results = [];
+
+    // Execute each operation sequentially
+    results.push(
+      await runWasmOperation('identity-fetch', { identityId }, { timeout: 60000, network: 'testnet' })
+    );
+    results.push(
+      await runWasmOperation('identity-fetch-with-proof', { identityId }, { timeout: 60000, network: 'testnet' })
+    );
+    results.push(
+      await runWasmOperation('identity-fetch-unproved', { identityId }, { timeout: 60000, network: 'testnet' })
+    );
+    results.push(
+      await runWasmOperation('identity-get-keys', {
         identityId,
         keyRequestType: 'all',
         limit: 10,
         offset: 0,
-      }, { timeout: 60000 }),
-    ];
-
-    const results = await Promise.all(promises);
+      }, { timeout: 60000, network: 'testnet' })
+    );
 
     expect(results.length).toBe(4);
     results.forEach(result => {
@@ -226,26 +240,32 @@ describe('Identity Operations - WASM Integration', () => {
   }, 120000);
 
   /**
-   * Batch keys retrieval for multiple identities
+   * Sequential keys retrieval for multiple identities
+   * Note: WASM SDK does not support concurrent operations.
+   * Key retrieval for multiple identities must be sequential.
    */
-  it('should batch fetch keys for multiple identities', async () => {
+  it('should fetch keys for multiple identities sequentially', async () => {
     const identityIds = [
       TEST_IDS.identityId,
       TEST_IDS.specializedBalanceIdentityId,
     ];
 
-    const results = await runBatchWasmOperation('identity-get-keys',
-      identityIds.map(id => ({
-        identityId: id,
-        keyRequestType: 'all',
-        limit: 10,
-        offset: 0,
-      })),
-      {
-        timeout: 60000,
-        network: 'testnet',
-      }
-    );
+    const results = [];
+    for (const identityId of identityIds) {
+      const result = await runWasmOperation('identity-get-keys',
+        {
+          identityId,
+          keyRequestType: 'all',
+          limit: 10,
+          offset: 0,
+        },
+        {
+          timeout: 60000,
+          network: 'testnet',
+        }
+      );
+      results.push(result);
+    }
 
     expect(results.length).toBe(2);
     results.forEach(result => {

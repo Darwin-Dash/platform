@@ -1,0 +1,88 @@
+<testsuites id="" name="" tests="42" failures="0" skipped="0" errors="0" time="42.073661">
+<testsuite name="platform-status.spec.js" timestamp="2025-10-24T12:03:29.479Z" hostname="chromium" tests="42" failures="0" skipped="0" time="154.648" errors="0">
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should load without console errors" classname="platform-status.spec.js" time="2.476">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should display correct page title" classname="platform-status.spec.js" time="0.697">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should show loading state initially" classname="platform-status.spec.js" time="0.713">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should auto-connect without user interaction" classname="platform-status.spec.js" time="0.702">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should display connection status badge" classname="platform-status.spec.js" time="2.513">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should show header with title and subtitle" classname="platform-status.spec.js" time="0.359">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should load SDK module successfully" classname="platform-status.spec.js" time="0.349">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Page Load &amp; Auto-Connection › should have SDK available in initialization context" classname="platform-status.spec.js" time="0.37">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Network Toggle Component › should display network toggle button" classname="platform-status.spec.js" time="0.305">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Network Toggle Component › should default to testnet" classname="platform-status.spec.js" time="0.352">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Network Toggle Component › should update description on load" classname="platform-status.spec.js" time="0.383">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Network Toggle Component › should toggle network when button clicked" classname="platform-status.spec.js" time="4.303">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Network Toggle Component › should show connecting state when switching networks" classname="platform-status.spec.js" time="0.389">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display metrics grid after connection" classname="platform-status.spec.js" time="5.221">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display all metric cards" classname="platform-status.spec.js" time="5.2">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display block height metric" classname="platform-status.spec.js" time="7.415">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display peers count metric" classname="platform-status.spec.js" time="7.354">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display network metric" classname="platform-status.spec.js" time="5.22">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display sync status" classname="platform-status.spec.js" time="5.227">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display all info cards" classname="platform-status.spec.js" time="5.38">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display software versions" classname="platform-status.spec.js" time="5.431">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display protocol versions" classname="platform-status.spec.js" time="5.425">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display chain information with truncated hash" classname="platform-status.spec.js" time="5.339">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Dashboard Display › should display node information" classname="platform-status.spec.js" time="5.233">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Auto-Refresh Functionality › should display last updated timestamp in footer" classname="platform-status.spec.js" time="5.217">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Auto-Refresh Functionality › should display pulsing indicator in footer" classname="platform-status.spec.js" time="5.315">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Auto-Refresh Functionality › should update timestamp periodically" classname="platform-status.spec.js" time="5.6">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Auto-Refresh Functionality › should have last updated in footer, not in main container" classname="platform-status.spec.js" time="5.228">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Error Handling › should display error message on connection failure" classname="platform-status.spec.js" time="0.316">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Error Handling › should hide error when connection succeeds" classname="platform-status.spec.js" time="0.3">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › UI Responsiveness › should be responsive on mobile viewport" classname="platform-status.spec.js" time="2.123">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › UI Responsiveness › should be responsive on tablet viewport" classname="platform-status.spec.js" time="2.224">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › UI Responsiveness › should be responsive on desktop viewport" classname="platform-status.spec.js" time="2.693">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › UI Responsiveness › should adapt grid layout on smaller screens" classname="platform-status.spec.js" time="0.155">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Integration Tests › complete flow: auto-connect and display status" classname="platform-status.spec.js" time="5.235">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Integration Tests › should maintain connection and display stable data" classname="platform-status.spec.js" time="6.356">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Integration Tests › should handle long running dashboard" classname="platform-status.spec.js" time="7.205">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Integration Tests › complete flow: network switching with data refresh" classname="platform-status.spec.js" time="13.324">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Data Validation › should display valid block heights" classname="platform-status.spec.js" time="4.318">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Data Validation › should display valid peer counts" classname="platform-status.spec.js" time="4.197">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Data Validation › should display valid network identifier" classname="platform-status.spec.js" time="4.29">
+</testcase>
+<testcase name="Dash Platform Status Dashboard › Data Validation › should display hash in correct format" classname="platform-status.spec.js" time="4.196">
+</testcase>
+</testsuite>
+</testsuites>

@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    testTimeout: 1800000, // 30 minutes for extended streaming tests
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

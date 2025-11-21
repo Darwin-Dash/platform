@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "WebWorker"],
     "module": "esnext",
     "moduleResolution": "node",
     "declaration": true,
@@ -20,5 +20,5 @@
     }
   },
   "include": ["./src/**/*"],
-  "exclude": ["node_modules", "**/__tests__/**/*", "**/tests/**/*"]
+  "exclude": ["node_modules", "**/__tests__/**/*", "**/tests/**/*", "**/facade-old.ts"]
 }

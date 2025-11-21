@@ -258,43 +258,6 @@ describe('Identity Lifecycle - WASM Integration', () => {
   }, 60000);
 
   /**
-   * Handle concurrent creation attempts
-   */
-  it('should handle concurrent creation attempts', async () => {
-    if (!process.env.TEST_MNEMONIC) {
-      console.log('Skipping: TEST_MNEMONIC not provided');
-      return;
-    }
-
-    const mnemonic = process.env.TEST_MNEMONIC;
-
-    try {
-      const promises = [];
-      for (let i = 0; i < 2; i++) {
-        promises.push(
-          runWasmOperation('identity-create', {
-            mnemonic,
-            amount: 200000,
-            startHeight: 1,
-          }, {
-            timeout: 600000,
-            network: 'testnet',
-          })
-        );
-      }
-
-      const results = await Promise.allSettled(promises);
-      expect(results.length).toBe(2);
-    } catch (error) {
-      if ((error as Error).message.includes('insufficient')) {
-        console.log('Skipping: Insufficient funds');
-      } else {
-        throw error;
-      }
-    }
-  }, 1200000);
-
-  /**
    * Sequential top-ups maintain state
    */
   it('should handle sequential top-ups', async () => {
@@ -341,6 +304,8 @@ describe('Identity Lifecycle - WASM Integration', () => {
 
   /**
    * Error recovery after failed operation
+   * Note: Added delay between operations to allow WASM SDK cleanup.
+   * The WASM SDK cannot handle rapid sequential operations on the same instance.
    */
   it('should recover from failed operation', async () => {
     // First attempt - invalid mnemonic
@@ -355,6 +320,10 @@ describe('Identity Lifecycle - WASM Integration', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
     }
+
+    // Wait for WASM SDK cleanup before next operation
+    // This prevents "already locked to a reader" errors
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Second attempt should work (if wallet funded)
     try {

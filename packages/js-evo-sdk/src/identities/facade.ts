@@ -97,6 +97,26 @@ export class IdentitiesFacade {
   }
 
   /**
+   * Get identity by ID (alias for fetch)
+   * @param identityId Identity ID in Base58 format
+   * @returns Identity object from Platform
+   */
+  async get(identityId: string): Promise<wasm.IdentityWasm> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentity(identityId);
+  }
+
+  /**
+   * Get identity by ID with proof (alias for fetchWithProof)
+   * @param identityId Identity ID in Base58 format
+   * @returns Identity with proof information
+   */
+  async getWithProof(identityId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityWithProofInfo(identityId);
+  }
+
+  /**
    * Fetch identity with proof
    * @param identityId Identity ID in Base58 format
    * @returns Identity with proof information
@@ -130,9 +150,254 @@ export class IdentitiesFacade {
     return this.fetcher.getKeys(args);
   }
 
+  /**
+   * Get identity keys with proof
+   * Note: WASM SDK's getIdentityKeysWithProofInfo does not support search_purpose_map.
+   * If search is needed, use getKeys() instead.
+   * @param args Key retrieval options
+   * @returns Keys for the identity with proof
+   */
+  async getKeysWithProof(args: {
+    identityId: string;
+    keyRequestType: 'all' | 'specific' | 'search';
+    specificKeyIds?: number[];
+    searchPurposeMap?: unknown;
+    limit?: number;
+    offset?: number;
+  }): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const { identityId, keyRequestType, specificKeyIds, limit = 100, offset = 0 } = args;
+
+    if (keyRequestType === 'search') {
+      throw new Error('Search by purpose map with proof is not supported by the WASM SDK. Use getKeys() for search operations.');
+    }
+
+    const keyIds = specificKeyIds ? Uint32Array.from(specificKeyIds) : null;
+    return w.getIdentityKeysWithProofInfo(identityId, keyRequestType, keyIds, limit, offset);
+  }
+
+  /**
+   * Get identity nonce
+   * @param identityId Identity ID in Base58 format
+   * @returns Identity nonce
+   */
+  async nonce(identityId: string): Promise<bigint> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityNonce(identityId);
+  }
+
+  /**
+   * Get identity nonce with proof
+   * @param identityId Identity ID in Base58 format
+   * @returns Identity nonce with proof
+   */
+  async nonceWithProof(identityId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityNonceWithProofInfo(identityId);
+  }
+
+  /**
+   * Get identity contract nonce
+   * @param identityId Identity ID in Base58 format
+   * @param contractId Contract ID in Base58 format
+   * @returns Contract nonce for identity
+   */
+  async contractNonce(identityId: string, contractId: string): Promise<bigint> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityContractNonce(identityId, contractId);
+  }
+
+  /**
+   * Get identity contract nonce with proof
+   * @param identityId Identity ID in Base58 format
+   * @param contractId Contract ID in Base58 format
+   * @returns Contract nonce with proof
+   */
+  async contractNonceWithProof(identityId: string, contractId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityContractNonceWithProofInfo(identityId, contractId);
+  }
+
+  /**
+   * Get identity balance
+   * @param identityId Identity ID in Base58 format
+   * @returns Identity balance in duffs
+   */
+  async balance(identityId: string): Promise<bigint> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalance(identityId);
+  }
+
+  /**
+   * Get identity balance with proof
+   * @param identityId Identity ID in Base58 format
+   * @returns Balance with proof
+   */
+  async balanceWithProof(identityId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceWithProofInfo(identityId);
+  }
+
+  /**
+   * Get multiple identity balances
+   * @param identityIds Array of identity IDs
+   * @returns Balances for all identities
+   */
+  async balances(identityIds: string[]): Promise<bigint[]> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesBalances(identityIds);
+  }
+
+  /**
+   * Get multiple identity balances with proof
+   * @param identityIds Array of identity IDs
+   * @returns Balances with proof
+   */
+  async balancesWithProof(identityIds: string[]): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesBalancesWithProofInfo(identityIds);
+  }
+
+  /**
+   * Get identity balance and revision
+   * @param identityId Identity ID in Base58 format
+   * @returns Balance and revision
+   */
+  async balanceAndRevision(identityId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceAndRevision(identityId);
+  }
+
+  /**
+   * Get identity balance and revision with proof
+   * @param identityId Identity ID in Base58 format
+   * @returns Balance and revision with proof
+   */
+  async balanceAndRevisionWithProof(identityId: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceAndRevisionWithProofInfo(identityId);
+  }
+
+  /**
+   * Get identity by public key hash
+   * @param publicKeyHash Public key hash
+   * @returns Identity
+   */
+  async byPublicKeyHash(publicKeyHash: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByPublicKeyHash(publicKeyHash);
+  }
+
+  /**
+   * Get identity by public key hash with proof
+   * @param publicKeyHash Public key hash
+   * @returns Identity with proof
+   */
+  async byPublicKeyHashWithProof(publicKeyHash: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByPublicKeyHashWithProofInfo(publicKeyHash);
+  }
+
+  /**
+   * Get identities by non-unique public key hash
+   * @param publicKeyHash Public key hash
+   * @param options Query options
+   * @returns Array of identities
+   */
+  async byNonUniquePublicKeyHash(
+    publicKeyHash: string,
+    options?: { startAfter?: string }
+  ): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const cursor = options?.startAfter || null;
+    return w.getIdentityByNonUniquePublicKeyHash(publicKeyHash, cursor);
+  }
+
+  /**
+   * Get identities by non-unique public key hash with proof
+   * @param publicKeyHash Public key hash
+   * @returns Array of identities with proof
+   */
+  async byNonUniquePublicKeyHashWithProof(publicKeyHash: string): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByNonUniquePublicKeyHashWithProofInfo(publicKeyHash, null);
+  }
+
+  /**
+   * Get contract keys for identities
+   * @param args Query options
+   * @returns Contract keys
+   */
+  async contractKeys(args: {
+    identityIds: string[];
+    contractId: string;
+    purposes?: number[];
+  }): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const { identityIds, contractId, purposes } = args;
+    const purposesArray = purposes ? Uint32Array.from(purposes) : null;
+    return w.getIdentitiesContractKeys(identityIds, contractId, purposesArray);
+  }
+
+  /**
+   * Get contract keys for identities with proof
+   * @param args Query options
+   * @returns Contract keys with proof
+   */
+  async contractKeysWithProof(args: {
+    identityIds: string[];
+    contractId: string;
+    purposes?: number[];
+  }): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const { identityIds, contractId, purposes } = args;
+    const purposesArray = purposes ? Uint32Array.from(purposes) : null;
+    return w.getIdentitiesContractKeysWithProofInfo(identityIds, contractId, purposesArray);
+  }
+
+  /**
+   * Get token balances for identity
+   * @param identityId Identity ID in Base58 format
+   * @param tokenIds Array of token IDs
+   * @returns Token balances
+   */
+  async tokenBalances(identityId: string, tokenIds: string[]): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalances(identityId, tokenIds);
+  }
+
+  /**
+   * Get token balances for identity with proof
+   * @param identityId Identity ID in Base58 format
+   * @param tokenIds Array of token IDs
+   * @returns Token balances with proof
+   */
+  async tokenBalancesWithProof(identityId: string, tokenIds: string[]): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalancesWithProofInfo(identityId, tokenIds);
+  }
+
   // ============================================================================
   // Identity Creation (via IdentityCreator)
   // ============================================================================
+
+  /**
+   * Create a new identity with asset lock proof and keys
+   *
+   * @param args Creation options
+   * @returns Identity creation result
+   */
+  async create(args: {
+    assetLockProof: unknown;
+    assetLockPrivateKeyWif: string;
+    publicKeys: unknown[];
+  }): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const { assetLockProof, assetLockPrivateKeyWif, publicKeys } = args;
+    const proofJson = JSON.stringify(assetLockProof);
+    const keysJson = JSON.stringify(publicKeys);
+    return w.identityCreate(proofJson, assetLockPrivateKeyWif, keysJson);
+  }
 
   /**
    * Create a new identity with wallet coordination
@@ -176,6 +441,23 @@ export class IdentitiesFacade {
   // ============================================================================
   // Identity Top-Up (via IdentityUpdater)
   // ============================================================================
+
+  /**
+   * Top up an existing identity with asset lock proof
+   *
+   * @param args Top-up options
+   * @returns Top-up result
+   */
+  async topUp(args: {
+    identityId: string;
+    assetLockProof: unknown;
+    assetLockPrivateKeyWif: string;
+  }): Promise<any> {
+    const w = await this.sdk.getWasmSdkConnected();
+    const { identityId, assetLockProof, assetLockPrivateKeyWif } = args;
+    const proofJson = JSON.stringify(assetLockProof);
+    return w.identityTopUp(identityId, proofJson, assetLockPrivateKeyWif);
+  }
 
   /**
    * Top up an existing identity with wallet coordination

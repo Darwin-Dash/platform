@@ -1,0 +1,100 @@
+/**
+ * Identity Operation Configuration
+ *
+ * Centralized configuration for all identity operation parameters.
+ * Extracted from facade.ts, wallet-coordinator.ts, and asset-lock-proof-manager.ts
+ * to eliminate magic numbers and improve maintainability.
+ *
+ * Phase 3.1: Configuration Constants Extraction
+ */
+/**
+ * DAPI Client Configuration
+ *
+ * Settings for DAPI server communication, retry logic, and timeouts.
+ */
+export const DAPI_CONFIG = {
+    /** Request timeout in milliseconds */
+    TIMEOUT_MS: 60000, // 60 seconds
+    /** Maximum number of retries with different servers */
+    MAX_RETRIES: 10,
+    /** Time to ban failed servers in milliseconds */
+    BAN_TIME_MS: 60000, // 60 seconds
+    /** Default log level for DAPI operations */
+    LOG_LEVEL: 'debug'
+};
+/**
+ * Wallet Configuration
+ *
+ * Settings for wallet synchronization and cleanup operations.
+ */
+export const WALLET_CONFIG = {
+    /** Default wallet synchronization timeout in milliseconds */
+    SYNC_WAIT_MS: 30000, // 30 seconds
+    /** Minimum sync wait period in milliseconds */
+    MIN_SYNC_WAIT_MS: 5000, // 5 seconds
+    /** Cleanup delay after wallet operations in milliseconds */
+    CLEANUP_DELAY_MS: 3000, // 3 seconds
+    /** Post-operation delay in milliseconds */
+    POST_OP_DELAY_MS: 2000 // 2 seconds
+};
+/**
+ * Worker Configuration
+ *
+ * Settings for WASM worker processes and timeouts.
+ */
+export const WORKER_CONFIG = {
+    /** Default worker timeout for identity operations in milliseconds */
+    DEFAULT_TIMEOUT_MS: 180000, // 3 minutes
+    /** Discovery operation timeout in milliseconds */
+    DISCOVERY_TIMEOUT_MS: 3000, // 3 seconds
+    /** Batch discovery timeout per item in milliseconds */
+    BATCH_DISCOVERY_TIMEOUT_MS: 180000 // 3 minutes (increased for wallets with many identities)
+};
+/**
+ * Asset Lock Proof Configuration
+ *
+ * Settings for asset lock proof generation and Platform synchronization.
+ */
+export const PROOF_CONFIG = {
+    /** Maximum wait time for proof race in milliseconds (15 minutes) */
+    MAX_WAIT_MS: 900000, // 15 minutes
+    /** Platform sync polling interval in milliseconds */
+    POLL_INTERVAL_MS: 5000 // 5 seconds
+};
+/**
+ * Identity Amount Configuration
+ *
+ * Validation bounds for identity creation and top-up amounts.
+ */
+export const IDENTITY_CONFIG = {
+    /** Minimum amount for identity creation in duffs (0.002 DASH) */
+    CREATE_MIN_AMOUNT: 200000,
+    /** Minimum amount for identity top-up in duffs (0.0005 DASH) */
+    TOPUP_MIN_AMOUNT: 50000,
+    /** Maximum amount for identity operations in duffs (1000 DASH) */
+    MAX_AMOUNT: 100000000000
+};
+/**
+ * Blockchain Configuration
+ *
+ * Settings for blockchain height validation and synchronization.
+ */
+export const BLOCKCHAIN_CONFIG = {
+    /** Minimum valid start height */
+    MIN_START_HEIGHT: 1,
+    /** Maximum valid start height */
+    MAX_START_HEIGHT: 10000000
+};
+/**
+ * Complete Identity Operation Configuration
+ *
+ * Combined configuration object for easy import and access.
+ */
+export const IDENTITY_OPERATION_CONFIG = {
+    dapi: DAPI_CONFIG,
+    wallet: WALLET_CONFIG,
+    worker: WORKER_CONFIG,
+    proof: PROOF_CONFIG,
+    identity: IDENTITY_CONFIG,
+    blockchain: BLOCKCHAIN_CONFIG
+};

@@ -1,0 +1,185 @@
+{
+  "totalTests": 29,
+  "totalWithLocks": 29,
+  "totalWithoutLocks": 0,
+  "lockRate": 100,
+  "averageExecutionTime": 11432.379310344828,
+  "scenariosWithoutLocks": [],
+  "scenariosWithLocks": [
+    {
+      "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 6668
+    },
+    {
+      "testCase": "Case 2: Fresh Worker Per Operation",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 6548
+    },
+    {
+      "testCase": "Case 3: Persistent Worker - Sequential Operations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 16071
+    },
+    {
+      "testCase": "Case 4: SDK Cleanup and Reinitialization",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 6708
+    },
+    {
+      "testCase": "Case 5: Multiple SDK Instances - Same Process",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 3107
+    },
+    {
+      "testCase": "Case 6: Operation Sequence Variations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 7570
+    },
+    {
+      "testCase": "Case 7: WASM Module Initialization Patterns",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 6229
+    },
+    {
+      "testCase": "Case 8: Concurrent Operations - Promise.all()",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 3167
+    },
+    {
+      "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 6459
+    },
+    {
+      "testCase": "Case 2: Fresh Worker Per Operation",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 5953
+    },
+    {
+      "testCase": "Case 3: Persistent Worker - Sequential Operations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 15019
+    },
+    {
+      "testCase": "Case 4: SDK Cleanup and Reinitialization",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 6077
+    },
+    {
+      "testCase": "Case 5: Multiple SDK Instances - Same Process",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 3226
+    },
+    {
+      "testCase": "Case 6: Operation Sequence Variations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 7973
+    },
+    {
+      "testCase": "Case 7: WASM Module Initialization Patterns",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 6093
+    },
+    {
+      "testCase": "Case 8: Concurrent Operations - Promise.all()",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 3275
+    },
+    {
+      "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 6013
+    },
+    {
+      "testCase": "Case 2: Fresh Worker Per Operation",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 6595
+    },
+    {
+      "testCase": "Case 3: Persistent Worker - Sequential Operations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 15260
+    },
+    {
+      "testCase": "Case 4: SDK Cleanup and Reinitialization",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 6150
+    },
+    {
+      "testCase": "Case 5: Multiple SDK Instances - Same Process",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+      "firstLockAtOp": 0,
+      "executionTime": 6001
+    },
+    {
+      "testCase": "Case 6: Operation Sequence Variations",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 7569
+    },
+    {
+      "testCase": "Case 7: WASM Module Initialization Patterns",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 7635
+    },
+    {
+      "testCase": "Case 8: Concurrent Operations - Promise.all()",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+      "firstLockAtOp": 0,
+      "executionTime": 3425
+    },
+    {
+      "testCase": "Variant A: Queue Pattern",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"queue\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 32358
+    },
+    {
+      "testCase": "Variant B: SDK Instance Pool (Size 2)",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"pool\",\"poolSize\":2}",
+      "firstLockAtOp": 0,
+      "executionTime": 32832
+    },
+    {
+      "testCase": "Variant B: SDK Instance Pool (Size 5)",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"pool\",\"poolSize\":5}",
+      "firstLockAtOp": 0,
+      "executionTime": 33981
+    },
+    {
+      "testCase": "Variant C: Fresh SDK Instance Per Operation",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 30724
+    },
+    {
+      "testCase": "Variant D: Lazy SDK Creation",
+      "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+      "firstLockAtOp": 0,
+      "executionTime": 32853
+    }
+  ],
+  "generatedAt": "2025-11-16T07:32:03.617Z"
+}

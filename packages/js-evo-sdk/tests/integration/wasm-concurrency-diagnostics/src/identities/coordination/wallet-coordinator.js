@@ -1,0 +1,263 @@
+/**
+ * WalletCoordinator - HD Wallet Setup and UTXO Discovery
+ *
+ * Refactored to use new modular package architecture:
+ * - ResilientDAPIClient for network communication with failover
+ * - WASM SDK for HD key derivation (BIP44)
+ * - UTXOFinder for UTXO discovery via blockchain sync
+ * - InstantSendChainLockMonitor for transaction confirmation tracking
+ *
+ * This replaces wallet-lib with specialized, composable components.
+ */
+import { ResilientDAPIClient } from '@dashevo/resilient-dapi-client';
+import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
+import * as dashcoreLib from '@dashevo/dashcore-lib';
+import * as wasm from '../../wasm.js';
+import { wallet as walletFunctions } from '../../wallet/functions.js';
+import { DAPI_CONFIG } from '../config/operation-config.js';
+import { createLogger } from '../utils/identity-logger.js';
+const logger = createLogger('WalletCoordinator');
+/**
+ * WalletCoordinator handles wallet lifecycle management for identity operations
+ *
+ * This class coordinates:
+ * - Resilient DAPI client setup with automatic failover
+ * - HD key derivation using WASM SDK and dashcore-lib
+ * - UTXO discovery via UTXOFinder
+ * - InstantSend/ChainLock monitoring setup
+ *
+ * Key Differences from wallet-lib version:
+ * - Stateless: No persistent storage or wallet state
+ * - Explicit: Returns addresses and private keys directly
+ * - Composable: Each component handles one responsibility
+ * - Resilient: Built-in retry, failover, and reconnection
+ */
+export class WalletCoordinator {
+    sdk;
+    constructor(sdk) {
+        this.sdk = sdk;
+    }
+    /**
+     * Setup wallet components with complete initialization and UTXO discovery
+     *
+     * @param options Wallet configuration options
+     * @returns DAPI client, monitor, derived addresses, UTXOs, and HD private key
+     */
+    async setupWallet(options) {
+        const { mnemonic, network, startHeight, addressCount = 20 } = options;
+        // Step 1: START_HEIGHT preservation validation (PRD requirement)
+        if (logger.isDebugEnabled()) {
+            logger.info('🔒 START_HEIGHT preservation validation (PRD requirement)');
+            logger.info(`   START_HEIGHT from .env: ${startHeight} (NEVER modified by code)`);
+            logger.info(`   This ensures user control and funded wallet testing integrity`);
+        }
+        // Step 2: Create ResilientDAPIClient with failover and retry
+        logger.debug('🌐 Creating ResilientDAPIClient...');
+        const dapiClient = new ResilientDAPIClient({
+            network: network,
+            timeout: DAPI_CONFIG.TIMEOUT_MS,
+            retries: DAPI_CONFIG.MAX_RETRIES,
+            enableAdaptiveRetry: true,
+            enableGracefulDegradation: true,
+            logLevel: DAPI_CONFIG.LOG_LEVEL
+        });
+        // Step 3: Get current blockchain height for logging
+        let currentBlockHeight;
+        try {
+            logger.debug('🔍 Getting current blockchain height from DAPI...');
+            const blockchainStatus = await dapiClient.core.getBlockchainStatus();
+            // Multi-source height extraction (supports SYNCED and SYNCING servers)
+            currentBlockHeight = blockchainStatus.blocks ||
+                blockchainStatus.chain?.blocksCount ||
+                blockchainStatus.chain?.headersCount ||
+                blockchainStatus.coreChainLockedHeight;
+            if (currentBlockHeight && currentBlockHeight > 0) {
+                logger.info(`   ✅ Current blockchain height: ${currentBlockHeight}`);
+                logger.info(`   📏 Sync range: ${startHeight} to ${currentBlockHeight} (${currentBlockHeight - startHeight} blocks)`);
+            }
+        }
+        catch (error) {
+            const err = error;
+            logger.warn(`Could not get blockchain height: ${err.message}`);
+        }
+        // Step 4: Derive HD addresses using WASM SDK + dashcore-lib
+        logger.debug('🔑 Deriving HD addresses from mnemonic...');
+        const derivedAddresses = await this.deriveAddresses(mnemonic, network, addressCount);
+        logger.info(`   ✅ Derived ${derivedAddresses.external.length} external + ${derivedAddresses.internal.length} internal addresses`);
+        // Step 5: Find UTXOs using TransactionFinder (Historic Mode)
+        logger.debug('💰 Finding UTXOs via blockchain sync...');
+        const allAddresses = [
+            ...derivedAddresses.external.map(a => a.address),
+            ...derivedAddresses.internal.map(a => a.address)
+        ];
+        const utxoFinder = new TransactionFinder({
+            mode: FinderMode.HISTORIC,
+            network: network,
+            addresses: allAddresses,
+            dapiClient: dapiClient,
+            fromHeight: startHeight,
+            toHeight: currentBlockHeight,
+            requiredAmount: 200000, // Minimum for identity creation
+            onProgress: (progress) => {
+                if (logger.isDebugEnabled()) {
+                    logger.debug(`   Sync progress: ${progress.progress.toFixed(1)}% (${progress.syncedBlocks}/${progress.totalBlocks} blocks)`);
+                }
+            },
+        });
+        let utxos = [];
+        let latestUTXO = null;
+        try {
+            // Try to find latest spendable UTXO (with minimum amount for identity creation)
+            latestUTXO = await utxoFinder.findLatestSpendableUTXO();
+            // If we found the latest UTXO, we can extract it from the array
+            // For now, just put it in an array since we got it
+            utxos = [latestUTXO];
+            logger.info(`   ✅ Found latest spendable UTXO: ${latestUTXO.satoshis} duffs at ${latestUTXO.address}`);
+        }
+        catch (error) {
+            const err = error;
+            logger.warn(`No spendable UTXOs found with required amount: ${err.message}`);
+            // Continue anyway - we might be creating a fresh wallet
+        }
+        // Step 6: Initialize TransactionFinder (Realtime Mode) for monitoring
+        logger.debug('📡 Initializing transaction monitor...');
+        const monitor = new TransactionFinder({
+            mode: FinderMode.REALTIME,
+            network: network,
+            addresses: allAddresses,
+            dapiClient: dapiClient,
+            logLevel: DAPI_CONFIG.LOG_LEVEL,
+            autoPruneOnConfirmation: true,
+        });
+        logger.info('✅ Wallet setup complete');
+        return {
+            dapiClient,
+            monitor,
+            addresses: derivedAddresses,
+            utxos,
+            latestUTXO,
+            hdPrivateKey: derivedAddresses.hdPrivateKey
+        };
+    }
+    /**
+     * Derive HD addresses from mnemonic using WASM SDK + dashcore-lib
+     *
+     * Uses BIP44 path: m/44'/1'/0'/chain/index (testnet) or m/44'/5'/0'/chain/index (mainnet)
+     *
+     * @param mnemonic BIP39 mnemonic phrase
+     * @param network 'testnet' or 'mainnet'
+     * @param count Number of addresses to derive per chain (external + internal)
+     * @returns Derived addresses with private keys
+     */
+    async deriveAddresses(mnemonic, network, count = 20) {
+        await wasm.ensureInitialized();
+        // Derive master HD private key from mnemonic
+        const hdPrivateKey = await walletFunctions.deriveKeyFromSeedPhrase(mnemonic, null, // No passphrase
+        network);
+        const external = [];
+        const internal = [];
+        // Derive external addresses (m/44'/1'/0'/0/index for testnet)
+        for (let i = 0; i < count; i++) {
+            const path = await walletFunctions.derivationPathBip44Testnet(0, // account
+            0, // external chain
+            i // index
+            );
+            const childKey = await walletFunctions.deriveKeyFromSeedWithPath(mnemonic, null, path, network);
+            // Convert to dashcore-lib PrivateKey for transaction signing
+            const privateKey = new dashcoreLib.PrivateKey(childKey.privateKey, network);
+            const publicKey = privateKey.toPublicKey();
+            const address = publicKey.toAddress(network).toString();
+            external.push({
+                address,
+                privateKey,
+                publicKey: publicKey.toString(),
+                path,
+                index: i
+            });
+        }
+        // Derive internal addresses (m/44'/1'/0'/1/index for testnet)
+        for (let i = 0; i < count; i++) {
+            const path = await walletFunctions.derivationPathBip44Testnet(0, // account
+            1, // internal chain (change addresses)
+            i // index
+            );
+            const childKey = await walletFunctions.deriveKeyFromSeedWithPath(mnemonic, null, path, network);
+            const privateKey = new dashcoreLib.PrivateKey(childKey.privateKey, network);
+            const publicKey = privateKey.toPublicKey();
+            const address = publicKey.toAddress(network).toString();
+            internal.push({
+                address,
+                privateKey,
+                publicKey: publicKey.toString(),
+                path,
+                index: i
+            });
+        }
+        if (logger.isDebugEnabled()) {
+            logger.debug(`   Derived ${external.length} external addresses starting with: ${external[0].address}`);
+            logger.debug(`   Derived ${internal.length} internal addresses starting with: ${internal[0].address}`);
+        }
+        return {
+            external,
+            internal,
+            hdPrivateKey
+        };
+    }
+    /**
+     * Get current blockchain height from DAPI
+     *
+     * @returns Current blockchain height
+     */
+    async getCurrentBlockHeight() {
+        const dapiClient = new ResilientDAPIClient({
+            network: this.sdk.networkConfig.network,
+            timeout: DAPI_CONFIG.TIMEOUT_MS,
+            retries: DAPI_CONFIG.MAX_RETRIES
+        });
+        const blockchainStatus = await dapiClient.core.getBlockchainStatus();
+        // Multi-source height extraction
+        const height = blockchainStatus.blocks ||
+            blockchainStatus.chain?.blocksCount ||
+            blockchainStatus.chain?.headersCount ||
+            blockchainStatus.coreChainLockedHeight;
+        if (!height || height <= 0) {
+            throw new Error(`Invalid blockchain height received: ${height}`);
+        }
+        return height;
+    }
+    /**
+     * Find first address with UTXOs
+     * Helper method for transaction building
+     *
+     * @param addresses Derived addresses
+     * @param utxos Discovered UTXOs
+     * @returns Address info with UTXO, or null if none found
+     */
+    findAddressWithUTXO(addresses, utxos) {
+        for (const addressInfo of addresses) {
+            const utxo = utxos.find(u => u.address === addressInfo.address);
+            if (utxo) {
+                return { addressInfo, utxo };
+            }
+        }
+        return null;
+    }
+    /**
+     * Get unused address (first address with no UTXOs)
+     * Used for change addresses and receiving
+     *
+     * @param addresses Derived addresses
+     * @param utxos Discovered UTXOs
+     * @returns First unused address
+     */
+    getUnusedAddress(addresses, utxos) {
+        for (const addressInfo of addresses) {
+            const hasUTXO = utxos.some(u => u.address === addressInfo.address);
+            if (!hasUTXO) {
+                return addressInfo;
+            }
+        }
+        // If all addresses have been used, return the last one
+        return addresses[addresses.length - 1];
+    }
+}

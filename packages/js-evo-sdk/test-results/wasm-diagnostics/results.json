@@ -1,0 +1,1541 @@
+[
+  {
+    "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+    "description": "Two fetch operations on same SDK instance, executed sequentially",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6668,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:09.281Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3630,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3038,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 2: Fresh Worker Per Operation",
+    "description": "Two fetch operations, each in fresh worker process",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6548,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:15.834Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3512,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3036,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 3: Persistent Worker - Sequential Operations",
+    "description": "Five sequential operations in single persistent worker with same SDK instance",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 5,
+    "successCount": 0,
+    "failureCount": 5,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 16071,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:31.907Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3019,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3572,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2587,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch-unproved",
+        "success": false,
+        "duration": 3236,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3657,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 4: SDK Cleanup and Reinitialization",
+    "description": "Fetch, reset WASM, fetch again - test if cleanup releases locks",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6708,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": true,
+    "timestamp": "2025-11-16T06:16:38.618Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3125,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3582,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 5: Multiple SDK Instances - Same Process",
+    "description": "Two fetch operations on different SDK instances, concurrent",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 3107,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:41.727Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3072,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3107,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 6: Operation Sequence Variations",
+    "description": "Different operation types in sequence: fetch, getKeys, fetch-with-proof",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 7570,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:49.298Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3170,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2344,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch-with-proof",
+        "success": false,
+        "duration": 2056,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: Failed to fetch identity: wasmSdk.getIdentityWithProof is not a function",
+        "lockDetected": false
+      }
+    ]
+  },
+  {
+    "testCase": "Case 7: WASM Module Initialization Patterns",
+    "description": "Test different WASM initialization approaches",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6229,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:55.529Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2974,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3255,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 8: Concurrent Operations - Promise.all()",
+    "description": "Three fetch operations run concurrently with Promise.all()",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 3167,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:16:58.698Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3095,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3167,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3152,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+    "description": "Two fetch operations on same SDK instance, executed sequentially",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6459,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:17:28.423Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3442,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3017,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 2: Fresh Worker Per Operation",
+    "description": "Two fetch operations, each in fresh worker process",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 5953,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:17:34.378Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2978,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2975,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 3: Persistent Worker - Sequential Operations",
+    "description": "Five sequential operations in single persistent worker with same SDK instance",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 5,
+    "successCount": 0,
+    "failureCount": 5,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 15019,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:17:49.399Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3059,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3000,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2248,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch-unproved",
+        "success": false,
+        "duration": 2994,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3718,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 4: SDK Cleanup and Reinitialization",
+    "description": "Fetch, reset WASM, fetch again - test if cleanup releases locks",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6077,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": true,
+    "timestamp": "2025-11-16T06:17:55.478Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3032,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3044,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 5: Multiple SDK Instances - Same Process",
+    "description": "Two fetch operations on different SDK instances, concurrent",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 3226,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:17:58.705Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3174,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3226,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 6: Operation Sequence Variations",
+    "description": "Different operation types in sequence: fetch, getKeys, fetch-with-proof",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 7973,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:18:06.681Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3113,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2757,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch-with-proof",
+        "success": false,
+        "duration": 2103,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: Failed to fetch identity: wasmSdk.getIdentityWithProof is not a function",
+        "lockDetected": false
+      }
+    ]
+  },
+  {
+    "testCase": "Case 7: WASM Module Initialization Patterns",
+    "description": "Test different WASM initialization approaches",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6093,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:18:12.775Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3113,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2980,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 8: Concurrent Operations - Promise.all()",
+    "description": "Three fetch operations run concurrently with Promise.all()",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 3275,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T06:18:16.051Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3179,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3179,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3275,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 1: Sequential Operations - Single SDK Instance",
+    "description": "Two fetch operations on same SDK instance, executed sequentially",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6013,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:28:28.177Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3011,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3002,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 2: Fresh Worker Per Operation",
+    "description": "Two fetch operations, each in fresh worker process",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6595,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:28:34.783Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3035,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3560,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 3: Persistent Worker - Sequential Operations",
+    "description": "Five sequential operations in single persistent worker with same SDK instance",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"getKeys\",\"fetch-unproved\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 5,
+    "successCount": 0,
+    "failureCount": 5,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 15260,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:28:50.047Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3017,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3000,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2122,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch-unproved",
+        "success": false,
+        "duration": 3561,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3560,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 4: SDK Cleanup and Reinitialization",
+    "description": "Fetch, reset WASM, fetch again - test if cleanup releases locks",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":false,\"resetWasmBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6150,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": true,
+    "timestamp": "2025-11-16T07:28:56.200Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3083,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3067,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 5: Multiple SDK Instances - Same Process",
+    "description": "Two fetch operations on different SDK instances, concurrent",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false,\"createNewSdkBetweenOps\":true}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 6001,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:29:02.225Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 5927,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 5985,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 6: Operation Sequence Variations",
+    "description": "Different operation types in sequence: fetch, getKeys, fetch-with-proof",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"getKeys\",\"fetch-with-proof\"],\"parallelism\":\"sequential\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 7569,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:29:09.797Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3270,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "getKeys",
+        "success": false,
+        "duration": 2120,
+        "wasmState": "error",
+        "error": "Error: Failed to get identity keys: Worker failed: Failed to get keys: The \"src\" argument must be of type string. Received an instance of Object",
+        "lockDetected": false
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch-with-proof",
+        "success": false,
+        "duration": 2179,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: Failed to fetch identity: wasmSdk.getIdentityWithProof is not a function",
+        "lockDetected": false
+      }
+    ]
+  },
+  {
+    "testCase": "Case 7: WASM Module Initialization Patterns",
+    "description": "Test different WASM initialization approaches",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 2,
+    "successCount": 0,
+    "failureCount": 2,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 7635,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:29:17.433Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4264,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3371,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Case 8: Concurrent Operations - Promise.all()",
+    "description": "Three fetch operations run concurrently with Promise.all()",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"concurrent\",\"useWorker\":false}",
+    "operationCount": 3,
+    "successCount": 0,
+    "failureCount": 3,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 3425,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": false,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:29:20.860Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3420,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3425,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3368,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Variant A: Queue Pattern",
+    "description": "Worker with operation queue - execute 10 operations sequentially",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"queue\"}",
+    "operationCount": 10,
+    "successCount": 0,
+    "failureCount": 10,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 32358,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:29:53.219Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3223,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3471,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3235,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3136,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4112,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 5,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3089,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 6,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3045,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 7,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3033,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 8,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2988,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 9,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3025,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Variant B: SDK Instance Pool (Size 2)",
+    "description": "Worker with pool of 2 SDK instances, alternate between them",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"pool\",\"poolSize\":2}",
+    "operationCount": 10,
+    "successCount": 0,
+    "failureCount": 10,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 32832,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:30:26.053Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3283,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3057,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3329,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3354,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3098,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 5,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3089,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 6,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3006,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 7,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4401,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 8,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3089,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 9,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3126,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Variant B: SDK Instance Pool (Size 5)",
+    "description": "Worker with pool of 5 SDK instances, round-robin",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"pool\",\"poolSize\":5}",
+    "operationCount": 10,
+    "successCount": 0,
+    "failureCount": 10,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 33981,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:31:00.036Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3132,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4098,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3145,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4434,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3813,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 5,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3119,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 6,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3138,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 7,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3002,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 8,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3091,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 9,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3009,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Variant C: Fresh SDK Instance Per Operation",
+    "description": "Create new SDK instance and cleanup for each of 10 operations",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"fresh-per-op\"}",
+    "operationCount": 10,
+    "successCount": 0,
+    "failureCount": 10,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 30724,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:31:30.762Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3030,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3014,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3033,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2968,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2991,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 5,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3100,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 6,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2988,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 7,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3529,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 8,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3056,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 9,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3015,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  },
+  {
+    "testCase": "Variant D: Lazy SDK Creation",
+    "description": "SDK created on first operation, reused for all 10 operations",
+    "scenario": "{\"operationSequence\":[\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\",\"fetch\"],\"parallelism\":\"sequential\",\"useWorker\":true,\"workerStrategy\":\"reusable\"}",
+    "operationCount": 10,
+    "successCount": 0,
+    "failureCount": 10,
+    "firstLockAtOperation": 0,
+    "totalExecutionTime": 32853,
+    "lockError": true,
+    "lockErrorMessage": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+    "workerSpawned": true,
+    "wasmInitialized": true,
+    "resetWasmCalled": false,
+    "timestamp": "2025-11-16T07:32:03.616Z",
+    "operationDetails": [
+      {
+        "operationIndex": 0,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2980,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 1,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3698,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 2,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3020,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 3,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 2993,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 4,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3555,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 5,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3002,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 6,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3031,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 7,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3002,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 8,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 3016,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      },
+      {
+        "operationIndex": 9,
+        "operationType": "fetch",
+        "success": false,
+        "duration": 4556,
+        "wasmState": "error",
+        "error": "Error: Failed to fetch identity: Worker failed: already locked to a reader",
+        "lockDetected": true
+      }
+    ]
+  }
+]

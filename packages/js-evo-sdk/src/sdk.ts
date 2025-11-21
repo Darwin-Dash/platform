@@ -10,6 +10,8 @@ import { ProtocolFacade } from './protocol/facade.js';
 import { SystemFacade } from './system/facade.js';
 import { GroupFacade } from './group/facade.js';
 import { VotingFacade } from './voting/facade.js';
+import { wasmOperationQueue } from './utils/wasm-operation-queue.js';
+import { dapiClientWrapper } from './utils/dapi-client-wrapper.js';
 
 export interface ConnectionOptions {
   version?: number;
@@ -123,6 +125,22 @@ export class EvoSDK {
     this.wasmSdk = builder.build();
   }
 
+  /**
+   * Reset and cleanup WASM SDK resources
+   *
+   * Clears the internal WASM SDK instance and releases associated resources.
+   * Useful for worker processes that need to cleanup after completing operations.
+   *
+   * After calling this, you must call connect() again before using the SDK.
+   *
+   * @returns Promise that resolves when cleanup is complete
+   */
+  async resetWasmSdk(): Promise<void> {
+    if (this.wasmSdk) {
+      this.wasmSdk = undefined;
+    }
+  }
+
   static fromWasm(wasmSdk: wasm.WasmSdk): EvoSDK {
     const sdk = new EvoSDK();
     (sdk as any).wasmSdk = wasmSdk;
@@ -131,6 +149,70 @@ export class EvoSDK {
 
   version(): number {
     return this.wasm.version();
+  }
+
+  // ============================================================================
+  // Queue + DAPI POC Methods (for concurrent operation testing)
+  // ============================================================================
+
+  /**
+   * Create an identity with WASM operation queuing
+   *
+   * Enqueues the identity creation to prevent WASM mutex conflicts
+   * when multiple creates are called concurrently.
+   *
+   * @param mnemonic 12-word BIP39 mnemonic
+   * @param amount Amount in duffs
+   * @param options Advanced options
+   * @returns Identity creation result
+   */
+  async identityCreate(
+    mnemonic: string,
+    amount: number,
+    options?: any
+  ): Promise<any> {
+    return wasmOperationQueue.enqueue(async () =>
+      this.identities.createWithWallet(mnemonic, amount, options)
+    );
+  }
+
+  /**
+   * Top up an identity with WASM operation queuing
+   *
+   * Enqueues the top-up to prevent WASM mutex conflicts
+   * when multiple top-ups are called concurrently.
+   *
+   * @param identityId Identity to top up (Base58)
+   * @param amount Amount in duffs
+   * @param mnemonic 12-word BIP39 mnemonic for funding
+   * @param options Advanced options
+   * @returns Top-up result
+   */
+  async identityTopUp(
+    identityId: string,
+    amount: number,
+    mnemonic: string,
+    options?: any
+  ): Promise<any> {
+    return wasmOperationQueue.enqueue(async () =>
+      this.identities.topUpWithWallet(identityId, amount, mnemonic, options)
+    );
+  }
+
+  /**
+   * Retrieve identities for a mnemonic using DAPI (bypasses WASM)
+   *
+   * Queries identities via gRPC without using WASM, allowing concurrent
+   * reads while WASM operations are being serialized.
+   *
+   * @param mnemonic 12-word BIP39 mnemonic
+   * @returns Array of discovered identities with public key info
+   */
+  async getIdentitiesForMnemonic(mnemonic: string): Promise<
+    Array<{ identityId: string; publicKeyHash: string; keyIndex: number }>
+  > {
+    await dapiClientWrapper.initialize(this.options.network);
+    return dapiClientWrapper.getIdentitiesForMnemonic(mnemonic);
   }
 
   static async setLogLevel(levelOrFilter: string): Promise<void> {

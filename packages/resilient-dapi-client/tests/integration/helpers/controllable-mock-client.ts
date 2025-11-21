@@ -14,7 +14,10 @@ export type MockFailureType =
   | 'http_500'
   | 'http_503'
   | 'invalid_response'
-  | 'platform_error';
+  | 'platform_error'
+  | 'stream_hang'
+  | 'stream_disconnect'
+  | 'corrupt_message';
 
 export interface MockFailureRule {
   namespace?: 'core' | 'platform';  // Target specific namespace
@@ -23,6 +26,14 @@ export interface MockFailureRule {
   count?: number;                    // Fail this many times, then succeed
   probability?: number;              // 0.0-1.0 (default: 1.0 = always fail)
   delay?: number;                    // Delay before failing (ms)
+}
+
+export interface StreamBehaviorConfig {
+  delayPerMessage?: number;          // ms between messages
+  hangAfterMessages?: number;        // Hang stream after N messages
+  disconnectAfterMessages?: number;  // Disconnect after N messages
+  corruptMessageAt?: number;         // Corrupt message at position
+  messageCount?: number;             // Total messages to emit
 }
 
 interface MockResponse {
@@ -39,10 +50,12 @@ export class ControllableMockDAPIClient {
   private callCounts: Map<string, number> = new Map();
   private failureCounts: Map<string, number> = new Map();
   private mockResponses: Map<string, any> = new Map();
+  private streamBehaviors: Map<string, StreamBehaviorConfig> = new Map();
 
   // Default mock responses
   constructor() {
     this.setDefaultResponses();
+    this.setDefaultStreamBehaviors();
   }
 
   /**
@@ -77,6 +90,14 @@ export class ControllableMockDAPIClient {
       return this.executeMethod('core', 'getStatus', async () => {
         return this.mockResponses.get('core.getStatus') || { version: '1.0.0' };
       });
+    },
+
+    subscribeToBlockHeadersWithChainLocks: (request?: any): AsyncIterable<any> => {
+      return this.createMockStream('subscribeToBlockHeadersWithChainLocks', request);
+    },
+
+    subscribeToTransactionsWithProofs: (bloomFilter: any, request?: any): AsyncIterable<any> => {
+      return this.createMockStream('subscribeToTransactionsWithProofs', request);
     },
   };
 
@@ -140,6 +161,80 @@ export class ControllableMockDAPIClient {
       });
     },
   };
+
+  /**
+   * Create a mock stream that yields messages with configurable behavior
+   */
+  private async *createMockStream(
+    method: string,
+    request?: any
+  ): AsyncIterable<any> {
+    const behavior = this.streamBehaviors.get(method) || {};
+    const {
+      delayPerMessage = 10,
+      hangAfterMessages = null,
+      disconnectAfterMessages = null,
+      corruptMessageAt = null,
+      messageCount = 1000,
+    } = behavior;
+
+    let messageIndex = 0;
+
+    try {
+      for (let i = 0; i < messageCount; i++) {
+        // Check for stream disconnect
+        if (disconnectAfterMessages !== null && i >= disconnectAfterMessages) {
+          throw new Error('Stream disconnected unexpectedly');
+        }
+
+        // Check for stream hang
+        if (hangAfterMessages !== null && i >= hangAfterMessages) {
+          // Hang indefinitely
+          await new Promise(() => {});
+        }
+
+        // Apply message delay
+        if (delayPerMessage > 0) {
+          await new Promise(resolve => setTimeout(resolve, delayPerMessage));
+        }
+
+        // Create message
+        let message = this.createMockStreamMessage(method, i);
+
+        // Corrupt message if specified
+        if (corruptMessageAt !== null && i === corruptMessageAt) {
+          message = { ...message, corrupted: true };
+        }
+
+        yield message;
+        messageIndex++;
+      }
+    } catch (error) {
+      // Allow stream to be terminated
+      throw error;
+    }
+  }
+
+  /**
+   * Create a mock stream message based on the stream type
+   */
+  private createMockStreamMessage(method: string, index: number): any {
+    if (method === 'subscribeToBlockHeadersWithChainLocks') {
+      return {
+        blockHeight: 1000000 + index,
+        header: Buffer.from([0, 0, 0, index % 256]),
+        chainLocked: index % 10 !== 0, // 90% chain locked
+      };
+    } else if (method === 'subscribeToTransactionsWithProofs') {
+      return {
+        transactionIndex: index,
+        transaction: Buffer.from([0, 1, index % 256]),
+        merkleBlock: Buffer.from([0, 2, (index + 1) % 256]),
+        proof: Buffer.from([0, 3, (index + 2) % 256]),
+      };
+    }
+    return { messageIndex: index };
+  }
 
   /**
    * Execute a method with failure injection
@@ -315,6 +410,40 @@ export class ControllableMockDAPIClient {
     this.mockResponses.set('platform.broadcastStateTransition', 'mock-state-transition-hash-1234567890');
     this.mockResponses.set('platform.waitForStateTransitionResult', { status: 'confirmed', blockHeight: 2000100 });
     this.mockResponses.set('platform.getEpochsInfo', { epoch: 100, chainLockedHeight: 2000050 });
+  }
+
+  /**
+   * Set default stream behaviors
+   */
+  private setDefaultStreamBehaviors(): void {
+    this.streamBehaviors.set('subscribeToBlockHeadersWithChainLocks', {
+      messageCount: 1000,
+      delayPerMessage: 10,
+    });
+
+    this.streamBehaviors.set('subscribeToTransactionsWithProofs', {
+      messageCount: 500,
+      delayPerMessage: 15,
+    });
+  }
+
+  /**
+   * Set stream behavior configuration
+   */
+  setStreamBehavior(method: string, config: StreamBehaviorConfig): void {
+    this.streamBehaviors.set(method, config);
+  }
+
+  /**
+   * Reset stream behavior to defaults
+   */
+  resetStreamBehavior(method?: string): void {
+    if (method) {
+      this.streamBehaviors.delete(method);
+    } else {
+      this.streamBehaviors.clear();
+    }
+    this.setDefaultStreamBehaviors();
   }
 
   /**
