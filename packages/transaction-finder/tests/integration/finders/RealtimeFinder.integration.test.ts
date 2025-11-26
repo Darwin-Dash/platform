@@ -175,7 +175,7 @@ describe('RealtimeFinder Integration Tests', () => {
       const txBuilder = new MockStreamBuilder();
       txBuilder
         .addTransactions([tx.toBuffer()])
-        .addInstantLock(instantLock);
+        .addInstantLock(instantLock.toBuffer());
 
       mockDAPIClient.setTransactionStreamMessages(txBuilder.build());
 
@@ -212,7 +212,7 @@ describe('RealtimeFinder Integration Tests', () => {
       const txBuilder = new MockStreamBuilder();
       txBuilder
         .addTransactions([tx.toBuffer()])
-        .addInstantLock(instantLock);
+        .addInstantLock(instantLock.toBuffer());
 
       mockDAPIClient.setTransactionStreamMessages(txBuilder.build());
 
@@ -382,7 +382,7 @@ describe('RealtimeFinder Integration Tests', () => {
       const txBuilder = new MockStreamBuilder();
       txBuilder
         .addTransactions([tx.toBuffer()])
-        .addInstantLock(instantLock)
+        .addInstantLock(instantLock.toBuffer())
         .addMerkleBlock(merkleBlock.toBuffer());
 
       mockDAPIClient.setTransactionStreamMessages(txBuilder.build());

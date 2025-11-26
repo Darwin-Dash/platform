@@ -515,7 +515,8 @@ describe('RealtimeFinder', () => {
       const finder = new RealtimeFinder(config);
       const onInstantLock = vi.fn();
 
-      const instantLock = createMockInstantLock('random-txid-123');
+      // Use valid 64-char hex txid for an unmonitored transaction
+      const instantLock = createMockInstantLock('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 
       const streamBuilder = new MockStreamBuilder();
       streamBuilder.addInstantLock(instantLock.toBuffer());
@@ -610,8 +611,8 @@ describe('RealtimeFinder', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Trigger ChainLock
-      mockDAPIClient.emitChainLock(1000);
+      // Trigger ChainLock at height 1001 (stream processor increments from 1000 to 1001)
+      mockDAPIClient.emitChainLock(1001);
 
       // Wait for ChainLock poll (polls every 5 seconds)
       await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -621,7 +622,7 @@ describe('RealtimeFinder', () => {
           txid: tx.hash,
           timestamp: expect.any(Number),
           blockHeight: expect.any(Number),
-          chainLockedHeight: 1000,
+          chainLockedHeight: 1001,
           latency: expect.any(Number),
         })
       );
@@ -681,8 +682,8 @@ describe('RealtimeFinder', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Trigger ChainLock
-      mockDAPIClient.emitChainLock(1000);
+      // Trigger ChainLock at height 1001 (stream processor increments from 1000 to 1001)
+      mockDAPIClient.emitChainLock(1001);
 
       // Wait for ChainLock poll (polls every 5 seconds)
       await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -716,8 +717,8 @@ describe('RealtimeFinder', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Trigger ChainLock
-      mockDAPIClient.emitChainLock(1000);
+      // Trigger ChainLock at height 1001 (stream processor increments from 1000 to 1001)
+      mockDAPIClient.emitChainLock(1001);
 
       // Wait for ChainLock poll (polls every 5 seconds)
       await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -824,8 +825,8 @@ describe('RealtimeFinder', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Trigger ChainLock
-      mockDAPIClient.emitChainLock(1000);
+      // Trigger ChainLock at height 1001 (stream processor increments from 1000 to 1001)
+      mockDAPIClient.emitChainLock(1001);
 
       // Wait for ChainLock poll (polls every 5 seconds)
       await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -924,8 +925,8 @@ describe('RealtimeFinder', () => {
       // Wait for stream processing
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Trigger ChainLock
-      mockDAPIClient.emitChainLock(1000);
+      // Trigger ChainLock at height 1001 (stream processor increments from 1000 to 1001)
+      mockDAPIClient.emitChainLock(1001);
 
       // Wait for ChainLock poll (polls every 5 seconds)
       await new Promise((resolve) => setTimeout(resolve, 6000));
@@ -979,15 +980,15 @@ describe('RealtimeFinder', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // Start waiting with progress callback
+      // Start waiting with progress callback (progress fires every 1000ms)
       const confirmationPromise = finder.waitForConfirmation('some-txid', {
         requireInstantLock: true,
-        timeout: 1500,
+        timeout: 2500,
         onProgress,
       });
 
-      // Wait a bit for progress callbacks
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait long enough for at least one progress callback (1000ms interval)
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
       // Should have fired progress callbacks
       expect(onProgress.mock.calls.length).toBeGreaterThanOrEqual(1);
@@ -995,7 +996,7 @@ describe('RealtimeFinder', () => {
       await confirmationPromise; // Wait for timeout
 
       cleanup();
-    }, 3000);
+    }, 4000);
 
     it('should resolve immediately if already confirmed', async () => {
       const finder = new RealtimeFinder(config);

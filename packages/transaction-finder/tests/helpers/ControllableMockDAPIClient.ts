@@ -264,6 +264,7 @@ export class MockDataBuilder {
 
   /**
    * Create a mock InstantLock
+   * Returns the InstantLock object (call .toBuffer() to get Buffer)
    */
   static createInstantLock(txid: string, height: number): any {
     // Create using dashcore's InstantLock.fromObject for proper validation
@@ -278,7 +279,7 @@ export class MockDataBuilder {
       signature: Buffer.alloc(96).toString('hex')
     });
 
-    return instantLock.toBuffer();
+    return instantLock;
   }
 
   /**
