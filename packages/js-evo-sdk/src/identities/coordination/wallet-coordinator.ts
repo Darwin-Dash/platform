@@ -2,7 +2,7 @@
  * WalletCoordinator - HD Wallet Setup and UTXO Discovery
  *
  * Refactored to use new modular package architecture:
- * - ResilientDAPIClient for network communication with failover
+ * - DAPIClient for network communication
  * - WASM SDK for HD key derivation (BIP44)
  * - UTXOFinder for UTXO discovery via blockchain sync
  * - InstantSendChainLockMonitor for transaction confirmation tracking
@@ -11,7 +11,7 @@
  */
 
 import type { EvoSDK } from '../../sdk.js';
-import { ResilientDAPIClient } from '@dashevo/resilient-dapi-client';
+import DAPIClient from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
 import * as dashcoreLib from '@dashevo/dashcore-lib';
 import * as wasm from '../../wasm.js';
@@ -39,7 +39,7 @@ export interface DerivedAddressInfo {
 }
 
 export interface WalletSetupResult {
-  dapiClient: ResilientDAPIClient;
+  dapiClient: DAPIClient;
   monitor: TransactionFinder;
   addresses: {
     external: DerivedAddressInfo[];
@@ -54,7 +54,7 @@ export interface WalletSetupResult {
  * WalletCoordinator handles wallet lifecycle management for identity operations
  *
  * This class coordinates:
- * - Resilient DAPI client setup with automatic failover
+ * - DAPI client setup for network communication
  * - HD key derivation using WASM SDK and dashcore-lib
  * - UTXO discovery via UTXOFinder
  * - InstantSend/ChainLock monitoring setup
@@ -63,7 +63,6 @@ export interface WalletSetupResult {
  * - Stateless: No persistent storage or wallet state
  * - Explicit: Returns addresses and private keys directly
  * - Composable: Each component handles one responsibility
- * - Resilient: Built-in retry, failover, and reconnection
  */
 export class WalletCoordinator {
   private sdk: EvoSDK;
@@ -88,15 +87,13 @@ export class WalletCoordinator {
       logger.info(`   This ensures user control and funded wallet testing integrity`);
     }
 
-    // Step 2: Create ResilientDAPIClient with failover and retry
-    logger.debug('🌐 Creating ResilientDAPIClient...');
-    const dapiClient = new ResilientDAPIClient({
+    // Step 2: Create DAPIClient
+    logger.debug('🌐 Creating DAPIClient...');
+    const dapiClient = new DAPIClient({
       network: network as 'mainnet' | 'testnet' | 'regtest',
       timeout: DAPI_CONFIG.TIMEOUT_MS,
       retries: DAPI_CONFIG.MAX_RETRIES,
-      enableAdaptiveRetry: true,
-      enableGracefulDegradation: true,
-      logLevel: DAPI_CONFIG.LOG_LEVEL as any
+      baseBanTime: DAPI_CONFIG.BAN_TIME_MS
     });
 
     // Step 3: Get current blockchain height for logging
@@ -295,7 +292,7 @@ export class WalletCoordinator {
    * @returns Current blockchain height
    */
   async getCurrentBlockHeight(): Promise<number> {
-    const dapiClient = new ResilientDAPIClient({
+    const dapiClient = new DAPIClient({
       network: this.sdk.networkConfig.network,
       timeout: DAPI_CONFIG.TIMEOUT_MS,
       retries: DAPI_CONFIG.MAX_RETRIES
