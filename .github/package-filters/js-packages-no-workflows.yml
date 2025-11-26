@@ -90,3 +90,7 @@ dashmate:
 '@dashevo/evo-sdk': &evo-sdk
   - packages/js-evo-sdk/**
   - *wasm-sdk
+
+'@dashevo/transaction-finder': &transaction-finder
+  - packages/transaction-finder/**
+  - *dapi-client

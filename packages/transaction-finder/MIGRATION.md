@@ -261,7 +261,7 @@ if (result.method === 'instantlock') {
 
 1. **Mode required**: Must specify `mode: FinderMode.HISTORIC | REALTIME | HYBRID`
 2. **Addresses location**: Moved to top-level config
-3. **DAPI client**: Now accepts both ResilientDAPIClient and DAPIClient
+3. **DAPI client**: Accepts standard DAPIClient from @dashevo/dapi-client
 
 ### Import Changes
 

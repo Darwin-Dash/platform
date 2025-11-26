@@ -13,39 +13,47 @@ Tests work immediately after `npm install`.
 
 ### What Tests Connect To
 
-Tests use `ResilientDAPIClient` to connect to **public Dash testnet DAPI nodes**:
+Tests use standard `DAPIClient` to connect to **public Dash testnet DAPI nodes**:
 
 ```typescript
-// Tests automatically use public testnet nodes
-const client = new ResilientDAPIClient({
-  dapiAddresses: process.env.TESTNET_DAPI_ADDRESSES?.split(',') ||
-    ['34.214.48.68:1443', '35.166.18.166:1443', /* ... DCG nodes ... */],
+import DAPIClient from '@dashevo/dapi-client';
+
+const client = new DAPIClient({
+  network: 'testnet',
+  timeout: 30000,
+  retries: 3,
 });
 ```
 
-These are reliable Dash Core Group testnet masternodes selected for consistency.
-
 ## Test Files
 
-### New Reliability Tests (Built This Session)
-
+### Test Organization
 ```
-tests/integration/
-├── reliability-validation.spec.ts        [9 tests - transaction-finder ops]
-├── resilience-comparison.spec.ts         [5 tests - improvement metrics]
+tests/
+├── unit/                                   [Fast, no network required]
+│   ├── core/
+│   │   ├── BloomFilterBuilder.test.ts     [Bloom filter creation]
+│   │   ├── StreamWrapper.test.ts          [Stream async iteration]
+│   │   └── TransactionSyncer.test.ts      [Historic sync logic]
+│   ├── finders/
+│   │   ├── RealtimeFinder.test.ts         [Realtime monitoring]
+│   │   └── HybridFinder.test.ts           [Hybrid mode]
+│   ├── monitoring/
+│   │   └── TransactionTracker.test.ts     [TX state tracking]
+│   ├── utils/
+│   │   ├── utxo-selector.test.ts          [UTXO selection]
+│   │   └── utxo-extractor.test.ts         [UTXO extraction]
+│   └── TransactionFinder.test.ts          [Main facade]
+├── integration/
+│   ├── finders/
+│   │   ├── HistoricFinder.integration.test.ts
+│   │   ├── RealtimeFinder.integration.test.ts
+│   │   ├── HybridFinder.integration.test.ts
+│   │   └── TransactionFinder.integration.test.ts
+│   └── testnet-utxo.spec.ts               [Real testnet UTXO finding]
 └── helpers/
-    ├── metrics-collector.ts              [Metrics tracking]
-    ├── failure-logger.ts                 [Failure logging]
-    └── report-generator.ts               [Report generation]
-```
-
-### Existing Tests
-```
-tests/unit/
-├── finders/                              [Unit tests for each finder]
-├── core/                                 [Core component tests]
-├── monitoring/                           [Monitoring tests]
-└── [other unit tests]
+    ├── ControllableMockDAPIClient.ts      [Mock DAPI for tests]
+    └── test-fixtures.ts                   [Test data]
 ```
 
 ## Running Tests
@@ -55,29 +63,23 @@ tests/unit/
 # Install dependencies
 npm install
 
-# Run a single quick test (5 minutes)
-npm test tests/integration/reliability-validation.spec.ts -- --grep "should find UTXOs from 1,000 blocks"
+# Run all tests (unit + integration with mocks)
+npm test
+
+# Run only unit tests (fast, no network)
+npm run test:unit
+
+# Run only integration tests
+npm run test:integration
+
+# Run with coverage report
+npm run test:coverage
 ```
 
-### All New Integration Tests
+### Real Testnet Tests
 ```bash
-# All reliability tests (~30 minutes)
-npm test tests/integration/reliability-validation.spec.ts -- --timeout=600000
-
-# All comparison tests (~60 minutes)
-npm test tests/integration/resilience-comparison.spec.ts -- --timeout=600000
-
-# All new tests together (~90 minutes)
-npm test tests/integration/{reliability-validation,resilience-comparison}.spec.ts -- --timeout=600000
-```
-
-### Existing Unit Tests
-```bash
-# Run unit tests (no network needed)
-npm test tests/unit/
-
-# Run specific test file
-npm test tests/unit/core/TransactionSyncer.test.ts
+# Run the real testnet UTXO finding test (takes ~2 minutes)
+npm test tests/integration/testnet-utxo.spec.ts
 ```
 
 ## Environment Configuration
@@ -87,339 +89,92 @@ npm test tests/unit/core/TransactionSyncer.test.ts
 
 ### What's Optional
 ```bash
-# Optional: Override DAPI endpoints
-export TESTNET_DAPI_ADDRESSES="localhost:1443,localhost:1444"
-
-# Optional: Specify test address
+# Optional: Specify test address (defaults to known testnet address)
 export TESTNET_ADDRESS="yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy"
 
-# Optional: RPC endpoint for transaction operations
-export TESTNET_RPC_ENDPOINT="http://localhost:19998"
-export TESTNET_RPC_USERNAME="dash"
-export TESTNET_RPC_PASSWORD="dash"
+# Optional: Specify block height to start scanning from
+export START_HEIGHT=1363870
 
-# Optional: Timeout configuration
-export TESTNET_TIMEOUT=30000
+# Optional: Override network (defaults to testnet)
+export NETWORK=testnet
 ```
 
-Then run tests normally:
-```bash
-npm test tests/integration/reliability-validation.spec.ts
-```
-
-## Test Organization
-
-### Reliability Validation Tests (`reliability-validation.spec.ts`)
-
-**What**: End-to-end transaction-finder operations with ResilientDAPIClient
-
-**Tests**:
-1. Historic sync (1,000 blocks) - UTXO discovery
-2. Mid-sync recovery - Network failure handling
-3. UTXO validation - Data consistency
-4. Realtime monitoring (10 min) - Stream stability
-5. Monitoring disconnect recovery - Connection resilience
-6. Hybrid mode - Combined historic + realtime
-7. Error handling - Graceful failures
-8. Retry with backoff - Exponential retry
-9. Report generation - Metrics output
-
-**Duration**: 30-60 minutes
-**Network**: Required (public testnet)
-**Success Criteria**: All UTXO operations complete, data valid, no crashes
-
-### Resilience Comparison Tests (`resilience-comparison.spec.ts`)
-
-**What**: Quantify ResilientDAPIClient improvements
-
-**Tests**:
-1. Success rate comparison - Normal conditions
-2. Failure injection - 30% failure rate
-3. Streaming comparison - Header streaming metrics
-4. Concurrent load - Multiple concurrent finders
-5. Comparison report - Summary with metrics
-
-**Duration**: 45-90 minutes
-**Network**: Required (public testnet)
-**Success Criteria**: 23-45% improvement demonstrated
-
-## Test Results
-
-### Reports Generated
-```bash
-ls test-results/
-# transaction-finder-validation-2025-11-16T14-50-00Z.md
-# resilience-comparison-2025-11-16T15-20-00Z.md
-# etc.
-```
-
-### What Reports Show
-- Test execution summary
-- Success/failure counts
-- Performance metrics
-- UTXO counts (for validation tests)
-- Success rate comparison (for comparison tests)
-- Improvement percentage
-- Recommendations
-
-### Expected Results
-```
-Reliability Tests:
-✓ 9 tests passing
-✓ UTXOs found successfully
-✓ Monitoring stable for 10+ minutes
-✓ Recovery from failures working
-
-Comparison Tests:
-✓ 5 tests passing
-✓ 99%+ success under normal conditions
-✓ 87%+ success under 30% failure injection
-✓ 23-45% improvement shown
-```
-
-## Troubleshooting
-
-### "No UTXOs found for address"
-**Cause**: Test address has no transaction history
-**Solution**:
-1. Use address with known transactions
-2. Or fund test address via testnet faucet
-3. Update `TESTNET_ADDRESS` environment variable
-
-### "Cannot connect to DAPI"
-**Cause**: Network unreachable
-**Solution**:
-1. Check internet connection
-2. Verify testnet nodes are up: `curl -I https://34.214.48.68:1443`
-3. Try custom DAPI endpoint: `export TESTNET_DAPI_ADDRESSES="your.node:1443"`
-
-### "Timeout after 30000ms"
-**Cause**: Network slow or nodes unresponsive
-**Solution**:
-1. Increase timeout: `npm test -- --timeout=60000`
-2. Wait for network to stabilize
-3. Try later when testnet is less loaded
-
-### Tests pass locally but fail in CI/CD
-**Cause**: CI environment network configuration
-**Solution**:
-1. Add network connectivity check to CI
-2. Configure custom DAPI nodes for CI
-3. Use environment-specific variables
-
-### "Memory exceeded" on long-running tests
-**Cause**: Stream buffering or leak
-**Solution**:
-1. Check stream cleanup in test code
-2. Verify messages are consumed (not buffered)
-3. Look for event listener leaks
-
-## Development Patterns
-
-### Writing Transaction-Finder Tests
-
-#### Basic Historic Sync Test
-```typescript
-import { TransactionFinder } from '../../src/TransactionFinder';
-import { FinderMode } from '../../src/types';
-import { ResilientDAPIClient } from '@dashevo/resilient-dapi-client';
-
-it('should find UTXOs', async function() {
-  this.timeout(120000);  // 2 minutes
-
-  const client = new ResilientDAPIClient({
-    dapiAddresses: ['34.214.48.68:1443'],
-    timeout: 30000,
-  });
-
-  const currentHeight = await client.core.getBestBlockHeight();
-
-  const finder = new TransactionFinder({
-    mode: FinderMode.HISTORIC,
-    network: 'testnet',
-    addresses: ['yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy'],
-    fromHeight: Math.max(currentHeight - 200, 1),
-    toHeight: currentHeight,
-    dapiClient: client as any,  // Type cast for integration
-  });
-
-  const utxos = await finder.findUTXOs();
-
-  expect(utxos).toBeDefined();
-  expect(Array.isArray(utxos)).toBe(true);
-
-  client.disconnect();
-});
-```
-
-#### Monitoring Test
-```typescript
-it('should monitor successfully', async function() {
-  this.timeout(600000);  // 10 minutes
-
-  const client = new ResilientDAPIClient({ /* config */ });
-
-  const finder = new TransactionFinder({
-    mode: FinderMode.REALTIME,
-    network: 'testnet',
-    addresses: ['yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy'],
-    dapiClient: client as any,
-  });
-
-  const transactions = [];
-
-  await finder.monitorAddresses({
-    onTransaction: (tx) => transactions.push(tx),
-  });
-
-  // Let monitor run for 5 minutes
-  await new Promise(r => setTimeout(r, 5 * 60 * 1000));
-
-  await finder.stopMonitoring();
-
-  client.disconnect();
-
-  // Validate some monitoring happened
-  expect(transactions.length).toBeGreaterThanOrEqual(0);
-});
-```
-
-### Using Metrics Collection
-```typescript
-import { MetricsCollector } from '../helpers/metrics-collector';
-
-const metricsCollector = new MetricsCollector();
-
-// Track UTXO count
-metricsCollector.recordMetric('utxos_found', 42);
-
-// Track duration
-metricsCollector.recordLatency('historic_sync', durationMs);
-
-// Track events
-metricsCollector.recordEvent('operation', 'success');
-
-// Get results for report
-const metrics = metricsCollector.getMetrics();
-console.log('Total events:', metrics.events.length);
-console.log('Average latency:', metrics.metrics.avg_latency);
-```
-
-### Using Failure Logger
-```typescript
-import { FailureLogger } from '../helpers/failure-logger';
-
-const failureLogger = new FailureLogger();
-
-try {
-  const utxos = await finder.findUTXOs();
-} catch (error) {
-  failureLogger.logFailure('find_utxos', error as Error);
-}
-
-const failures = failureLogger.getFailures();
-console.log('Failures detected:', failures.length);
-```
-
-## Performance Expectations
-
-### Typical Metrics
-- Historic sync (1,000 blocks): 3-10 minutes
-- Realtime monitoring: Runs indefinitely until stopped
-- UTXO discovery: < 5 seconds per block (depends on transaction count)
-- Memory per operation: < 100MB
-
-### Network Latency
-- Typical: 40-100ms
-- P99: < 150ms
-- Testnet load: Variable (may be slower during peak hours)
-
-## Common Patterns
+## Test Patterns
 
 ### Pattern 1: Find UTXOs from History
 ```typescript
-// Scan blockchain history for address transactions
 const finder = new TransactionFinder({
   mode: FinderMode.HISTORIC,
+  network: 'testnet',
   addresses: ['yX3CJJ42...'],
+  dapiClient: dapiClient,
   fromHeight: 1000000,
-  toHeight: 1000500,
+  toHeight: currentHeight,
 });
 
 const utxos = await finder.findUTXOs();
+const latestUTXO = await finder.findLatestSpendableUTXO();
 ```
 
 ### Pattern 2: Monitor for New Transactions
 ```typescript
-// Monitor address for new transactions
 const finder = new TransactionFinder({
   mode: FinderMode.REALTIME,
+  network: 'testnet',
   addresses: ['yX3CJJ42...'],
+  dapiClient: dapiClient,
 });
 
-await finder.monitorAddresses({
+const cleanup = await finder.monitorAddresses(['yX3CJJ42...'], {
   onTransaction: (tx) => console.log('New TX:', tx.txid),
-  onInstantLock: () => console.log('InstantLocked!'),
+  onInstantLock: (lock) => console.log('InstantLocked!'),
+  onChainLock: (lock) => console.log('ChainLocked!'),
 });
 
 // Later...
-await finder.stopMonitoring();
+cleanup();
 ```
 
-### Pattern 3: Combined Sync + Monitor
+### Pattern 3: Wait for Confirmation
 ```typescript
-// Sync history, then monitor for new
-const finder = new TransactionFinder({
-  mode: FinderMode.HYBRID,
-  addresses: ['yX3CJJ42...'],
-  historic: { fromHeight: 1000000 },
-  realtime: { autoPruneOnConfirmation: true },
+const result = await finder.waitForConfirmation(txid, {
+  requireChainLock: false,
+  timeout: 30000,
+  onProgress: (status) => console.log(status),
 });
 
-const { utxos, stopMonitoring } = await finder.syncAndMonitor({
-  onTransaction: (tx) => console.log('TX:', tx.txid),
-});
-
-// utxos now contains historical transactions
-// Monitoring continues for new ones
-
-// Stop when done
-await stopMonitoring();
+console.log('Confirmed:', result.instantLockHex);
 ```
 
-## Known Limitations
+## Coverage
 
-1. **Testnet Data**: Public testnet may have limited transaction history
-   - Use address with known transactions
-   - Or fund address via faucet
+Current coverage: ~79% statements, ~82% branches, ~87% functions
 
-2. **Network Variability**: Testnet slower than production
-   - Use generous timeouts (default 30s is usually fine)
-   - Extended tests may take longer during peak hours
+Coverage thresholds enforced in vitest.config.ts:
+- Lines: 75%
+- Functions: 80%
+- Branches: 75%
+- Statements: 75%
 
-3. **Rate Limiting**: Testnet nodes may rate limit aggressive clients
-   - Use reasonable batch sizes
-   - Add delays between rapid operations
+Run `npm run test:coverage` to generate coverage report in `coverage/` directory.
 
-## Integration with ResilientDAPIClient
+## Common Troubleshooting
 
-All tests use `ResilientDAPIClient` which provides:
-- ✅ Automatic retry with exponential backoff
-- ✅ Node failover to healthy nodes
-- ✅ Stream timeout detection
-- ✅ Connection pooling
-- ✅ Comprehensive error logging
+### "No UTXOs found for address"
+**Cause**: Test address has no transaction history
+**Solution**: Use address with known transactions or fund via testnet faucet
 
-This ensures transaction-finder operations are reliable even under adverse network conditions.
+### "Cannot connect to DAPI"
+**Cause**: Network unreachable
+**Solution**: Check internet connection, DAPI nodes may be temporarily down
+
+### "Timeout after 30000ms"
+**Cause**: Network slow or nodes unresponsive
+**Solution**: Increase timeout in test or wait for network to stabilize
 
 ## Related Documentation
 
-- **VALIDATION_RESULTS.md**: Detailed test framework guide
-- **RELIABILITY_PROOF.md**: Complete technical proof (in resilient-dapi-client/)
-- **TEST_EXECUTION_GUIDE.md**: Quick start commands
-- **TESTING_README.md**: Framework overview
-
-## Key Takeaway
-
-**Tests work immediately after `npm install`.**
-They validate transaction-finder reliability against real Dash testnet using ResilientDAPIClient.
+- **README.md**: Package overview and quick start
+- **API.md**: Complete API reference
+- **EXAMPLES.md**: Detailed usage examples
+- **MIGRATION.md**: Migration from legacy packages

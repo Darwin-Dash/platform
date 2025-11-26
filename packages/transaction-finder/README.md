@@ -1,5 +1,10 @@
 # @dashevo/transaction-finder
 
+[![Tests](https://img.shields.io/badge/tests-257%20passing-brightgreen)](#running-tests)
+[![Coverage](https://img.shields.io/badge/coverage-79%25-yellow)](#running-tests)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](./tsconfig.json)
+[![License](https://img.shields.io/badge/license-MIT-green)](./package.json)
+
 Unified transaction finding library for Dash Platform. Discover UTXOs through blockchain scanning and monitor transactions in real-time with InstantSend and ChainLock confirmations.
 
 ## Features
@@ -9,7 +14,7 @@ Unified transaction finding library for Dash Platform. Discover UTXOs through bl
 - 🔄 **Hybrid Mode**: Combined historic scanning + realtime monitoring for complete wallet sync
 - 📦 **Lightweight**: Minimal dependencies, works in browsers and Node.js
 - 🎯 **Type-Safe**: Full TypeScript support with strict typing
-- 🔌 **Flexible**: Works with both ResilientDAPIClient and legacy DAPIClient
+- 🔌 **Flexible**: Works with standard DAPIClient from @dashevo/dapi-client
 
 ## Installation
 

@@ -51,3 +51,6 @@ dashmate:
 
 '@dashevo/evo-sdk':
   - packages/js-evo-sdk/**
+
+'@dashevo/transaction-finder':
+  - packages/transaction-finder/**
