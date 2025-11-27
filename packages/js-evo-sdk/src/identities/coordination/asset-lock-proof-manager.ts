@@ -78,13 +78,23 @@ export class AssetLockProofManager {
     logger.debug(`   Monitoring ${addresses.length} addresses`);
 
     try {
-      // First, start monitoring the addresses if not already active
-      // The monitor should already be initialized and monitoring from WalletCoordinator
-      // But we'll check status to ensure it's active
+      // Monitor should ALREADY be active from identity-updater.ts (started BEFORE broadcast)
+      // This is critical - monitoring must start BEFORE TX broadcast to catch InstantLock
       const monitorStatus = monitor.getStatus();
+      logger.info(`📊 Monitor status: active=${monitorStatus.active}, chainLockHeight=${monitorStatus.chainLockHeight}`);
+
       if (!monitorStatus.active) {
-        logger.debug('Monitor not active, starting address monitoring...');
-        await monitor.monitorAddresses(addresses, {});
+        logger.warn('⚠️ Monitor not active! IS detection may fail. Starting monitoring now (late)...');
+        await monitor.monitorAddresses(addresses, {
+          onInstantLock: (lock) => {
+            logger.info(`🔒 InstantLock received for ${lock.txid}`);
+          },
+          onChainLock: (cl) => {
+            logger.info(`⛓️ ChainLock received at height ${cl.blockHeight}`);
+          },
+        });
+      } else {
+        logger.info('✅ Monitor already active - DAPI stream connected for IS/CL detection');
       }
 
       // Wait for confirmation via monitor - it handles InstantLock vs ChainLock internally
@@ -126,7 +136,7 @@ export class AssetLockProofManager {
       return {
         transactionId,
         transactionHex,
-        instantLockHex: result.method === 'instantlock' ? 'TODO_GET_FROM_MONITOR' : null,
+        instantLockHex: result.instantLockHex || null,
         coreChainLockedHeight: result.blockHeight || null,
         proofType: result.method === 'chainlock' ? 'chain' : 'instant'
       };

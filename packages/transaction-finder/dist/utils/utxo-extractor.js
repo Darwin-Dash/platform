@@ -23,14 +23,28 @@ export class UTXOExtractor {
             if (tx.inputs && Array.isArray(tx.inputs)) {
                 tx.inputs.forEach((input) => {
                     try {
-                        const prevTxId = input.prevTxId
-                            ? input.prevTxId.toString('hex')
-                            : input.previousOutput?.transactionHash || '';
-                        const outputIndex = input.outputIndex || input.previousOutput?.index || 0;
+                        let prevTxId;
+                        if (input.prevTxId) {
+                            // prevTxId is a Buffer in little-endian (internal) byte order
+                            // We need to reverse it to get the display format (big-endian) that matches tx.hash
+                            const buffer = Buffer.from(input.prevTxId);
+                            const littleEndian = buffer.toString('hex');
+                            prevTxId = Buffer.from(buffer).reverse().toString('hex');
+                            if (this.logger.isDebugEnabled()) {
+                                this.logger.debug(`Input prevTxId conversion: LE=${littleEndian.substring(0, 16)}... → BE=${prevTxId.substring(0, 16)}...`);
+                            }
+                        }
+                        else if (input.previousOutput?.transactionHash) {
+                            prevTxId = input.previousOutput.transactionHash;
+                        }
+                        else {
+                            prevTxId = '';
+                        }
+                        const outputIndex = input.outputIndex ?? input.previousOutput?.index ?? 0;
                         const spentKey = `${prevTxId}:${outputIndex}`;
                         spentKeys.add(spentKey);
                         if (this.logger.isDebugEnabled()) {
-                            this.logger.debug(`Marked as spent: ${spentKey} (from tx ${tx.hash})`);
+                            this.logger.debug(`SPEND: ${spentKey} consumed by tx ${tx.hash}`);
                         }
                     }
                     catch (error) {
@@ -51,12 +65,12 @@ export class UTXOExtractor {
                         // Only include if address is in our watch set
                         if (address && addressSet.has(address)) {
                             const utxoKey = `${tx.hash}:${vout}`;
+                            const satoshis = output.satoshis || output.amount || 0;
                             // Only add if not already spent in this transaction set
                             if (!spentKeys.has(utxoKey)) {
                                 if (this.logger.isDebugEnabled()) {
-                                    this.logger.debug(`Adding UTXO: ${utxoKey} for address ${address}`);
+                                    this.logger.debug(`UTXO: ${utxoKey} (${satoshis} duffs) for ${address}`);
                                 }
-                                const satoshis = output.satoshis || output.amount || 0;
                                 utxoMap.set(utxoKey, {
                                     txId: tx.hash,
                                     vout,
@@ -72,7 +86,7 @@ export class UTXOExtractor {
                             }
                             else {
                                 if (this.logger.isDebugEnabled()) {
-                                    this.logger.debug(`Filtered out spent UTXO: ${utxoKey} for address ${address}`);
+                                    this.logger.debug(`FILTERED: ${utxoKey} (${satoshis} duffs) - already spent`);
                                 }
                             }
                         }

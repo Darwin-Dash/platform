@@ -37,6 +37,20 @@ export declare class TransactionSyncer {
      */
     private getCore;
     /**
+     * Retry helper for DAPI operations that may fail with NOT_FOUND
+     * Some DAPI nodes may be pruned and not have historical blocks.
+     *
+     * This is a workaround for @dashevo/dapi-client not retrying NOT_FOUND errors.
+     * See: packages/resilient-dapi-client/KNOWN_ISSUES.md#issue-1
+     *
+     * @param operation - The async operation to retry
+     * @param operationName - Name for logging
+     * @param maxRetries - Maximum number of retry attempts (default: 3)
+     * @returns The result of the operation
+     * @private
+     */
+    private retryOnNotFound;
+    /**
      * Sync transactions for addresses via DAPI stream
      *
      * IMPORTANT: This syncer maintains a stateless design where all addresses are provided

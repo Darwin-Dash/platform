@@ -104,6 +104,52 @@ export class TransactionSyncer {
   }
 
   /**
+   * Retry helper for DAPI operations that may fail with NOT_FOUND
+   * Some DAPI nodes may be pruned and not have historical blocks.
+   *
+   * This is a workaround for @dashevo/dapi-client not retrying NOT_FOUND errors.
+   * See: packages/resilient-dapi-client/KNOWN_ISSUES.md#issue-1
+   *
+   * @param operation - The async operation to retry
+   * @param operationName - Name for logging
+   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @returns The result of the operation
+   * @private
+   */
+  private async retryOnNotFound<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const errorMessage = error?.message || String(error);
+        const isNotFound = errorMessage.includes('NOT_FOUND') ||
+                           errorMessage.includes('not found') ||
+                           error?.code === 5; // gRPC NOT_FOUND code
+
+        if (isNotFound && attempt < maxRetries) {
+          this.logger.warn(
+            `${operationName} failed with NOT_FOUND (attempt ${attempt}/${maxRetries}), retrying...`
+          );
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+          lastError = error;
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError || new Error(`${operationName} failed after ${maxRetries} attempts`);
+  }
+
+  /**
    * Sync transactions for addresses via DAPI stream
    *
    * IMPORTANT: This syncer maintains a stateless design where all addresses are provided
@@ -165,16 +211,24 @@ export class TransactionSyncer {
     try {
       // Use streaming header API (efficient, batched)
       // This matches wallet-lib BlockHeadersProvider approach
-      const stream = core.subscribeToBlockHeadersWithChainLocks({
-        fromBlockHeight: fromHeight,
-        count: toHeight - fromHeight,
-      });
+      // Wrapped with retryOnNotFound to handle pruned nodes
+      const stream = await this.retryOnNotFound(
+        async () => {
+          const s = core.subscribeToBlockHeadersWithChainLocks({
+            fromBlockHeight: fromHeight,
+            count: toHeight - fromHeight,
+          });
+          // Handle both async and sync stream returns
+          if (s && typeof s.then === 'function') {
+            return await s;
+          }
+          return s;
+        },
+        'subscribeToBlockHeadersWithChainLocks'
+      );
 
-      // Handle both async and sync stream returns
+      // Stream is now resolved
       let actualStream = stream;
-      if (actualStream && typeof actualStream.then === 'function') {
-        actualStream = await actualStream;
-      }
 
       // Convert to async iterable using StreamWrapper
       const asyncStream = StreamWrapper.makeAsyncIterable(actualStream);
@@ -584,20 +638,26 @@ export class TransactionSyncer {
         });
       }
 
-      let rawStream = core.subscribeToTransactionsWithProofs(
-        bloomFilter,
-        {
-          fromBlockHeight: validatedFromHeight,
-          count: blockRange > 0 ? blockRange : 0, // Specific range or 0 if same block
-          timeout: timeout, // User-configurable timeout (undefined = no deadline)
-        }
+      // Wrapped with retryOnNotFound to handle pruned nodes that may not have historical blocks
+      let rawStream = await this.retryOnNotFound(
+        async () => {
+          const s = core.subscribeToTransactionsWithProofs(
+            bloomFilter,
+            {
+              fromBlockHeight: validatedFromHeight,
+              count: blockRange > 0 ? blockRange : 0, // Specific range or 0 if same block
+              timeout: timeout, // User-configurable timeout (undefined = no deadline)
+            }
+          );
+          // Handle both async and sync stream returns
+          // Some DAPI client implementations return a Promise that resolves to a stream
+          if (s && typeof s.then === 'function') {
+            return await s;
+          }
+          return s;
+        },
+        'subscribeToTransactionsWithProofs'
       );
-
-      // Handle both async and sync stream returns
-      // Some DAPI client implementations return a Promise that resolves to a stream
-      if (rawStream && typeof rawStream.then === 'function') {
-        rawStream = await rawStream;
-      }
 
       // Convert gRPC event-based stream to async iterable
       // gRPC streams use event emitters (on('data'), on('end'))
