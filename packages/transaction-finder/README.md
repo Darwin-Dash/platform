@@ -1,6 +1,6 @@
 # @dashevo/transaction-finder
 
-[![Tests](https://img.shields.io/badge/tests-257%20passing-brightgreen)](#running-tests)
+[![Tests](https://img.shields.io/badge/tests-259%20passing-brightgreen)](#running-tests)
 [![Coverage](https://img.shields.io/badge/coverage-79%25-yellow)](#running-tests)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](./tsconfig.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](./package.json)
@@ -310,6 +310,77 @@ if (typeof window !== 'undefined' && !window.Buffer) {
 - **Realtime Mode**: Adaptive polling reduces DAPI load
 - **Memory**: Auto-pruning support for long-running services
 - **Network**: Bloom filters minimize bandwidth usage
+
+## Running Tests
+
+### Unit Tests (No Network Required)
+
+```bash
+# Run all unit tests
+npm run test:unit
+
+# Run all tests (unit + integration with mocks)
+npm test
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Real Testnet Tests
+
+These tests connect to the **live Dash testnet** to validate real-world functionality.
+
+#### Historic Mode (UTXO Finding)
+
+```bash
+# Find UTXOs for a testnet address (~2 minutes)
+npm test tests/integration/testnet-utxo.spec.ts
+```
+
+#### Realtime Mode (InstantSend/ChainLock)
+
+**Manual IS/CL Test** - Monitors address, requires you to send DASH during test:
+
+```bash
+# Default address, 5-minute duration
+npm run test:realtime
+
+# Custom address and duration
+TESTNET_ADDRESS=yYourAddress TEST_DURATION=300 npm run test:realtime
+```
+
+While the test runs, send DASH to the monitored address. You'll see:
+- Transaction detection
+- InstantLock confirmation (~1-3 seconds)
+- ChainLock confirmation (~1-3 minutes)
+
+**Automated IS/CL Test** - Broadcasts transaction via Dash Core RPC:
+
+```bash
+# Requires Dash Core node with RPC enabled
+TESTNET_RPC_ENDPOINT=http://localhost:19998 \
+TESTNET_RPC_USERNAME=dashrpc \
+TESTNET_RPC_PASSWORD=yourpassword \
+npm run test:realtime:auto
+```
+
+This test:
+1. Connects to your Dash Core node
+2. Broadcasts a consolidation transaction
+3. Monitors for IS/CL confirmations automatically
+4. Reports latency metrics
+
+#### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `TESTNET_ADDRESS` | No | Known testnet addr | Address to monitor/use |
+| `NETWORK` | No | `testnet` | Network (testnet/mainnet) |
+| `TEST_DURATION` | No | `300` | Manual test duration (seconds) |
+| `TESTNET_RPC_ENDPOINT` | For auto | `http://localhost:19998` | Dash Core RPC URL |
+| `TESTNET_RPC_USERNAME` | For auto | `dashrpc` | RPC username |
+| `TESTNET_RPC_PASSWORD` | For auto | - | RPC password (required for auto test) |
+| `TESTNET_WALLET` | No | - | Dash Core wallet name |
 
 ## License
 

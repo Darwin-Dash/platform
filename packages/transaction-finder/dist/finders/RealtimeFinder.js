@@ -66,12 +66,16 @@ export class RealtimeFinder extends EventEmitter {
                 if (callbacks.onChainLock) {
                     const tx = this.tracker.getTransaction(txid);
                     if (tx) {
+                        // Calculate latency from earliest known timestamp
+                        // Use instantLockTime, then broadcastTime, otherwise latency is 0
+                        const referenceTime = tx.instantLockTime || tx.broadcastTime;
+                        const latency = referenceTime ? tx.chainLockTime - referenceTime : 0;
                         callbacks.onChainLock({
                             txid,
                             timestamp: tx.chainLockTime,
                             blockHeight: tx.blockHeight,
                             chainLockedHeight: height,
-                            latency: tx.chainLockTime - (tx.instantLockTime || tx.broadcastTime || 0),
+                            latency,
                         });
                     }
                 }
@@ -112,6 +116,7 @@ export class RealtimeFinder extends EventEmitter {
                         ? rawTxs.getTransactionsList()
                         : (Array.isArray(rawTxs) ? rawTxs : null);
                     if (txList && txList.length > 0) {
+                        this.logger.info(`📥 DAPI stream: ${txList.length} transaction(s) received`);
                         for (const txBuf of txList) {
                             try {
                                 const tx = new Transaction(Buffer.from(txBuf));
@@ -140,6 +145,7 @@ export class RealtimeFinder extends EventEmitter {
                     ? msg.getRawMerkleBlock()
                     : msg.rawMerkleBlock;
                 if (rawMerkle) {
+                    this.logger.info(`📥 DAPI stream: MerkleBlock received`);
                     try {
                         const merkleBlock = new MerkleBlock(Buffer.from(rawMerkle));
                         const blockHash = merkleBlock.header.hash;
@@ -149,6 +155,12 @@ export class RealtimeFinder extends EventEmitter {
                             const buf = Buffer.from(String(h), 'hex');
                             return buf.reverse().toString('hex');
                         });
+                        // Log all txids in the MerkleBlock for debugging
+                        this.logger.debug(`📦 MerkleBlock height ${currentBlockHeight}: ${txids.length} txids`);
+                        for (const txid of txids) {
+                            const isMonitored = this.tracker.isMonitored(txid);
+                            this.logger.debug(`   TX: ${txid} (monitored: ${isMonitored})`);
+                        }
                         for (const txid of txids) {
                             this.tracker.recordBlockInclusion(txid, currentBlockHeight, blockHash);
                             if (callbacks.onBlockInclusion && this.tracker.isMonitored(txid)) {
@@ -166,22 +178,34 @@ export class RealtimeFinder extends EventEmitter {
                     }
                 }
                 // Parse instant locks
-                const instantLocks = typeof msg.getInstantSendLockMessages === 'function'
+                const instantLockMessages = typeof msg.getInstantSendLockMessages === 'function'
                     ? msg.getInstantSendLockMessages()
                     : msg.instantSendLockMessages;
-                if (instantLocks && Array.isArray(instantLocks)) {
-                    for (const lockBuf of instantLocks) {
+                // Extract message list from wrapper object (DAPI returns wrapper with getMessagesList method)
+                const instantLockList = instantLockMessages?.getMessagesList
+                    ? instantLockMessages.getMessagesList()
+                    : (Array.isArray(instantLockMessages) ? instantLockMessages : null);
+                if (instantLockList && instantLockList.length > 0) {
+                    this.logger.info(`📥 DAPI stream: ${instantLockList.length} InstantLock message(s) received`);
+                    for (const lockBuf of instantLockList) {
                         try {
-                            const lock = new InstantLock(lockBuf);
-                            const txid = lock.txid;
+                            // Use fromBuffer static method and ensure proper Buffer conversion
+                            const lock = InstantLock.fromBuffer(Buffer.from(lockBuf));
+                            const txid = lock.txid.toString('hex');
                             const timestamp = Date.now();
-                            const wasNew = this.tracker.recordInstantLock(txid, timestamp);
-                            if (wasNew && callbacks.onInstantLock && this.tracker.isMonitored(txid)) {
+                            // Convert raw buffer to hex string for proof creation
+                            const instantLockHex = Buffer.from(lockBuf).toString('hex');
+                            // Log InstantLock details for debugging
+                            const isMonitored = this.tracker.isMonitored(txid);
+                            this.logger.debug(`🔒 InstantLock received: ${txid} (monitored: ${isMonitored})`);
+                            const wasNew = this.tracker.recordInstantLock(txid, timestamp, instantLockHex);
+                            if (wasNew && callbacks.onInstantLock && isMonitored) {
                                 const tx = this.tracker.getTransaction(txid);
                                 callbacks.onInstantLock({
                                     txid,
                                     timestamp,
                                     latency: tx?.broadcastTime ? timestamp - tx.broadcastTime : 0,
+                                    instantLockHex,
                                 });
                             }
                         }
@@ -250,6 +274,7 @@ export class RealtimeFinder extends EventEmitter {
                         chainLockTime: tx.chainLockTime,
                         blockHeight: tx.blockHeight,
                         totalLatencyMs: Date.now() - startTime,
+                        instantLockHex: tx.instantLockHex,
                     });
                 }
                 else if (requireInstantLock && !requireChainLock && tx.status === 'instantlocked') {
@@ -261,6 +286,7 @@ export class RealtimeFinder extends EventEmitter {
                         chainLockTime: null,
                         blockHeight: tx.blockHeight,
                         totalLatencyMs: Date.now() - startTime,
+                        instantLockHex: tx.instantLockHex,
                     });
                 }
             };
@@ -291,6 +317,7 @@ export class RealtimeFinder extends EventEmitter {
                         chainLockTime: tx?.chainLockTime || null,
                         blockHeight: tx?.blockHeight || null,
                         totalLatencyMs: Date.now() - startTime,
+                        instantLockHex: tx?.instantLockHex || null,
                     });
                 }
             }, timeout);
@@ -320,6 +347,18 @@ export class RealtimeFinder extends EventEmitter {
      */
     getTransaction(txid) {
         return this.tracker.getTransaction(txid);
+    }
+    /**
+     * Pre-register a txid for InstantLock monitoring
+     *
+     * Call this BEFORE broadcasting a transaction to ensure InstantLocks
+     * are captured even if they arrive before waitForConfirmation() is called.
+     *
+     * @param txid Transaction ID to pre-register
+     */
+    preRegisterTransaction(txid) {
+        this.logger.debug(`📝 Pre-registering txid: ${txid}`);
+        this.tracker.addBroadcast(txid);
     }
     /**
      * Clear a specific transaction from tracking

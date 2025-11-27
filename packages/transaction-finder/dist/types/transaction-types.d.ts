@@ -74,6 +74,8 @@ export interface TrackedTransaction {
     broadcastTime: number | null;
     /** InstantLock received timestamp (null if not locked) */
     instantLockTime: number | null;
+    /** Raw InstantLock data as hex string (null if not locked) */
+    instantLockHex: string | null;
     /** Block height (null if in mempool) */
     blockHeight: number | null;
     /** Block hash (null if in mempool) */

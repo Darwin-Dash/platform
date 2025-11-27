@@ -28,9 +28,10 @@ export declare class TransactionTracker {
      * Record InstantLock confirmation
      * @param txid Transaction ID
      * @param timestamp Time of InstantLock
+     * @param instantLockHex Optional raw InstantLock data as hex string
      * @returns true if newly recorded, false if already existed
      */
-    recordInstantLock(txid: string, timestamp: number): boolean;
+    recordInstantLock(txid: string, timestamp: number, instantLockHex?: string): boolean;
     /**
      * Record block inclusion
      * Handles case where MerkleBlock arrives before raw transaction

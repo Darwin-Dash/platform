@@ -65,6 +65,15 @@ export declare class RealtimeFinder extends EventEmitter {
      */
     getTransaction(txid: string): import("../types/transaction-types.js").TrackedTransaction | undefined;
     /**
+     * Pre-register a txid for InstantLock monitoring
+     *
+     * Call this BEFORE broadcasting a transaction to ensure InstantLocks
+     * are captured even if they arrive before waitForConfirmation() is called.
+     *
+     * @param txid Transaction ID to pre-register
+     */
+    preRegisterTransaction(txid: string): void;
+    /**
      * Clear a specific transaction from tracking
      */
     clearTransaction(txid: string): void;

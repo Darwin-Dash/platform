@@ -112,6 +112,16 @@ export declare class TransactionFinder extends EventEmitter {
      */
     clearAllConfirmed(): void;
     /**
+     * Pre-register a transaction ID before broadcast (Realtime/Hybrid mode only)
+     *
+     * Call this BEFORE broadcasting a transaction to ensure InstantLocks
+     * are captured even if they arrive before waitForConfirmation() is called.
+     *
+     * @param txid Transaction ID to pre-register
+     * @throws Error if not in Realtime or Hybrid mode
+     */
+    preRegisterTransaction(txid: string): void;
+    /**
      * Sync history and start monitoring (Hybrid mode only)
      * @param callbacks Event callbacks for realtime monitoring phase
      * @returns Object containing discovered UTXOs and cleanup function

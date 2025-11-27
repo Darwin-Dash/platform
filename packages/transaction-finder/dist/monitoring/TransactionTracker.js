@@ -32,6 +32,7 @@ export class TransactionTracker {
                 txid,
                 broadcastTime: Date.now(),
                 instantLockTime: null,
+                instantLockHex: null,
                 blockHeight: null,
                 blockHash: null,
                 chainLockTime: null,
@@ -44,12 +45,14 @@ export class TransactionTracker {
      * Record InstantLock confirmation
      * @param txid Transaction ID
      * @param timestamp Time of InstantLock
+     * @param instantLockHex Optional raw InstantLock data as hex string
      * @returns true if newly recorded, false if already existed
      */
-    recordInstantLock(txid, timestamp) {
+    recordInstantLock(txid, timestamp, instantLockHex) {
         const tx = this.transactions.get(txid);
         if (tx && !tx.instantLockTime) {
             tx.instantLockTime = timestamp;
+            tx.instantLockHex = instantLockHex || null;
             if (tx.status === 'pending') {
                 tx.status = 'instantlocked';
             }
@@ -72,6 +75,7 @@ export class TransactionTracker {
                 txid,
                 broadcastTime: null,
                 instantLockTime: null,
+                instantLockHex: null,
                 blockHeight: null,
                 blockHash: null,
                 chainLockTime: null,

@@ -192,6 +192,25 @@ export class TransactionFinder extends EventEmitter {
         }
         throw new Error(`clearAllConfirmed() is only available in REALTIME or HYBRID mode, current mode: ${this.mode}`);
     }
+    /**
+     * Pre-register a transaction ID before broadcast (Realtime/Hybrid mode only)
+     *
+     * Call this BEFORE broadcasting a transaction to ensure InstantLocks
+     * are captured even if they arrive before waitForConfirmation() is called.
+     *
+     * @param txid Transaction ID to pre-register
+     * @throws Error if not in Realtime or Hybrid mode
+     */
+    preRegisterTransaction(txid) {
+        if (this.finder instanceof RealtimeFinder) {
+            return this.finder.preRegisterTransaction(txid);
+        }
+        if (this.finder instanceof HybridFinder) {
+            // HybridFinder may need its own implementation
+            return this.finder.preRegisterTransaction?.(txid);
+        }
+        throw new Error(`preRegisterTransaction() is only available in REALTIME or HYBRID mode, current mode: ${this.mode}`);
+    }
     // ==================== Hybrid Mode Methods ====================
     /**
      * Sync history and start monitoring (Hybrid mode only)

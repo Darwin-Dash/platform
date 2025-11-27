@@ -39,6 +39,8 @@ export interface InstantLockEvent {
     timestamp: number;
     /** Latency in milliseconds from broadcast */
     latency: number;
+    /** Raw InstantLock data as hex string (for proof creation) */
+    instantLockHex?: string;
 }
 /**
  * ChainLock event
@@ -110,5 +112,7 @@ export interface ConfirmationResult {
     blockHeight: number | null;
     /** Total latency in milliseconds */
     totalLatencyMs: number;
+    /** Raw InstantLock data as hex string (available when method='instantlock') */
+    instantLockHex?: string | null;
 }
 //# sourceMappingURL=monitoring-types.d.ts.map
