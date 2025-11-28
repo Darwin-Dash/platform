@@ -145,9 +145,20 @@ process.on('message', async (msg) => {
         console.log('[Worker] SDK instance created');
       }
 
-      // Execute operation with fresh WASM context
-      // The SDK will handle the prefetch+build on its first getWasmSdkConnected() call
-      // Pass network as 4th param for operations that need it (e.g., identity-topup uses it for static WASM function)
+      // CRITICAL: Connect SDK BEFORE running operations to complete prefetch + builder.build()
+      // This ensures all WASM mutex locks are properly acquired and released before
+      // any operation-specific WASM calls (like createAssetLockProof) are made.
+      // Without this, static WASM functions may conflict with SDK connection.
+      if (process.env.LOG_LEVEL === 'debug') {
+        console.log('[Worker] Connecting SDK (prefetch + build)...');
+      }
+      await sdk.connect();
+      if (process.env.LOG_LEVEL === 'debug') {
+        console.log('[Worker] SDK connected');
+      }
+
+      // Execute operation with fully connected SDK
+      // Pass network as 4th param for operations that need it
       const result = await operationHandler(params, sdk, wasmModule, network || 'testnet');
 
       if (process.env.LOG_LEVEL === 'debug') {
@@ -169,13 +180,17 @@ process.on('message', async (msg) => {
     }
 
   } catch (error) {
-    console.error('[Worker] Operation failed:', error.message);
+    // WASM throws strings, not Error objects, so handle both
+    const errorMessage = typeof error === 'string' ? error : (error.message || String(error));
+    const errorStack = typeof error === 'string' ? undefined : error.stack;
+
+    console.error('[Worker] Operation failed:', errorMessage);
 
     // Send error back to parent
     process.send({
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: errorMessage,
+      stack: errorStack
     });
     process.exit(1);
   }
