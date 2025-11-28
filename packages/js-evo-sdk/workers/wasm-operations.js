@@ -5,6 +5,8 @@
  *
  * Runs WASM SDK operations in isolated process to prevent mutex lock conflicts.
  * Supports multiple operation types through an operation registry.
+ *
+ * @version 2.0.0 - Fixed WASM function availability
  */
 
 import { fileURLToPath } from 'url';
