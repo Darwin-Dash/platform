@@ -13,7 +13,7 @@
 import type { EvoSDK } from '../../sdk.js';
 import DAPIClient from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
-import * as dashcoreLib from '@dashevo/dashcore-lib';
+import dashcoreLib from '@dashevo/dashcore-lib';
 import * as wasm from '../../wasm.js';
 import { wallet as walletFunctions } from '../../wallet/functions.js';
 import { DAPI_CONFIG, WALLET_CONFIG } from '../config/operation-config.js';
@@ -219,11 +219,14 @@ export class WalletCoordinator {
 
     // Derive external addresses (m/44'/1'/0'/0/index for testnet)
     for (let i = 0; i < count; i++) {
-      const path = await walletFunctions.derivationPathBip44Testnet(
+      const pathInfo = await walletFunctions.derivationPathBip44Testnet(
         0, // account
         0, // external chain
         i  // index
       );
+
+      // derivationPathBip44Testnet returns an object with path components
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath(
         mnemonic,
@@ -232,13 +235,13 @@ export class WalletCoordinator {
         network
       );
 
-      // Convert to dashcore-lib PrivateKey for transaction signing
-      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKey, network);
+      // Derive address via dashcore-lib for consistent address generation
+      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 
       external.push({
-        address,
+        address, // Derived via dashcore-lib
         privateKey,
         publicKey: publicKey.toString(),
         path,
@@ -248,11 +251,14 @@ export class WalletCoordinator {
 
     // Derive internal addresses (m/44'/1'/0'/1/index for testnet)
     for (let i = 0; i < count; i++) {
-      const path = await walletFunctions.derivationPathBip44Testnet(
+      const pathInfo = await walletFunctions.derivationPathBip44Testnet(
         0, // account
         1, // internal chain (change addresses)
         i  // index
       );
+
+      // derivationPathBip44Testnet returns an object with path components
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath(
         mnemonic,
@@ -261,12 +267,13 @@ export class WalletCoordinator {
         network
       );
 
-      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKey, network);
+      // Derive address via dashcore-lib for consistent address generation
+      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 
       internal.push({
-        address,
+        address, // Derived via dashcore-lib
         privateKey,
         publicKey: publicKey.toString(),
         path,

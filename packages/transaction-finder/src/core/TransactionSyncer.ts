@@ -251,8 +251,8 @@ export class TransactionSyncer {
           // Process each header in the batch
           headersList.forEach((headerBuf: any) => {
             try {
-              // Parse header buffer
-              const BlockHeader = require('@dashevo/dashcore-lib').BlockHeader;
+              // Parse header buffer using dashcore.BlockHeader (cast to any to work around type def issues)
+              const BlockHeader = (dashcore as any).BlockHeader;
               const header = new BlockHeader(Buffer.from(headerBuf));
 
               // Cache header metadata
