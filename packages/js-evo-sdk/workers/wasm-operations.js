@@ -118,12 +118,18 @@ process.on('message', async (msg) => {
       // Import EvoSDK and WASM module in worker process (fresh WASM memory)
       const { EvoSDK } = await import(join(__dirname, '..', 'dist', 'sdk.js'));
       const wasmModule = await import(join(__dirname, '..', 'dist', 'wasm.js'));
+      const { ensureInitialized: initWasm } = wasmModule;
 
-      // NOTE: Don't explicitly call initWasm() here
-      // SDK.connect() will call it via ensureInitialized() when needed
-      // Calling it separately before SDK creation causes mutex lock conflicts
+      // CRITICAL: Initialize WASM (NOT prefetch) to ensure __wbindgen_malloc is available
+      // The prefetch methods (prefetchTrustedQuorumsTestnet) create global Rust mutex locks
+      // that persist and conflict with later SDK initialization attempts.
+      // We only need to initialize the WASM module itself, without prefetching.
       if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] WASM module imports ready (lazy initialization by SDK)');
+        console.log('[Worker] Initializing WASM module (without prefetch)...');
+      }
+      await initWasm();
+      if (process.env.LOG_LEVEL === 'debug') {
+        console.log('[Worker] WASM module initialized');
       }
 
       // Create SDK instance for this worker with optional logging
@@ -141,7 +147,8 @@ process.on('message', async (msg) => {
 
       // Execute operation with fresh WASM context
       // The SDK will handle the prefetch+build on its first getWasmSdkConnected() call
-      const result = await operationHandler(params, sdk, wasmModule);
+      // Pass network as 4th param for operations that need it (e.g., identity-topup uses it for static WASM function)
+      const result = await operationHandler(params, sdk, wasmModule, network || 'testnet');
 
       if (process.env.LOG_LEVEL === 'debug') {
         console.log(`[Worker] Operation ${operation} completed successfully`);
