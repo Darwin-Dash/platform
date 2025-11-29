@@ -38,18 +38,33 @@ export declare class TransactionSyncer {
     private getCore;
     /**
      * Retry helper for DAPI operations that may fail with NOT_FOUND
-     * Some DAPI nodes may be pruned and not have historical blocks.
+     * Some DAPI nodes may be pruned/behind and not have recent blocks.
      *
      * This is a workaround for @dashevo/dapi-client not retrying NOT_FOUND errors.
      * See: packages/resilient-dapi-client/KNOWN_ISSUES.md#issue-1
      *
+     * Enhanced to ban failing nodes before retry to ensure node rotation.
+     * gRPC transport doesn't ban nodes on error (unlike JSON-RPC), so we
+     * explicitly ban them to force selection of a different node.
+     *
      * @param operation - The async operation to retry
      * @param operationName - Name for logging
-     * @param maxRetries - Maximum number of retry attempts (default: 3)
+     * @param maxRetries - Maximum number of retry attempts (default: 5)
      * @returns The result of the operation
      * @private
      */
     private retryOnNotFound;
+    /**
+     * Ban the last used DAPI node to force rotation on retry
+     *
+     * gRPC transport in DAPIClient has a known issue where it doesn't mark nodes
+     * as banned on error (unlike JSON-RPC transport). This method explicitly bans
+     * the failing node to ensure the next retry uses a different node.
+     *
+     * @returns The host of the banned node (if available) for logging, or undefined
+     * @private
+     */
+    private banLastUsedNode;
     /**
      * Sync transactions for addresses via DAPI stream
      *

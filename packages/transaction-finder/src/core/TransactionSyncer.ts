@@ -105,21 +105,25 @@ export class TransactionSyncer {
 
   /**
    * Retry helper for DAPI operations that may fail with NOT_FOUND
-   * Some DAPI nodes may be pruned and not have historical blocks.
+   * Some DAPI nodes may be pruned/behind and not have recent blocks.
    *
    * This is a workaround for @dashevo/dapi-client not retrying NOT_FOUND errors.
    * See: packages/resilient-dapi-client/KNOWN_ISSUES.md#issue-1
    *
+   * Enhanced to ban failing nodes before retry to ensure node rotation.
+   * gRPC transport doesn't ban nodes on error (unlike JSON-RPC), so we
+   * explicitly ban them to force selection of a different node.
+   *
    * @param operation - The async operation to retry
    * @param operationName - Name for logging
-   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @param maxRetries - Maximum number of retry attempts (default: 5)
    * @returns The result of the operation
    * @private
    */
   private async retryOnNotFound<T>(
     operation: () => Promise<T>,
     operationName: string,
-    maxRetries: number = 3
+    maxRetries: number = 5
   ): Promise<T> {
     let lastError: Error | null = null;
 
@@ -133,11 +137,19 @@ export class TransactionSyncer {
                            error?.code === 5; // gRPC NOT_FOUND code
 
         if (isNotFound && attempt < maxRetries) {
+          // Ban the failing node to force rotation on next attempt
+          // gRPC transport doesn't auto-ban on error like JSON-RPC does
+          const bannedHost = this.banLastUsedNode();
+
           this.logger.warn(
-            `${operationName} failed with NOT_FOUND (attempt ${attempt}/${maxRetries}), retrying...`
+            `${operationName} failed with NOT_FOUND (attempt ${attempt}/${maxRetries})` +
+            (bannedHost ? `, banned node ${bannedHost}` : '') +
+            `, rotating to different node...`
           );
-          // Exponential backoff: 1s, 2s, 4s
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+
+          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+          const backoffMs = 1000 * Math.pow(2, attempt - 1);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
           lastError = error;
           continue;
         }
@@ -147,6 +159,38 @@ export class TransactionSyncer {
     }
 
     throw lastError || new Error(`${operationName} failed after ${maxRetries} attempts`);
+  }
+
+  /**
+   * Ban the last used DAPI node to force rotation on retry
+   *
+   * gRPC transport in DAPIClient has a known issue where it doesn't mark nodes
+   * as banned on error (unlike JSON-RPC transport). This method explicitly bans
+   * the failing node to ensure the next retry uses a different node.
+   *
+   * @returns The host of the banned node (if available) for logging, or undefined
+   * @private
+   */
+  private banLastUsedNode(): string | undefined {
+    try {
+      // Access gRPC transport's last used address
+      // The transport is accessed via the core namespace which contains grpcTransport
+      const core = this.getCore();
+      const transport = (core as any).grpcTransport;
+      const lastAddress = transport?.getLastUsedAddress?.();
+
+      if (lastAddress && typeof lastAddress.markAsBanned === 'function') {
+        const host = lastAddress.host || lastAddress.toString?.() || 'unknown';
+        lastAddress.markAsBanned();
+        this.logger.debug(`Banned DAPI node ${host} due to NOT_FOUND error`);
+        return host;
+      }
+    } catch (err) {
+      // Non-fatal: Continue even if banning fails
+      // This can happen if the DAPI client implementation differs
+      this.logger.debug('Could not access last used node for banning:', err);
+    }
+    return undefined;
   }
 
   /**
