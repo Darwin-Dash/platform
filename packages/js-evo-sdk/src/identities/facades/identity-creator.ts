@@ -110,11 +110,15 @@ export class IdentityCreator {
     options: {
       startHeight?: number;
       useSourceAsChangeAddress?: boolean;
+      skipDiscovery?: boolean; // Skip identity discovery (create at index 0)
+      identityIndex?: number;  // Explicit identity index (overrides discovery)
       onProgress?: (event: OperationEvent) => void;
     } = {}
   ): Promise<IdentityCreationResult> {
     const startHeight = options.startHeight ?? 1;
     const useSourceAsChangeAddress = options.useSourceAsChangeAddress !== false;
+    const skipDiscovery = options.skipDiscovery === true;
+    const explicitIndex = options.identityIndex;
     const onProgress = options.onProgress;
 
     // Input validation
@@ -161,65 +165,91 @@ export class IdentityCreator {
         );
       }
 
-      // Step 2: Discover existing identities (parallel with next steps)
-      logger.debug('Discovering existing identities...');
-      if (onProgress) {
-        onProgress(
-          OperationEventFactory.phaseStart('identity_discovery', 'Scanning for existing identities...')
-        );
+      // Step 2: Determine identity index
+      // Either use explicit index, skip discovery (use 0), or discover existing identities
+      let identityIndex: number;
+
+      if (explicitIndex !== undefined) {
+        // Explicit index provided - use it directly
+        identityIndex = explicitIndex;
+        logger.info(`Using explicit identity index: ${identityIndex}`);
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              `Using explicit index: ${identityIndex}`
+            )
+          );
+        }
+      } else if (skipDiscovery) {
+        // Skip discovery - use index 0 (for new wallets or testing)
+        identityIndex = 0;
+        logger.info('Skipping identity discovery - using index 0');
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              'Skipped (using index 0)'
+            )
+          );
+        }
+      } else {
+        // Full discovery - scan for existing identities
+        logger.debug('Discovering existing identities...');
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseStart('identity_discovery', 'Scanning for existing identities...')
+          );
+        }
+
+        // Use the working getIdentityIds from facade (direct DAPI, no RwLock issues)
+        const { IdentitiesFacade } = await import('../facade.js');
+        const facade = new IdentitiesFacade(this.sdk);
+        const discoveredIdentities = await facade.getIdentityIds(mnemonic, {
+          gapLimit: 20,
+          batchSize: 10,
+        });
+
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              `${discoveredIdentities.length} identities found`
+            )
+          );
+        }
+
+        // Calculate next identity index
+        identityIndex = discoveredIdentities.length > 0
+          ? Math.max(...discoveredIdentities.map(i => i.index)) + 1
+          : 0;
       }
-
-      const discovery = new IdentityDiscovery(this.sdk);
-      const allAddresses = [...walletSetup.addresses.external, ...walletSetup.addresses.internal];
-      const discoveredIdentities = await discovery.scanByIndex(
-        async (index) => {
-          // Derive identity HD key at this index
-          const identityKey = await this.deriveIdentityPublicKeyHash(mnemonic, index);
-          return identityKey;
-        },
-        { gapLimit: 20, batchSize: 50 }
-      );
-
-      if (onProgress) {
-        onProgress(
-          OperationEventFactory.phaseComplete(
-            'identity_discovery',
-            `${discoveredIdentities.length} identities found`
-          )
-        );
-      }
-
-      // Step 3: Calculate next identity index
-      const identityIndex = discoveredIdentities.length > 0
-        ? Math.max(...discoveredIdentities.map(i => i.index)) + 1
-        : 0;
 
       logger.info(`Next available identity index: ${identityIndex}`);
 
-      // Step 4: Build transaction options
+      // Step 4: Create asset lock transaction
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseStart('transaction_creation', 'Building transaction...')
         );
       }
 
-      const txOptionsBuilder = new TransactionOptionsBuilder();
-      const { transactionOptions, utxos } = await txOptionsBuilder.buildTransactionOptions({
-        account: null, // No account in new architecture
-        amount,
-        useSourceAsChangeAddress,
-        validateUtxoFreshness: false, // Creation doesn't need validation
-        // For now, use latest UTXO - in future could be more selective
-      });
-
-      // Step 5: Create asset lock transaction
       const txBuilder = new TransactionBuilder();
+      const allAddresses = [...walletSetup.addresses.external, ...walletSetup.addresses.internal];
       const sourceAddress = allAddresses[0]; // Use first external address
+
+      // Determine change address based on preference
+      // If useSourceAsChangeAddress, route change back to source
+      // Otherwise use next internal address
+      const changeAddress = useSourceAsChangeAddress
+        ? sourceAddress.address
+        : walletSetup.addresses.internal[0]?.address || sourceAddress.address;
+
       const txResult = await txBuilder.createAssetLockTransaction({
         amount,
         utxo: walletSetup.latestUTXO,
         sourceAddress,
-        changeAddress: transactionOptions.change,
+        changeAddress,
         network: this.sdk.networkConfig.network,
       });
 
@@ -232,7 +262,50 @@ export class IdentityCreator {
         );
       }
 
-      // Step 6: Broadcast transaction
+      // Step 6: Start IS/CL monitoring BEFORE broadcast
+      // This is critical - the DAPI stream must be active to receive InstantLock messages
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart(
+            'instantlock_wait',
+            'Starting InstantSend/ChainLock monitoring...'
+          )
+        );
+      }
+
+      logger.info('🔌 Starting IS/CL monitoring BEFORE transaction broadcast...');
+      await walletSetup.monitor.monitorAddresses([sourceAddress.address], {
+        onInstantLock: (lock) => {
+          logger.info(`🔒 InstantLock received for ${lock.txid} (latency: ${lock.latency}ms)`);
+        },
+        onChainLock: (cl) => {
+          logger.info(`⛓️ ChainLock received at height ${cl.blockHeight}`);
+        },
+        onTransaction: (tx) => {
+          logger.debug(`📨 Transaction detected: ${tx.txid}`);
+        },
+      });
+
+      const monitorStatus = walletSetup.monitor.getStatus();
+      logger.info(`📊 Monitor active: ${monitorStatus.active}, chainLockHeight: ${monitorStatus.chainLockHeight}`);
+
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseProgress(
+            'instantlock_wait',
+            50,
+            'IS/CL monitoring active, ready for broadcast'
+          )
+        );
+      }
+
+      // Step 7: Pre-register txid BEFORE broadcast
+      // This ensures InstantLocks are captured even if they arrive before waitForConfirmation()
+      const expectedTxid = txResult.transactionId;
+      logger.info(`📝 Pre-registering txid for monitoring: ${expectedTxid}`);
+      walletSetup.monitor.preRegisterTransaction(expectedTxid);
+
+      // Step 8: Broadcast transaction (monitoring already active, txid pre-registered)
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseStart(
@@ -249,6 +322,11 @@ export class IdentityCreator {
 
       logger.info(`Transaction broadcasted: ${transactionIdString}`);
 
+      // Verify txid matches expected
+      if (transactionIdString !== expectedTxid) {
+        logger.warn(`⚠️ Broadcast txid ${transactionIdString} differs from expected ${expectedTxid}`);
+      }
+
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseComplete(
@@ -258,7 +336,7 @@ export class IdentityCreator {
         );
       }
 
-      // Step 7: Wait for transaction confirmation
+      // Step 9: Wait for transaction confirmation
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseStart(
@@ -285,7 +363,7 @@ export class IdentityCreator {
         );
       }
 
-      // Step 8: Generate identity keys
+      // Step 10: Generate identity keys
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseStart('identity_creation', 'Generating identity keys...')
@@ -293,10 +371,14 @@ export class IdentityCreator {
       }
 
       const keyGenerator = new IdentityKeyGenerator();
-      // @ts-ignore - Using HD key for key generation (compatible with account-based API)
-      const identityKeys = await keyGenerator.generateFromWallet(walletSetup.hdPrivateKey, identityIndex);
+      // Use mnemonic-based key generation (no wallet-lib dependency)
+      const identityKeys = await keyGenerator.generateFromMnemonic(
+        mnemonic,
+        identityIndex,
+        this.sdk.networkConfig.network as 'testnet' | 'mainnet'
+      );
 
-      // Step 9: Submit to Platform via worker
+      // Step 11: Submit to Platform via worker
       logger.info('Submitting identity creation to Platform...');
 
       const { runWasmOperation } = await import('../utils/wasm-worker-runner.js');
@@ -440,15 +522,9 @@ export class IdentityCreator {
 
       logger.info(`Transaction broadcasted: ${transactionIdString}`);
 
-      // Discover identities
-      const discovery = new IdentityDiscovery(this.sdk);
-      let identityIndex = options.identityIndex;
-
-      if (identityIndex === undefined) {
-        logger.debug('Discovering existing identities...');
-        // Note: This is simplified - real implementation would derive keys from account
-        identityIndex = 0;
-      }
+      // Use provided identity index or default to 0
+      const identityIndex = options.identityIndex ?? 0;
+      logger.debug(`Using identity index: ${identityIndex}`);
 
       // Generate keys
       const keyGenerator = new IdentityKeyGenerator();
@@ -550,13 +626,23 @@ export class IdentityCreator {
   /**
    * Derive identity public key hash at given index
    * This is a helper for identity discovery
+   *
+   * Uses DIP-9 identity key derivation path: m/9'/COIN'/ACCOUNT'/0/INDEX
+   * For testnet: m/9'/1'/0'/0/INDEX
+   * For mainnet: m/9'/5'/0'/0/INDEX
    */
   private async deriveIdentityPublicKeyHash(mnemonic: string, index: number): Promise<string> {
     // Import wallet functions for HD derivation
     const { wallet: walletFunctions } = await import('../../wallet/functions.js');
+    const { createHash } = await import('crypto');
 
-    // Derive HD private key for this identity index
-    const path = await walletFunctions.derivationPathBip44Testnet(0, 0, index); // identity path
+    // Build DIP-9 identity path as a string
+    // DIP-9: m/9'/coin_type'/account'/0/index
+    // Testnet coin_type = 1, Mainnet coin_type = 5
+    const coinType = this.sdk.networkConfig.network === 'mainnet' ? 5 : 1;
+    const path = `m/9'/${coinType}'/0'/0/${index}`;
+
+    // Derive HD key for this identity index
     const childKey = await walletFunctions.deriveKeyFromSeedWithPath(
       mnemonic,
       null,
@@ -564,9 +650,12 @@ export class IdentityCreator {
       this.sdk.networkConfig.network
     );
 
-    // Get public key hash
-    const publicKey = childKey.privateKey.toPublicKey();
-    const publicKeyHash = publicKey.hash.toString('hex');
+    // Get public key hash (Hash160 = RIPEMD160(SHA256(pubkey)))
+    // childKey.public_key is hex string of compressed public key
+    const publicKeyBuffer = Buffer.from(childKey.public_key, 'hex');
+    const sha256Hash = createHash('sha256').update(publicKeyBuffer).digest();
+    const ripemd160Hash = createHash('ripemd160').update(sha256Hash).digest();
+    const publicKeyHash = ripemd160Hash.toString('hex');
 
     return publicKeyHash;
   }

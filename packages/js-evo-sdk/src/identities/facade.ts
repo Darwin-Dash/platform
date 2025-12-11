@@ -640,4 +640,208 @@ export class IdentitiesFacade {
   ): Promise<any[]> {
     return this.discovery.scanByIndex(publicKeyHashGenerator, options);
   }
+
+  /**
+   * Get all identity IDs for a wallet mnemonic
+   *
+   * Discovers all identities associated with a wallet by:
+   * 1. Deriving HD keys at sequential indices
+   * 2. Computing public key hash for each
+   * 3. Querying Platform for identities via DAPI
+   * 4. Stopping after gap limit (N consecutive not found)
+   *
+   * NOTE: This method uses DAPI-client directly (not the worker system)
+   * to avoid WASM RwLock conflicts that occur with the batch worker.
+   *
+   * @param mnemonic 12-word BIP39 mnemonic
+   * @param options Discovery options
+   * @returns Array of discovered identities with their indices
+   *
+   * @example
+   * ```typescript
+   * const identities = await sdk.identities.getIdentityIds(mnemonic);
+   * identities.forEach(({ index, identityId }) => {
+   *   console.log(`Index ${index}: ${identityId}`);
+   * });
+   * ```
+   */
+  async getIdentityIds(
+    mnemonic: string,
+    options: {
+      gapLimit?: number;
+      batchSize?: number;
+      onProgress?: (state: { currentIndex: number; foundCount: number }) => void;
+    } = {}
+  ): Promise<
+    Array<{
+      index: number;
+      identityId: string;
+      publicKeyHash: string;
+      balance?: number;
+      revision?: number;
+    }>
+  > {
+    // Validate mnemonic
+    const words = mnemonic.trim().split(/\s+/);
+    if (words.length !== 12) {
+      throw new Error(`Invalid mnemonic: expected 12 words, got ${words.length}`);
+    }
+
+    const gapLimit = options.gapLimit ?? 20;
+    const batchSize = options.batchSize ?? 10;
+    const onProgress = options.onProgress;
+
+    // Import required modules
+    const { Wallet } = await import('@dashevo/wallet-lib');
+    const DAPIClient = (await import('@dashevo/dapi-client')).default;
+    const wasmSdk = await import('@dashevo/wasm-sdk');
+    const initWasm = wasmSdk.default;
+    const { IdentityWasm } = wasmSdk;
+
+    // Initialize wasm-sdk for IdentityWasm.fromBuffer() decoding
+    await initWasm();
+
+    // Create DAPI client
+    const client = new DAPIClient({ network: this.sdk.networkConfig.network });
+
+    // Create offline wallet for key derivation only
+    const wallet = new Wallet({
+      mnemonic,
+      network: this.sdk.networkConfig.network,
+      offlineMode: true,
+    });
+
+    const foundIdentities: Array<{
+      index: number;
+      identityId: string;
+      publicKeyHash: string;
+      balance?: number;
+      revision?: number;
+    }> = [];
+
+    try {
+      // wallet-lib doesn't have TypeScript types, use `as any` to avoid strict checking
+      const account = await wallet.getAccount({
+        index: 0,
+        disableIdentitySync: true,
+      } as any);
+
+      let consecutiveNotFound = 0;
+      let currentIndex = 0;
+      let batchNumber = 0;
+
+      // Iterative discovery with gap limit
+      while (consecutiveNotFound < gapLimit) {
+        batchNumber++;
+
+        // Process batch
+        for (let i = 0; i < batchSize && consecutiveNotFound < gapLimit; i++) {
+          const index = currentIndex++;
+
+          // Derive HD key for this index
+          const { privateKey } = account.identities.getIdentityHDKeyByIndex(index, 0);
+          const publicKey = privateKey.toPublicKey();
+          const publicKeyHashHex = publicKey.hash.toString('hex');
+
+          // Query Platform directly via DAPI
+          try {
+            const hashBuffer = Buffer.from(publicKeyHashHex, 'hex');
+            const response = await client.platform.getIdentityByPublicKeyHash(hashBuffer, { prove: false });
+
+            if (response.identity && response.identity.length > 0) {
+              // Decode identity buffer using IdentityWasm.fromBuffer()
+              const identity = IdentityWasm.fromBuffer(response.identity);
+              const identityJson = identity.toJSON();
+              const identityId = identityJson.id;
+
+              foundIdentities.push({
+                index,
+                identityId,
+                publicKeyHash: publicKeyHashHex,
+              });
+              consecutiveNotFound = 0;
+              logger.debug(`  [${index}] ${identityId}`);
+            } else {
+              consecutiveNotFound++;
+            }
+          } catch (error: any) {
+            // Not found is expected for most indices
+            if (error.message && error.message.includes('not found')) {
+              consecutiveNotFound++;
+            } else {
+              logger.debug(`Discovery error for index ${index}: ${error.message}`);
+              consecutiveNotFound++;
+            }
+          }
+
+          // Check gap limit
+          if (consecutiveNotFound >= gapLimit) {
+            logger.debug(`Gap limit (${gapLimit}) reached at index ${index}`);
+            break;
+          }
+        }
+
+        // Progress callback
+        if (onProgress) {
+          try {
+            onProgress({
+              currentIndex,
+              foundCount: foundIdentities.length,
+            });
+          } catch {
+            // Non-fatal callback error
+          }
+        }
+      }
+
+      logger.info(`Discovery complete: ${foundIdentities.length} identities found`);
+      return foundIdentities;
+    } finally {
+      // Cleanup wallet
+      if (wallet && typeof wallet.disconnect === 'function') {
+        try {
+          await wallet.disconnect();
+        } catch {
+          // Non-fatal cleanup error
+        }
+      }
+    }
+  }
+
+  /**
+   * Get the next available HD index for identity creation
+   *
+   * Discovers all existing identities and returns the next unused index.
+   * If no identities exist, returns 0.
+   *
+   * @param mnemonic 12-word BIP39 mnemonic
+   * @param options Discovery options
+   * @returns Next available index for identity creation
+   *
+   * @example
+   * ```typescript
+   * const nextIndex = await sdk.identities.getNextAvailableIndex(mnemonic);
+   * console.log(`Next available index: ${nextIndex}`);
+   *
+   * // Use for identity creation
+   * await sdk.identities.createWithWallet(mnemonic, 200000, { identityIndex: nextIndex });
+   * ```
+   */
+  async getNextAvailableIndex(
+    mnemonic: string,
+    options?: {
+      gapLimit?: number;
+      batchSize?: number;
+      onProgress?: (state: { currentIndex: number; foundCount: number }) => void;
+    }
+  ): Promise<number> {
+    const identities = await this.getIdentityIds(mnemonic, options);
+
+    if (identities.length === 0) {
+      return 0;
+    }
+
+    const maxIndex = Math.max(...identities.map(i => i.index));
+    return maxIndex + 1;
+  }
 }
