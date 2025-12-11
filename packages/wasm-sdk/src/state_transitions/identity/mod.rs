@@ -9,6 +9,9 @@ use dash_sdk::dpp::prelude::AssetLockProof;
 use dash_sdk::dpp::prelude::UserFeeIncrease;
 use dash_sdk::dpp::state_transition::identity_credit_transfer_transition::methods::IdentityCreditTransferTransitionMethodsV0;
 use dash_sdk::dpp::state_transition::identity_credit_transfer_transition::IdentityCreditTransferTransition;
+use dash_sdk::dpp::state_transition::identity_topup_transition::methods::IdentityTopUpTransitionMethodsV0;
+use dash_sdk::dpp::state_transition::identity_topup_transition::IdentityTopUpTransition;
+use dash_sdk::dpp::serialization::{PlatformSerializable, PlatformDeserializable};
 use dash_sdk::platform::transition::broadcast::BroadcastStateTransition;
 use dash_sdk::platform::transition::put_identity::PutIdentity;
 use dash_sdk::platform::transition::top_up_identity::TopUpIdentity;
@@ -549,6 +552,692 @@ impl WasmSdk {
         )
         .map_err(|e| WasmSdkError::generic(format!("Failed to set message: {:?}", e)))?;
 
+        Ok(result_obj.into())
+    }
+
+    /// Creates and signs an identity top-up state transition WITHOUT broadcasting.
+    /// Returns the serialized state transition bytes for external broadcast.
+    ///
+    /// This function avoids the RwLock conflicts by not using any SDK networking operations.
+    /// The caller is responsible for broadcasting via external means (e.g., DAPI client).
+    ///
+    /// # Arguments
+    ///
+    /// * `identity_id` - The identity ID to top up
+    /// * `asset_lock_proof` - The asset lock proof (JSON string)
+    /// * `asset_lock_proof_private_key` - The private key that controls the asset lock (WIF)
+    ///
+    /// # Returns
+    ///
+    /// Returns a Promise that resolves to a JsValue containing:
+    /// - status: "prepared"
+    /// - stateTransition: hex-encoded serialized state transition (ready for broadcast)
+    /// - identityId: the identity ID
+    #[wasm_bindgen(js_name = identityTopUpPrepare)]
+    pub fn identity_top_up_prepare(
+        &self,
+        identity_id: String,
+        asset_lock_proof: String,
+        asset_lock_proof_private_key: String,
+    ) -> Result<JsValue, WasmSdkError> {
+        debug!(target: "wasm_sdk", "identityTopUpPrepare: creating state transition for {}", identity_id);
+
+        // Parse identity identifier
+        let identifier = Identifier::from_string(&identity_id, Encoding::Base58)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid identity ID: {}", e)))?;
+
+        // Parse asset lock proof - try JSON directly
+        let asset_lock_proof: AssetLockProof = serde_json::from_str(&asset_lock_proof).map_err(|e| {
+            WasmSdkError::invalid_argument(format!("Invalid asset lock proof JSON: {}", e))
+        })?;
+
+        // Parse private key - WIF format
+        let private_key = PrivateKey::from_wif(&asset_lock_proof_private_key)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid private key: {}", e)))?;
+
+        // Create the state transition directly WITHOUT using SDK or network
+        debug!(target: "wasm_sdk", "identityTopUpPrepare: creating state transition");
+
+        use dash_sdk::dpp::state_transition::identity_topup_transition::v0::IdentityTopUpTransitionV0;
+        use dash_sdk::dpp::serialization::Signable;
+        use dash_sdk::dpp::dashcore::signer;
+
+        let identity_topup_transition_v0 = IdentityTopUpTransitionV0 {
+            asset_lock_proof,
+            identity_id: identifier,
+            user_fee_increase: UserFeeIncrease::default(),
+            signature: Default::default(),
+        };
+
+        use dash_sdk::dpp::state_transition::StateTransition;
+        let mut state_transition: StateTransition = identity_topup_transition_v0.into();
+
+        // Sign the state transition
+        debug!(target: "wasm_sdk", "identityTopUpPrepare: signing state transition");
+        let data = state_transition.signable_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to get signable bytes: {}", e)))?;
+        let signature = signer::sign(&data, private_key.inner.as_ref())
+            .map_err(|e| WasmSdkError::generic(format!("Failed to sign state transition: {}", e)))?;
+        state_transition.set_signature(signature.to_vec().into());
+
+        // Serialize the state transition for external broadcast
+        debug!(target: "wasm_sdk", "identityTopUpPrepare: serializing state transition");
+        let st_bytes = state_transition
+            .serialize_to_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to serialize state transition: {}", e)))?;
+
+        // Create JavaScript result object
+        let result_obj = js_sys::Object::new();
+
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("status"),
+            &JsValue::from_str("prepared"),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set status: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("stateTransition"),
+            &JsValue::from_str(&hex::encode(&st_bytes)),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set stateTransition: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("identityId"),
+            &JsValue::from_str(&identity_id),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set identityId: {:?}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityTopUpPrepare: state transition prepared successfully");
+        Ok(result_obj.into())
+    }
+
+    /// Creates and signs an identity creation state transition WITHOUT broadcasting.
+    /// Returns the serialized state transition bytes for external broadcast.
+    ///
+    /// This function avoids the RwLock conflicts by not using any SDK networking operations.
+    /// The caller is responsible for broadcasting via external means (e.g., DAPI client).
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_lock_proof` - The asset lock proof (JSON string)
+    /// * `asset_lock_proof_private_key` - The private key that controls the asset lock (WIF)
+    /// * `public_keys` - JSON array of public keys for the identity
+    ///
+    /// # Returns
+    ///
+    /// Returns a Result containing a JsValue with:
+    /// - status: "prepared"
+    /// - stateTransition: hex-encoded serialized state transition (ready for broadcast)
+    /// - identityId: the identity ID (derived from asset lock proof)
+    #[wasm_bindgen(js_name = identityCreatePrepare)]
+    pub fn identity_create_prepare(
+        &self,
+        asset_lock_proof: String,
+        asset_lock_proof_private_key: String,
+        public_keys: String,
+    ) -> Result<JsValue, WasmSdkError> {
+        use dash_sdk::dpp::state_transition::identity_create_transition::v0::IdentityCreateTransitionV0;
+        use dash_sdk::dpp::state_transition::identity_create_transition::IdentityCreateTransition;
+        use dash_sdk::dpp::state_transition::public_key_in_creation::IdentityPublicKeyInCreation;
+        use dash_sdk::dpp::state_transition::public_key_in_creation::v0::IdentityPublicKeyInCreationV0;
+        use dash_sdk::dpp::serialization::Signable;
+        use dash_sdk::dpp::state_transition::StateTransition;
+        use dash_sdk::dpp::identity::state_transition::AssetLockProved;
+
+        debug!(target: "wasm_sdk", "identityCreatePrepare: creating state transition");
+
+        // Parse asset lock proof - try JSON directly
+        let asset_lock_proof_parsed: AssetLockProof = serde_json::from_str(&asset_lock_proof).map_err(|e| {
+            WasmSdkError::invalid_argument(format!("Invalid asset lock proof JSON: {}", e))
+        })?;
+
+        // Parse private key - WIF format
+        let private_key = PrivateKey::from_wif(&asset_lock_proof_private_key)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid private key: {}", e)))?;
+
+        // Create identity ID from asset lock proof
+        let identity_id = asset_lock_proof_parsed.create_identifier()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to create identity ID: {}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityCreatePrepare: identity ID will be {}", identity_id.to_string(Encoding::Base58));
+
+        // Parse public keys from JSON
+        let keys_data: serde_json::Value = serde_json::from_str(&public_keys).map_err(|e| {
+            WasmSdkError::invalid_argument(format!("Invalid JSON for public_keys: {}", e))
+        })?;
+
+        let keys_array = keys_data
+            .as_array()
+            .ok_or_else(|| WasmSdkError::invalid_argument("public_keys must be a JSON array"))?;
+
+        // Create identity public keys in creation format and collect private keys for signing
+        let mut identity_public_keys_in_creation = Vec::new();
+        let mut signer = SimpleSigner::default();
+
+        for (key_idx, key_data) in keys_array.iter().enumerate() {
+            let key_id = key_idx as u32;
+
+            let key_type_str = key_data["keyType"]
+                .as_str()
+                .ok_or_else(|| WasmSdkError::invalid_argument("keyType is required"))?;
+            let purpose_str = key_data["purpose"]
+                .as_str()
+                .ok_or_else(|| WasmSdkError::invalid_argument("purpose is required"))?;
+            let security_level_str = key_data["securityLevel"].as_str().unwrap_or("HIGH");
+
+            // Parse key type
+            let key_type = match key_type_str {
+                "ECDSA_SECP256K1" => KeyType::ECDSA_SECP256K1,
+                "BLS12_381" => KeyType::BLS12_381,
+                "ECDSA_HASH160" => KeyType::ECDSA_HASH160,
+                "BIP13_SCRIPT_HASH" => KeyType::BIP13_SCRIPT_HASH,
+                "EDDSA_25519_HASH160" => KeyType::EDDSA_25519_HASH160,
+                _ => {
+                    return Err(WasmSdkError::invalid_argument(format!(
+                        "Unknown key type: {}",
+                        key_type_str
+                    )))
+                }
+            };
+
+            // Parse purpose
+            let purpose = match purpose_str {
+                "AUTHENTICATION" => Purpose::AUTHENTICATION,
+                "ENCRYPTION" => Purpose::ENCRYPTION,
+                "DECRYPTION" => Purpose::DECRYPTION,
+                "TRANSFER" => Purpose::TRANSFER,
+                "SYSTEM" => Purpose::SYSTEM,
+                "VOTING" => Purpose::VOTING,
+                _ => {
+                    return Err(WasmSdkError::invalid_argument(format!(
+                        "Unknown purpose: {}",
+                        purpose_str
+                    )))
+                }
+            };
+
+            // Parse security level
+            let security_level = match security_level_str {
+                "MASTER" => SecurityLevel::MASTER,
+                "CRITICAL" => SecurityLevel::CRITICAL,
+                "HIGH" => SecurityLevel::HIGH,
+                "MEDIUM" => SecurityLevel::MEDIUM,
+                _ => SecurityLevel::HIGH,
+            };
+
+            // Handle key data based on key type
+            let (public_key_data, private_key_bytes) = match key_type {
+                KeyType::ECDSA_HASH160 => {
+                    if let Some(private_key_hex) = key_data["privateKeyHex"].as_str() {
+                        let bytes = hex::decode(private_key_hex).map_err(|e| {
+                            WasmSdkError::invalid_argument(format!("Invalid private key hex: {}", e))
+                        })?;
+
+                        if bytes.len() != 32 {
+                            return Err(WasmSdkError::invalid_argument(format!(
+                                "Private key must be 32 bytes, got {}",
+                                bytes.len()
+                            )));
+                        }
+
+                        let mut private_key_array = [0u8; 32];
+                        private_key_array.copy_from_slice(&bytes);
+
+                        let derived_data = key_type
+                            .public_key_data_from_private_key_data(&private_key_array, self.network())
+                            .map_err(|e| {
+                                WasmSdkError::generic(format!("Failed to derive ECDSA_HASH160 public key data: {}", e))
+                            })?;
+
+                        (derived_data, [0u8; 32])
+                    } else if let Some(data_str) = key_data["data"].as_str() {
+                        let key_data_bytes = dash_sdk::dpp::dashcore::base64::decode(data_str)
+                            .map_err(|e| {
+                                WasmSdkError::invalid_argument(format!("Invalid base64 key data: {}", e))
+                            })?;
+
+                        if key_data_bytes.len() != 20 {
+                            return Err(WasmSdkError::invalid_argument(format!(
+                                "ECDSA_HASH160 key data must be 20 bytes, got {}",
+                                key_data_bytes.len()
+                            )));
+                        }
+
+                        (key_data_bytes, [0u8; 32])
+                    } else {
+                        return Err(WasmSdkError::invalid_argument(
+                            "ECDSA_HASH160 requires either 'privateKeyHex' or 'data'",
+                        ));
+                    }
+                }
+                KeyType::ECDSA_SECP256K1 => {
+                    let private_key_bytes = if let Some(private_key_hex) = key_data["privateKeyHex"].as_str() {
+                        let bytes = hex::decode(private_key_hex).map_err(|e| {
+                            WasmSdkError::invalid_argument(format!("Invalid private key hex: {}", e))
+                        })?;
+
+                        if bytes.len() != 32 {
+                            return Err(WasmSdkError::invalid_argument(format!(
+                                "Private key must be 32 bytes, got {}",
+                                bytes.len()
+                            )));
+                        }
+
+                        let mut private_key_array = [0u8; 32];
+                        private_key_array.copy_from_slice(&bytes);
+                        private_key_array
+                    } else if let Some(private_key_wif) = key_data["privateKeyWif"].as_str() {
+                        let pk = PrivateKey::from_wif(private_key_wif).map_err(|e| {
+                            WasmSdkError::invalid_argument(format!("Invalid WIF private key: {}", e))
+                        })?;
+                        pk.inner.secret_bytes()
+                    } else {
+                        return Err(WasmSdkError::invalid_argument(
+                            "ECDSA_SECP256K1 keys require either privateKeyHex or privateKeyWif",
+                        ));
+                    };
+
+                    let public_key_data = key_type
+                        .public_key_data_from_private_key_data(&private_key_bytes, self.network())
+                        .map_err(|e| {
+                            WasmSdkError::generic(format!("Failed to derive ECDSA_SECP256K1 public key data: {}", e))
+                        })?;
+
+                    (public_key_data, private_key_bytes)
+                }
+                KeyType::BLS12_381 => {
+                    if key_data["privateKeyWif"].is_string() {
+                        return Err(WasmSdkError::invalid_argument(
+                            "BLS12_381 keys do not support WIF format, use privateKeyHex only",
+                        ));
+                    }
+
+                    let private_key_bytes = if let Some(private_key_hex) = key_data["privateKeyHex"].as_str() {
+                        let bytes = hex::decode(private_key_hex).map_err(|e| {
+                            WasmSdkError::invalid_argument(format!("Invalid private key hex: {}", e))
+                        })?;
+
+                        if bytes.len() != 32 {
+                            return Err(WasmSdkError::invalid_argument(format!(
+                                "Private key must be 32 bytes, got {}",
+                                bytes.len()
+                            )));
+                        }
+
+                        let mut private_key_array = [0u8; 32];
+                        private_key_array.copy_from_slice(&bytes);
+                        private_key_array
+                    } else {
+                        return Err(WasmSdkError::invalid_argument("BLS12_381 keys require privateKeyHex"));
+                    };
+
+                    let public_key_data = key_type
+                        .public_key_data_from_private_key_data(&private_key_bytes, self.network())
+                        .map_err(|e| {
+                            WasmSdkError::generic(format!("Failed to derive BLS12_381 public key data: {}", e))
+                        })?;
+
+                    (public_key_data, private_key_bytes)
+                }
+                _ => {
+                    return Err(WasmSdkError::invalid_argument(format!(
+                        "Unsupported key type for identity creation: {}",
+                        key_type_str
+                    )));
+                }
+            };
+
+            // Create IdentityPublicKeyInCreation
+            let public_key_in_creation = IdentityPublicKeyInCreation::V0(IdentityPublicKeyInCreationV0 {
+                id: key_id,
+                key_type,
+                purpose,
+                security_level,
+                contract_bounds: None,
+                read_only: false,
+                data: BinaryData::new(public_key_data.clone()),
+                signature: BinaryData::default(),
+            });
+
+            // Add to signer for signing key types
+            if key_type != KeyType::ECDSA_HASH160 {
+                use dash_sdk::dpp::identity::identity_public_key::v0::IdentityPublicKeyV0;
+                let public_key = IdentityPublicKey::V0(IdentityPublicKeyV0 {
+                    id: key_id,
+                    key_type,
+                    purpose,
+                    security_level,
+                    contract_bounds: None,
+                    read_only: false,
+                    data: BinaryData::new(public_key_data),
+                    disabled_at: None,
+                });
+                signer.add_key(public_key, private_key_bytes);
+            }
+
+            identity_public_keys_in_creation.push(public_key_in_creation);
+        }
+
+        debug!(target: "wasm_sdk", "identityCreatePrepare: created {} public keys", identity_public_keys_in_creation.len());
+
+        // Create a preliminary IdentityCreateTransitionV0 to get signable bytes for per-key signing
+        // (Following the official SDK pattern from v0_methods.rs)
+        let preliminary_transition = IdentityCreateTransitionV0 {
+            public_keys: identity_public_keys_in_creation.clone(),
+            asset_lock_proof: asset_lock_proof_parsed.clone(),
+            user_fee_increase: UserFeeIncrease::default(),
+            signature: Default::default(),
+            identity_id,
+        };
+
+        // Convert to StateTransition to get signable bytes
+        let preliminary_st: StateTransition = IdentityCreateTransition::V0(preliminary_transition).into();
+        let key_signable_bytes = preliminary_st.signable_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to get key signable bytes: {}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityCreatePrepare: got signable bytes ({} bytes), signing each public key", key_signable_bytes.len());
+
+        // Sign each public key with its corresponding private key (required by Platform)
+        // Only sign "unique key types" (ECDSA_SECP256K1, BLS12_381)
+        //
+        // IMPORTANT: We use the signer's internal keys directly via signer.private_keys
+        // This avoids BTreeMap key mismatch issues that occur when creating new IdentityPublicKey objects
+        use dash_sdk::dpp::state_transition::public_key_in_creation::accessors::IdentityPublicKeyInCreationV0Setters;
+        use dash_sdk::dpp::state_transition::public_key_in_creation::accessors::IdentityPublicKeyInCreationV0Getters;
+        use dash_sdk::dpp::dashcore::signer as core_signer;
+
+        for public_key_in_creation in identity_public_keys_in_creation.iter_mut() {
+            let key_type = public_key_in_creation.key_type();
+            let key_id = public_key_in_creation.id();
+
+            if key_type.is_unique_key_type() {
+                // Find the matching private key by searching through the signer's keys
+                // We match by key data bytes since that's the unique identifier
+                let key_data_bytes = public_key_in_creation.data().as_slice();
+
+                let mut found_signature = None;
+                for (stored_pk, private_key) in signer.private_keys.iter() {
+                    if stored_pk.data().as_slice() == key_data_bytes {
+                        // Sign directly using the private key bytes
+                        let signature = core_signer::sign(&key_signable_bytes, private_key)
+                            .map_err(|e| WasmSdkError::generic(format!("Failed to sign public key {}: {}", key_id, e)))?;
+                        found_signature = Some(BinaryData::new(signature.to_vec()));
+                        break;
+                    }
+                }
+
+                if let Some(sig) = found_signature {
+                    public_key_in_creation.set_signature(sig);
+                    debug!(target: "wasm_sdk", "identityCreatePrepare: signed key {} (type {:?}) with {} byte signature", key_id, key_type, public_key_in_creation.signature().len());
+                } else {
+                    return Err(WasmSdkError::generic(format!(
+                        "Could not find private key for public key {} in signer", key_id
+                    )));
+                }
+            }
+        }
+
+        // Create the final IdentityCreateTransitionV0 with signed keys
+        let identity_create_transition_v0 = IdentityCreateTransitionV0 {
+            public_keys: identity_public_keys_in_creation,
+            asset_lock_proof: asset_lock_proof_parsed,
+            user_fee_increase: UserFeeIncrease::default(),
+            signature: Default::default(),
+            identity_id,
+        };
+
+        // Convert to StateTransition
+        let identity_create_transition = IdentityCreateTransition::V0(identity_create_transition_v0);
+        let mut state_transition: StateTransition = identity_create_transition.into();
+
+        // Sign the state transition with the asset lock private key
+        debug!(target: "wasm_sdk", "identityCreatePrepare: signing state transition with asset lock key");
+        use dash_sdk::dpp::dashcore::signer;
+        let data = state_transition.signable_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to get signable bytes: {}", e)))?;
+        let signature = signer::sign(&data, private_key.inner.as_ref())
+            .map_err(|e| WasmSdkError::generic(format!("Failed to sign state transition: {}", e)))?;
+        state_transition.set_signature(signature.to_vec().into());
+
+        // Serialize the state transition for external broadcast
+        debug!(target: "wasm_sdk", "identityCreatePrepare: serializing state transition");
+        let st_bytes = state_transition
+            .serialize_to_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to serialize state transition: {}", e)))?;
+
+        // Create JavaScript result object
+        let result_obj = js_sys::Object::new();
+
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("status"),
+            &JsValue::from_str("prepared"),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set status: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("stateTransition"),
+            &JsValue::from_str(&hex::encode(&st_bytes)),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set stateTransition: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("identityId"),
+            &JsValue::from_str(&identity_id.to_string(Encoding::Base58)),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set identityId: {:?}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityCreatePrepare: state transition prepared successfully");
+        Ok(result_obj.into())
+    }
+
+    /// Phase 1 of two-phase identity top-up: Creates and broadcasts the state transition.
+    /// Returns the serialized state transition and initial balance for phase 2.
+    ///
+    /// WARNING: This function may encounter RwLock conflicts in WASM. Use identityTopUpPrepare
+    /// for creating the state transition and broadcast via JavaScript DAPI client instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `identity_id` - The identity ID to top up
+    /// * `asset_lock_proof` - The asset lock proof (JSON string)
+    /// * `asset_lock_proof_private_key` - The private key that controls the asset lock (WIF)
+    ///
+    /// # Returns
+    ///
+    /// Returns a Promise that resolves to a JsValue containing:
+    /// - status: "broadcasted"
+    /// - stateTransition: hex-encoded serialized state transition
+    /// - identityId: the identity ID
+    /// - initialBalance: the identity's balance before top-up
+    #[wasm_bindgen(js_name = identityTopUpBroadcast)]
+    pub async fn identity_top_up_broadcast(
+        &self,
+        identity_id: String,
+        asset_lock_proof: String,
+        asset_lock_proof_private_key: String,
+    ) -> Result<JsValue, WasmSdkError> {
+        let sdk = self.inner_clone();
+
+        debug!(target: "wasm_sdk", "identityTopUpBroadcast: starting phase 1 for {}", identity_id);
+
+        // Parse identity identifier
+        let identifier = Identifier::from_string(&identity_id, Encoding::Base58)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid identity ID: {}", e)))?;
+
+        // Parse asset lock proof - try JSON directly
+        let asset_lock_proof: AssetLockProof = serde_json::from_str(&asset_lock_proof).map_err(|e| {
+            WasmSdkError::invalid_argument(format!("Invalid asset lock proof JSON: {}", e))
+        })?;
+
+        // Parse private key - WIF format
+        let private_key = PrivateKey::from_wif(&asset_lock_proof_private_key)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid private key: {}", e)))?;
+
+        // Create the state transition directly WITHOUT fetching identity from network
+        // IdentityTopUpTransition only needs the identity ID, not the full identity
+        // This avoids the RefCell lock conflict that occurs when fetching identity
+        debug!(target: "wasm_sdk", "identityTopUpBroadcast: creating state transition directly (no fetch)");
+
+        use dash_sdk::dpp::state_transition::identity_topup_transition::v0::IdentityTopUpTransitionV0;
+        use dash_sdk::dpp::serialization::Signable;
+        use dash_sdk::dpp::dashcore::signer;
+
+        let identity_topup_transition_v0 = IdentityTopUpTransitionV0 {
+            asset_lock_proof,
+            identity_id: identifier,
+            user_fee_increase: UserFeeIncrease::default(),
+            signature: Default::default(),
+        };
+
+        use dash_sdk::dpp::state_transition::StateTransition;
+        let mut state_transition: StateTransition = identity_topup_transition_v0.into();
+
+        // Sign the state transition
+        let data = state_transition.signable_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to get signable bytes: {}", e)))?;
+        let signature = signer::sign(&data, private_key.inner.as_ref())
+            .map_err(|e| WasmSdkError::generic(format!("Failed to sign state transition: {}", e)))?;
+        state_transition.set_signature(signature.to_vec().into());
+
+        // BROADCAST ONLY - don't wait (this avoids the RefCell lock conflict)
+        debug!(target: "wasm_sdk", "identityTopUpBroadcast: broadcasting state transition");
+        state_transition
+            .broadcast(&sdk, None)
+            .await
+            .map_err(|e| WasmSdkError::generic(format!("Failed to broadcast state transition: {}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityTopUpBroadcast: broadcast complete, serializing state transition");
+
+        // Serialize the state transition for phase 2
+        let st_bytes = state_transition
+            .serialize_to_bytes()
+            .map_err(|e| WasmSdkError::generic(format!("Failed to serialize state transition: {}", e)))?;
+
+        // Create JavaScript result object
+        let result_obj = js_sys::Object::new();
+
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("status"),
+            &JsValue::from_str("broadcasted"),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set status: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("stateTransition"),
+            &JsValue::from_str(&hex::encode(&st_bytes)),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set stateTransition: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("identityId"),
+            &JsValue::from_str(&identity_id),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set identityId: {:?}", e)))?;
+        // Note: initialBalance is not available since we skip the fetch
+        // Phase 2 will fetch the updated balance
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("initialBalance"),
+            &JsValue::from_f64(0.0),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set initialBalance: {:?}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityTopUpBroadcast: phase 1 complete");
+        Ok(result_obj.into())
+    }
+
+    /// Phase 2 of two-phase identity top-up: Waits for the state transition result.
+    ///
+    /// This should be called after identityTopUpBroadcast completes and SDK is reset.
+    ///
+    /// # Arguments
+    ///
+    /// * `state_transition_hex` - The hex-encoded serialized state transition from phase 1
+    /// * `identity_id` - The identity ID (for result reporting)
+    /// * `initial_balance` - The initial balance from phase 1
+    ///
+    /// # Returns
+    ///
+    /// Returns a Promise that resolves to a JsValue containing:
+    /// - status: "success"
+    /// - identityId: the identity ID
+    /// - newBalance: the new balance after top-up
+    /// - toppedUpAmount: the amount added
+    #[wasm_bindgen(js_name = identityTopUpWait)]
+    pub async fn identity_top_up_wait(
+        &self,
+        state_transition_hex: String,
+        identity_id: String,
+        initial_balance: f64,
+    ) -> Result<JsValue, WasmSdkError> {
+        let sdk = self.inner_clone();
+        let initial_balance = initial_balance as u64;
+
+        debug!(target: "wasm_sdk", "identityTopUpWait: starting phase 2 for {}", identity_id);
+
+        // Deserialize state transition
+        let st_bytes = hex::decode(&state_transition_hex)
+            .map_err(|e| WasmSdkError::invalid_argument(format!("Invalid state transition hex: {}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityTopUpWait: deserializing state transition ({} bytes)", st_bytes.len());
+        // Deserialize as StateTransition (since BroadcastStateTransition is only impl'd for StateTransition)
+        use dash_sdk::dpp::state_transition::StateTransition;
+        let state_transition = StateTransition::deserialize_from_bytes(&st_bytes)
+            .map_err(|e| WasmSdkError::generic(format!("Failed to deserialize state transition: {}", e)))?;
+
+        // Wait for response (no broadcast - already done in phase 1)
+        debug!(target: "wasm_sdk", "identityTopUpWait: waiting for state transition result");
+        use dash_sdk::dpp::identity::PartialIdentity;
+        let identity: PartialIdentity = state_transition
+            .wait_for_response(&sdk, None)
+            .await
+            .map_err(|e| WasmSdkError::generic(format!("Failed to wait for state transition result: {}", e)))?;
+
+        let new_balance = identity
+            .balance
+            .ok_or_else(|| WasmSdkError::generic("Expected an identity balance in response"))?;
+        let topped_up_amount = new_balance.saturating_sub(initial_balance);
+
+        debug!(target: "wasm_sdk", "identityTopUpWait: new balance = {}, topped up = {}", new_balance, topped_up_amount);
+
+        // Create JavaScript result object
+        let result_obj = js_sys::Object::new();
+
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("status"),
+            &JsValue::from_str("success"),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set status: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("identityId"),
+            &JsValue::from_str(&identity_id),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set identityId: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("newBalance"),
+            &JsValue::from_f64(new_balance as f64),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set newBalance: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("toppedUpAmount"),
+            &JsValue::from_f64(topped_up_amount as f64),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set toppedUpAmount: {:?}", e)))?;
+        js_sys::Reflect::set(
+            &result_obj,
+            &JsValue::from_str("message"),
+            &JsValue::from_str("Identity topped up successfully"),
+        )
+        .map_err(|e| WasmSdkError::generic(format!("Failed to set message: {:?}", e)))?;
+
+        debug!(target: "wasm_sdk", "identityTopUpWait: phase 2 complete");
         Ok(result_obj.into())
     }
 
