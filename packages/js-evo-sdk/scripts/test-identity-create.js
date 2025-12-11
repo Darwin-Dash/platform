@@ -2,7 +2,9 @@
 /**
  * Standalone Identity Creation Test Script
  *
- * Tests the identity creation flow with per-key signing.
+ * Tests the identity creation flow with automatic discovery.
+ * Uses getIdentityIds() API to discover existing identities and
+ * automatically creates a new identity at the next available index.
  *
  * Usage:
  *   LOG_LEVEL=info node scripts/test-identity-create.js
@@ -65,10 +67,20 @@ async function testIdentityCreate() {
   const sdk = new EvoSDK({ network: NETWORK, trusted: true });
   log.debug('SDK created (lazy connect)');
 
-  // Execute identity creation
+  // Discover existing identities BEFORE creation
+  log.info('');
+  log.info('📊 Discovering existing identities (via getIdentityIds)...');
+  const identitiesBefore = await sdk.identities.getIdentityIds(MNEMONIC, { gapLimit: 20 });
+  const nextIndex = identitiesBefore.length > 0
+    ? Math.max(...identitiesBefore.map(i => i.index)) + 1
+    : 0;
+  log.info(`Found ${identitiesBefore.length} existing identities`);
+  log.info(`Next available index: ${nextIndex}`);
+
+  // Execute identity creation (auto-discovery happens internally too)
   log.info('');
   log.info('🔄 Creating identity via sdk.identities.createWithWallet()...');
-  log.debug('This tests the per-key signing fix in identityCreatePrepare');
+  log.debug('createWithWallet() will use getIdentityIds() internally for auto-discovery');
   const startTime = Date.now();
 
   const result = await sdk.identities.createWithWallet(
@@ -90,14 +102,22 @@ async function testIdentityCreate() {
   const balance = await getBalanceViaDAPI(result.identityId);
   log.info(`Identity balance: ${balance.toLocaleString()} credits`);
 
+  // Verify identity count increased
+  log.info('');
+  log.info('📊 Verifying identity count increased...');
+  const identitiesAfter = await sdk.identities.getIdentityIds(MNEMONIC, { gapLimit: 20 });
+  log.info(`Now have ${identitiesAfter.length} identities (was ${identitiesBefore.length})`);
+
   // Success summary
   log.info('');
   log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   log.info('  🎉 TEST PASSED - Identity Created Successfully');
   log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   log.info(`  Identity:      ${result.identityId}`);
+  log.info(`  Index:         ${nextIndex}`);
   log.info(`  Transaction:   ${result.transactionHash}`);
   log.info(`  Balance:       ${balance.toLocaleString()} credits`);
+  log.info(`  Count:         ${identitiesBefore.length} → ${identitiesAfter.length} identities`);
   log.info(`  Duration:      ${elapsed}s`);
   log.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
@@ -106,7 +126,12 @@ async function testIdentityCreate() {
     throw new Error(`Identity has no balance! Expected > 0, got: ${balance}`);
   }
 
-  return { success: true, result, balance };
+  // Verify identity count increased
+  if (identitiesAfter.length <= identitiesBefore.length) {
+    throw new Error(`Identity count did not increase! Before: ${identitiesBefore.length}, After: ${identitiesAfter.length}`);
+  }
+
+  return { success: true, result, balance, identitiesBefore: identitiesBefore.length, identitiesAfter: identitiesAfter.length };
 }
 
 /**
