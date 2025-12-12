@@ -1,1 +1,10 @@
 dist
+
+# Demo build artifacts
+/demo/node_modules/
+/demo/*/node_modules/
+/demo/coverage/
+/demo/playwright-report/
+/demo/reports/
+/demo/screenshots/
+/demo/test-results/
