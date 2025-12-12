@@ -247,81 +247,77 @@ export class TransactionSyncer {
   ): Promise<void> {
     this.logger.info(`Pre-syncing headers from ${fromHeight} to ${toHeight} via streaming API`);
 
-    const core = this.getCore();
     const totalHeaders = toHeight - fromHeight + 1;
-    let syncedHeaders = 0;
-    let currentHeight = fromHeight;
 
-    try {
-      // Use streaming header API (efficient, batched)
-      // This matches wallet-lib BlockHeadersProvider approach
-      // Wrapped with retryOnNotFound to handle pruned nodes
-      const stream = await this.retryOnNotFound(
-        async () => {
-          const s = core.subscribeToBlockHeadersWithChainLocks({
-            fromBlockHeight: fromHeight,
-            count: toHeight - fromHeight,
-          });
-          // Handle both async and sync stream returns
-          if (s && typeof s.then === 'function') {
-            return await s;
+    // Wrap ENTIRE sync operation in retry to handle NOT_FOUND errors from bad/pruned nodes
+    // The NOT_FOUND error occurs during stream iteration, not just stream creation,
+    // so we must wrap the entire operation including the for-await loop
+    await this.retryOnNotFound(
+      async () => {
+        const core = this.getCore();
+        let syncedHeaders = 0;
+        let currentHeight = fromHeight;
+
+        // Clear header cache on retry to avoid partial/stale data
+        this.headerCache.clear();
+
+        // Use streaming header API (efficient, batched)
+        // This matches wallet-lib BlockHeadersProvider approach
+        const s = core.subscribeToBlockHeadersWithChainLocks({
+          fromBlockHeight: fromHeight,
+          count: toHeight - fromHeight,
+        });
+        // Handle both async and sync stream returns
+        const stream = s && typeof s.then === 'function' ? await s : s;
+
+        // Convert to async iterable using StreamWrapper
+        const asyncStream = StreamWrapper.makeAsyncIterable(stream);
+
+        // Process batched headers from stream
+        // NOT_FOUND errors will be thrown here if the node doesn't have the block
+        for await (const message of asyncStream) {
+          const msg = message as any;
+
+          // Extract block headers (protobuf getter pattern)
+          const blockHeaders = typeof msg.getBlockHeaders === 'function'
+            ? msg.getBlockHeaders()
+            : msg.blockHeaders;
+
+          if (blockHeaders) {
+            // Get list of headers (may be nested protobuf)
+            const headersList = typeof blockHeaders.getHeadersList === 'function'
+              ? blockHeaders.getHeadersList()
+              : (Array.isArray(blockHeaders) ? blockHeaders : []);
+
+            // Process each header in the batch
+            headersList.forEach((headerBuf: any) => {
+              try {
+                // Parse header buffer using dashcore.BlockHeader (cast to any to work around type def issues)
+                const BlockHeader = (dashcore as any).BlockHeader;
+                const header = new BlockHeader(Buffer.from(headerBuf));
+
+                // Cache header metadata
+                // Height is sequential from stream position
+                this.headerCache.set(header.hash, {
+                  height: currentHeight,
+                  time: header.time,
+                });
+
+                currentHeight++;
+                syncedHeaders++;
+              } catch (error) {
+                this.logger.warn(`Failed to parse header:`, (error as Error).message);
+              }
+            });
+
+            this.logger.info(`Cached ${syncedHeaders}/${totalHeaders} headers`);
           }
-          return s;
-        },
-        'subscribeToBlockHeadersWithChainLocks'
-      );
-
-      // Stream is now resolved
-      let actualStream = stream;
-
-      // Convert to async iterable using StreamWrapper
-      const asyncStream = StreamWrapper.makeAsyncIterable(actualStream);
-
-      // Process batched headers from stream
-      for await (const message of asyncStream) {
-        const msg = message as any;
-
-        // Extract block headers (protobuf getter pattern)
-        const blockHeaders = typeof msg.getBlockHeaders === 'function'
-          ? msg.getBlockHeaders()
-          : msg.blockHeaders;
-
-        if (blockHeaders) {
-          // Get list of headers (may be nested protobuf)
-          const headersList = typeof blockHeaders.getHeadersList === 'function'
-            ? blockHeaders.getHeadersList()
-            : (Array.isArray(blockHeaders) ? blockHeaders : []);
-
-          // Process each header in the batch
-          headersList.forEach((headerBuf: any) => {
-            try {
-              // Parse header buffer using dashcore.BlockHeader (cast to any to work around type def issues)
-              const BlockHeader = (dashcore as any).BlockHeader;
-              const header = new BlockHeader(Buffer.from(headerBuf));
-
-              // Cache header metadata
-              // Height is sequential from stream position
-              this.headerCache.set(header.hash, {
-                height: currentHeight,
-                time: header.time,
-              });
-
-              currentHeight++;
-              syncedHeaders++;
-            } catch (error) {
-              this.logger.warn(`Failed to parse header:`, (error as Error).message);
-            }
-          });
-
-          this.logger.info(`Cached ${syncedHeaders}/${totalHeaders} headers`);
         }
-      }
 
-      this.logger.info(`Header pre-sync complete: ${this.headerCache.size} headers cached`);
-    } catch (error) {
-      this.logger.error('Error during header pre-sync:', error);
-      throw new Error(`Failed to pre-sync headers: ${error}`);
-    }
+        this.logger.info(`Header pre-sync complete: ${this.headerCache.size} headers cached`);
+      },
+      'syncHeaders'
+    );
   }
 
   /**
