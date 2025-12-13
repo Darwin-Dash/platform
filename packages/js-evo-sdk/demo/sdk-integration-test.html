@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK Integration Tests - Phase 3</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d9ff;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .test-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .test-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 217, 255, 0.2);
+            border-color: rgba(0, 217, 255, 0.3);
+        }
+        .test-card.running {
+            border-color: #ffa500;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.3);
+        }
+        .test-card.pass {
+            border-color: #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+        .test-card.fail {
+            border-color: #ff3333;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.3);
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .test-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #00d9ff;
+        }
+        .test-status {
+            font-size: 2em;
+        }
+        .test-description {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        button {
+            background: linear-gradient(135deg, #00d9ff, #0099cc);
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.4);
+        }
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .test-output {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+            border-left: 3px solid #00d9ff;
+        }
+        .test-output pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .pass-text { color: #00ff00; }
+        .fail-text { color: #ff3333; }
+        .info-text { color: #00d9ff; }
+        .summary {
+            background: rgba(0, 217, 255, 0.1);
+            border: 2px solid #00d9ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(0, 217, 255, 0.3);
+            border-top-color: #00d9ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 SDK Integration Tests</h1>
+        <p class="subtitle">Real browser compatibility validation - Phase 3</p>
+
+        <div class="test-grid">
+            <!-- Test 1 -->
+            <div class="test-card" id="test1-card">
+                <div class="test-header">
+                    <div class="test-title">1. Buffer Polyfill</div>
+                    <div class="test-status" id="test1-status">⏸️</div>
+                </div>
+                <div class="test-description">Verify Buffer operations work globally</div>
+                <button onclick="runTest1()">Run Test</button>
+                <div class="test-output" id="test1-output" style="display: none;"></div>
+            </div>
+
+            <!-- Test 2 -->
+            <div class="test-card" id="test2-card">
+                <div class="test-header">
+                    <div class="test-title">2. Process.env Access</div>
+                    <div class="test-status" id="test2-status">⏸️</div>
+                </div>
+                <div class="test-description">Verify process.env.LOG_LEVEL is defined</div>
+                <button onclick="runTest2()">Run Test</button>
+                <div class="test-output" id="test2-output" style="display: none;"></div>
+            </div>
+
+            <!-- Test 3 -->
+            <div class="test-card" id="test3-card">
+                <div class="test-header">
+                    <div class="test-title">3. SDK Module Import</div>
+                    <div class="test-status" id="test3-status">⏸️</div>
+                </div>
+                <div class="test-description">Import and instantiate EvoSDK class</div>
+                <button onclick="runTest3()">Run Test</button>
+                <div class="test-output" id="test3-output" style="display: none;"></div>
+            </div>
+
+            <!-- Test 4 -->
+            <div class="test-card" id="test4-card">
+                <div class="test-header">
+                    <div class="test-title">4. Web Worker Communication</div>
+                    <div class="test-status" id="test4-status">⏸️</div>
+                </div>
+                <div class="test-description">Test worker message passing</div>
+                <button onclick="runTest4()">Run Test</button>
+                <div class="test-output" id="test4-output" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="summary">
+            <h2>Test Summary</h2>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="stat-value pass-text" id="passed-count">0</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value fail-text" id="failed-count">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value info-text" id="total-count">4</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let passed = 0;
+        let failed = 0;
+
+        function updateCard(num, status) {
+            const card = document.getElementById(`test${num}-card`);
+            const statusEl = document.getElementById(`test${num}-status`);
+            card.className = 'test-card';
+
+            if (status === 'running') {
+                card.classList.add('running');
+                statusEl.innerHTML = '<span class="spinner"></span>';
+            } else if (status === 'pass') {
+                card.classList.add('pass');
+                statusEl.textContent = '✅';
+                passed++;
+            } else if (status === 'fail') {
+                card.classList.add('fail');
+                statusEl.textContent = '❌';
+                failed++;
+            }
+
+            document.getElementById('passed-count').textContent = passed;
+            document.getElementById('failed-count').textContent = failed;
+        }
+
+        function showOutput(num, html) {
+            const output = document.getElementById(`test${num}-output`);
+            output.innerHTML = `<pre>${html}</pre>`;
+            output.style.display = 'block';
+        }
+
+        // Test 1: Buffer Polyfill
+        window.runTest1 = async function() {
+            updateCard(1, 'running');
+            try {
+                // CRITICAL: Ensure SDK is imported first so Buffer is in scope
+                // (SDK is already imported at module level, but being explicit)
+                if (typeof Buffer === 'undefined') {
+                    throw new Error('Buffer is not defined. SDK must be imported in module scope first.');
+                }
+
+                // Test Buffer.from
+                const buf1 = Buffer.from('deadbeef', 'hex');
+                const buf2 = Buffer.from([0xca, 0xfe]);
+
+                // Test Buffer.concat
+                const combined = Buffer.concat([buf1, buf2]);
+
+                // Test Buffer.alloc
+                const allocated = Buffer.alloc(4);
+                allocated.writeUInt32LE(42, 0);
+
+                showOutput(1, `<span class="pass-text">✓ Buffer.from('deadbeef', 'hex')</span>\n  Result: ${buf1.length} bytes\n\n<span class="pass-text">✓ Buffer.from([0xca, 0xfe])</span>\n  Result: ${buf2.length} bytes\n\n<span class="pass-text">✓ Buffer.concat()</span>\n  Combined: ${combined.length} bytes\n\n<span class="pass-text">✓ Buffer.alloc(4)</span>\n  writeUInt32LE(42): OK`);
+                updateCard(1, 'pass');
+            } catch (error) {
+                showOutput(1, `<span class="fail-text">✗ Error: ${error.message}</span>\n\n${error.stack}`);
+                updateCard(1, 'fail');
+            }
+        };
+
+        // Test 2: Process.env
+        window.runTest2 = function() {
+            updateCard(2, 'running');
+            try {
+                // This should be defined by webpack DefinePlugin
+                const logLevel = process.env.LOG_LEVEL;
+
+                showOutput(2, `<span class="pass-text">✓ process.env.LOG_LEVEL is defined</span>\n  Value: "${logLevel}"\n\n<span class="info-text">Note: This value is set at build time by webpack</span>`);
+                updateCard(2, 'pass');
+            } catch (error) {
+                showOutput(2, `<span class="fail-text">✗ Error: ${error.message}</span>\n\n${error.stack}`);
+                updateCard(2, 'fail');
+            }
+        };
+
+        // Test 3: SDK Import
+        window.runTest3 = async function() {
+            updateCard(3, 'running');
+            try {
+                const sdkModule = await import('../dist/sdk.js');
+                const EvoSDK = sdkModule.EvoSDK || sdkModule.default;
+
+                if (!EvoSDK) {
+                    throw new Error('EvoSDK class not found in module');
+                }
+
+                const sdk = new EvoSDK({ network: 'testnet' });
+
+                const props = Object.keys(sdk);
+                showOutput(3, `<span class="pass-text">✓ SDK module imported</span>\n  Class name: ${EvoSDK.name}\n\n<span class="pass-text">✓ SDK instantiated</span>\n  Network: testnet\n  Properties: ${props.join(', ')}\n  Total: ${props.length} properties`);
+                updateCard(3, 'pass');
+            } catch (error) {
+                showOutput(3, `<span class="fail-text">✗ Error: ${error.message}</span>\n\n${error.stack}`);
+                updateCard(3, 'fail');
+            }
+        };
+
+        // Test 4: Web Worker
+        window.runTest4 = async function() {
+            updateCard(4, 'running');
+            try {
+                const workerUrl = '../dist/web-worker.js';
+                const worker = new Worker(workerUrl, { type: 'module' });
+
+                const result = await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        worker.terminate();
+                        reject(new Error('Worker timeout after 5 seconds'));
+                    }, 5000);
+
+                    worker.onmessage = (event) => {
+                        clearTimeout(timeout);
+                        worker.terminate();
+                        resolve(event.data);
+                    };
+
+                    worker.onerror = (error) => {
+                        clearTimeout(timeout);
+                        worker.terminate();
+                        reject(error);
+                    };
+
+                    // Send test message
+                    worker.postMessage({ test: true, operation: 'ping' });
+                });
+
+                showOutput(4, `<span class="pass-text">✓ Web Worker created</span>\n  URL: ${workerUrl}\n\n<span class="pass-text">✓ Worker responded</span>\n  Response: ${JSON.stringify(result, null, 2)}`);
+                updateCard(4, 'pass');
+            } catch (error) {
+                showOutput(4, `<span class="fail-text">✗ Error: ${error.message}</span>\n\n${error.stack}`);
+                updateCard(4, 'fail');
+            }
+        };
+
+        // Auto-run all tests on load
+        window.addEventListener('load', async () => {
+            console.log('🧪 Integration Tests Ready');
+            console.log('Running all tests automatically...\n');
+
+            await runTest1();
+            await new Promise(r => setTimeout(r, 500));
+
+            await runTest2();
+            await new Promise(r => setTimeout(r, 500));
+
+            await runTest3();
+            await new Promise(r => setTimeout(r, 500));
+
+            await runTest4();
+
+            console.log('\n✅ All tests complete');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test - Dash Identity Manager</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="app">
+        <h1>Testing ES Module Imports...</h1>
+        <div id="status">Loading...</div>
+    </div>
+
+    <script type="module">
+        console.log('1. Script tag executing...');
+
+        try {
+            console.log('2. Importing state-manager...');
+            const { stateManager } = await import('./state-manager.js');
+            console.log('✅ state-manager loaded');
+
+            console.log('3. Importing mock-data...');
+            const { mockIdentities } = await import('./mock-data.js');
+            console.log('✅ mock-data loaded, identities:', mockIdentities.size);
+
+            console.log('4. Importing formatters...');
+            const { formatDuffs } = await import('./utils/formatter.js');
+            console.log('✅ formatters loaded');
+
+            console.log('5. Importing notifications...');
+            const { notifications } = await import('./components/notifications.js');
+            console.log('✅ notifications loaded');
+
+            console.log('6. Importing identity-selector...');
+            const { IdentitySelector } = await import('./components/identity-selector.js');
+            console.log('✅ identity-selector loaded');
+
+            document.getElementById('status').innerHTML = `
+                <h2 style="color: green;">✅ All imports successful!</h2>
+                <p>Mock identities: ${mockIdentities.size}</p>
+                <p>Ready to load full app</p>
+            `;
+
+            console.log('✅ ALL MODULES LOADED SUCCESSFULLY');
+
+        } catch (error) {
+            console.error('❌ Import failed:', error);
+            console.error('Stack:', error.stack);
+            document.getElementById('status').innerHTML = `
+                <h2 style="color: red;">❌ Error loading modules</h2>
+                <pre style="color: red; background: #fff; padding: 20px; border-radius: 8px;">
+${error.message}
+
+${error.stack}
+                </pre>
+            `;
+        }
+    </script>
+</body>
+</html>

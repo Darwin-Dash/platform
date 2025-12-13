@@ -19,12 +19,19 @@ import * as wasm from '../wasm.js';
 import type { EvoSDK } from '../sdk.js';
 import { IdentityFetcher } from './facades/identity-fetcher.js';
 import { CreditOperations } from './facades/credit-operations.js';
-import { IdentityCreator } from './facades/identity-creator.js';
-import { IdentityUpdater } from './facades/identity-updater.js';
+import { IdentityCreator, type IdentityCreationResult } from './facades/identity-creator.js';
+import { IdentityUpdater, type IdentityTopUpResult } from './facades/identity-updater.js';
 import { IdentityDiscovery } from './facades/identity-discovery.js';
+import { UTXOFinder, type SpendableUTXOResult, type UTXOSearchProgress } from './coordination/utxo-finder.js';
+import { type DerivedAddressInfo } from './coordination/wallet-coordinator.js';
+import { type UTXO } from '@dashevo/transaction-finder';
 import { createLogger } from './utils/identity-logger.js';
+import { DAPI_CONFIG } from './config/operation-config.js';
 
 const logger = createLogger('IdentitiesFacade');
+
+// Declare process for Node.js environment (TypeScript compatibility)
+declare const process: { env: { [key: string]: string | undefined } } | undefined;
 
 /**
  * IdentitiesFacade - Unified API for all identity operations
@@ -71,6 +78,7 @@ export class IdentitiesFacade {
   private creator: IdentityCreator;
   private updater: IdentityUpdater;
   private discovery: IdentityDiscovery;
+  private utxoFinder: UTXOFinder;
 
   constructor(sdk: EvoSDK) {
     this.sdk = sdk;
@@ -79,6 +87,7 @@ export class IdentitiesFacade {
     this.creator = new IdentityCreator(sdk);
     this.updater = new IdentityUpdater(sdk);
     this.discovery = new IdentityDiscovery(sdk);
+    this.utxoFinder = new UTXOFinder(sdk);
 
     logger.debug('IdentitiesFacade initialized');
   }
@@ -429,13 +438,136 @@ export class IdentitiesFacade {
     return this.creator.createWithWallet(mnemonic, amount, options);
   }
 
+  // ============================================================================
+  // UTXO-First Operations (Modular Flow)
+  // ============================================================================
+
   /**
-   * Create identity with pre-synced account (DEPRECATED)
+   * Find a spendable UTXO from wallet addresses
    *
-   * @deprecated Use createWithWallet() instead
+   * Uses TransactionFinder in HISTORIC mode to scan blockchain for UTXOs.
+   * Returns the latest UTXO meeting minimum amount requirements along with
+   * derived addresses for reuse in subsequent create/topup operations.
+   *
+   * This is Step 1 of the modular UTXO-first workflow:
+   * 1. findSpendableUTXO() - Find UTXO
+   * 2. createWithUTXO() or topupWithUTXO() - Use the found UTXO
+   *
+   * @param options UTXO search options
+   * @returns Spendable UTXO with derived addresses and scan statistics
+   *
+   * @example
+   * ```typescript
+   * // Find UTXO
+   * const result = await sdk.identities.findSpendableUTXO({
+   *   mnemonic,
+   *   startHeight: 1000000,
+   *   minAmount: 200000,
+   *   onProgress: (event) => console.log(event.message)
+   * });
+   *
+   * console.log(`Found ${result.balance} duffs at ${result.address}`);
+   *
+   * // Then create identity with the UTXO
+   * await sdk.identities.createWithUTXO({
+   *   mnemonic,
+   *   utxo: result.utxo,
+   *   amount: 200000,
+   *   derivedAddresses: result.derivedAddresses
+   * });
+   * ```
    */
-  async createWithAccount(account: any, amount: number, options?: any): Promise<any> {
-    return this.creator.createWithAccount(account, amount, options);
+  async findSpendableUTXO(options: {
+    mnemonic: string;
+    startHeight?: number;
+    toHeight?: number;
+    minAmount?: number;
+    addressCount?: number;
+    onProgress?: (event: UTXOSearchProgress) => void;
+  }): Promise<SpendableUTXOResult> {
+    return this.utxoFinder.findSpendableUTXO(options);
+  }
+
+  /**
+   * Create a new identity with a pre-found UTXO
+   *
+   * Unlike createWithWallet which scans the blockchain for UTXOs, this method
+   * uses a UTXO that was already found via findSpendableUTXO(). This provides:
+   * - Faster execution (no redundant blockchain scan)
+   * - Separation between UTXO finding and identity creation
+   * - Ability to show user the balance before committing
+   *
+   * @param options Creation options with pre-found UTXO
+   * @returns Identity creation result
+   *
+   * @example
+   * ```typescript
+   * // Use after findSpendableUTXO
+   * const result = await sdk.identities.createWithUTXO({
+   *   mnemonic,
+   *   utxo: utxoResult.utxo,
+   *   amount: 200000,
+   *   derivedAddresses: utxoResult.derivedAddresses, // Reuse to avoid re-deriving
+   *   onProgress: (event) => console.log(event.message)
+   * });
+   * console.log('Created identity:', result.identityId);
+   * ```
+   */
+  async createWithUTXO(options: {
+    mnemonic: string;
+    utxo: UTXO;
+    amount: number;
+    identityIndex?: number;
+    skipDiscovery?: boolean;
+    useSourceAsChangeAddress?: boolean;
+    derivedAddresses?: {
+      external: DerivedAddressInfo[];
+      internal: DerivedAddressInfo[];
+    };
+    onProgress?: (event: any) => void;
+  }): Promise<IdentityCreationResult> {
+    return this.creator.createWithUTXO(options);
+  }
+
+  /**
+   * Top up an existing identity with a pre-found UTXO
+   *
+   * Unlike topUpWithWallet which scans the blockchain for UTXOs, this method
+   * uses a UTXO that was already found via findSpendableUTXO(). This provides:
+   * - Faster execution (no redundant blockchain scan)
+   * - Separation between UTXO finding and top-up operation
+   * - Ability to show user the balance before committing
+   *
+   * @param options Top-up options with pre-found UTXO
+   * @returns Top-up result
+   *
+   * @example
+   * ```typescript
+   * // Use after findSpendableUTXO
+   * const result = await sdk.identities.topupWithUTXO({
+   *   mnemonic,
+   *   identityId: 'identityId...',
+   *   utxo: utxoResult.utxo,
+   *   amount: 50000,
+   *   derivedAddresses: utxoResult.derivedAddresses,
+   *   onProgress: (event) => console.log(event.message)
+   * });
+   * console.log('New balance:', result.newBalance);
+   * ```
+   */
+  async topupWithUTXO(options: {
+    mnemonic: string;
+    identityId: string;
+    utxo: UTXO;
+    amount: number;
+    useSourceAsChangeAddress?: boolean;
+    derivedAddresses?: {
+      external: DerivedAddressInfo[];
+      internal: DerivedAddressInfo[];
+    };
+    onProgress?: (event: any) => void;
+  }): Promise<IdentityTopUpResult> {
+    return this.updater.topupWithUTXO(options);
   }
 
   // ============================================================================
@@ -490,15 +622,6 @@ export class IdentitiesFacade {
     }
   ): Promise<any> {
     return this.updater.topUpWithWallet(identityId, amount, mnemonic, options);
-  }
-
-  /**
-   * Top up identity with pre-synced account (DEPRECATED)
-   *
-   * @deprecated Use topUpWithWallet() instead
-   */
-  async topUpWithAccount(identityId: string, account: any, amount: number, options?: any): Promise<any> {
-    return this.updater.topUpWithAccount(identityId, account, amount, options);
   }
 
   // ============================================================================
@@ -670,7 +793,7 @@ export class IdentitiesFacade {
     options: {
       gapLimit?: number;
       batchSize?: number;
-      onProgress?: (state: { currentIndex: number; foundCount: number }) => void;
+      onProgress?: (state: { currentIndex: number; foundCount: number; batchNumber: number }) => void;
     } = {}
   ): Promise<
     Array<{
@@ -679,6 +802,8 @@ export class IdentitiesFacade {
       publicKeyHash: string;
       balance?: number;
       revision?: number;
+      /** Full identity JSON from Platform (no need to re-fetch) */
+      identityJson?: any;
     }>
   > {
     // Validate mnemonic
@@ -690,26 +815,39 @@ export class IdentitiesFacade {
     const gapLimit = options.gapLimit ?? 20;
     const batchSize = options.batchSize ?? 10;
     const onProgress = options.onProgress;
+    const network = this.sdk.networkConfig.network;
 
-    // Import required modules
-    const { Wallet } = await import('@dashevo/wallet-lib');
+    // Import required modules - NO wallet-lib dependency!
     const DAPIClient = (await import('@dashevo/dapi-client')).default;
     const wasmSdk = await import('@dashevo/wasm-sdk');
     const initWasm = wasmSdk.default;
     const { IdentityWasm } = wasmSdk;
+    const { wallet: walletFunctions } = await import('../wallet/functions.js');
+    const dashcoreLib = (await import('@dashevo/dashcore-lib')).default;
 
-    // Initialize wasm-sdk for IdentityWasm.fromBuffer() decoding
+    // Initialize wasm-sdk for key derivation and IdentityWasm.fromBuffer() decoding
     await initWasm();
 
-    // Create DAPI client
-    const client = new DAPIClient({ network: this.sdk.networkConfig.network });
+    // Get explicit addresses from env (browser won't have this, but Node.js will)
+    let dapiAddresses: string[] | undefined;
+    if (typeof process !== 'undefined' && process?.env?.DAPI_ADDRESSES) {
+      dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map((a: string) => a.trim());
+      logger.debug(`Using explicit DAPI addresses: ${dapiAddresses.join(', ')}`);
+    }
 
-    // Create offline wallet for key derivation only
-    const wallet = new Wallet({
-      mnemonic,
-      network: this.sdk.networkConfig.network,
-      offlineMode: true,
+    // Create DAPI client with proper configuration
+    const client = new DAPIClient({
+      network,
+      timeout: DAPI_CONFIG.TIMEOUT_MS,
+      retries: DAPI_CONFIG.MAX_RETRIES,
+      baseBanTime: DAPI_CONFIG.BAN_TIME_MS,
+      ...(dapiAddresses && { dapiAddresses }),
     });
+
+    // DIP13: m/9'/coin_type'/5'/0'/0'/identityIndex'/keyIndex'
+    // coin_type: 1 for testnet, 5 for mainnet
+    // keyIndex 0 = MASTER key (used for identity lookup)
+    const coinType = network === 'mainnet' ? 5 : 1;
 
     const foundIdentities: Array<{
       index: number;
@@ -717,31 +855,41 @@ export class IdentitiesFacade {
       publicKeyHash: string;
       balance?: number;
       revision?: number;
+      identityJson?: any;
     }> = [];
 
-    try {
-      // wallet-lib doesn't have TypeScript types, use `as any` to avoid strict checking
-      const account = await wallet.getAccount({
-        index: 0,
-        disableIdentitySync: true,
-      } as any);
+    let consecutiveNotFound = 0;
+    let currentIndex = 0;
+    let batchNumber = 0;
 
-      let consecutiveNotFound = 0;
-      let currentIndex = 0;
-      let batchNumber = 0;
+    // Iterative discovery with gap limit
+    while (consecutiveNotFound < gapLimit) {
+      batchNumber++;
 
-      // Iterative discovery with gap limit
-      while (consecutiveNotFound < gapLimit) {
-        batchNumber++;
+      // Process batch
+      for (let i = 0; i < batchSize && consecutiveNotFound < gapLimit; i++) {
+        const index = currentIndex++;
 
-        // Process batch
-        for (let i = 0; i < batchSize && consecutiveNotFound < gapLimit; i++) {
-          const index = currentIndex++;
+        try {
+          // Build DIP13 identity key derivation path for key 0 (MASTER)
+          // Format: m/9'/coin_type'/5'/0'/0'/identityIndex'/keyIndex'
+          const path = `m/9'/${coinType}'/5'/0'/0'/${index}'/0'`;
 
-          // Derive HD key for this index
-          const { privateKey } = account.identities.getIdentityHDKeyByIndex(index, 0);
-          const publicKey = privateKey.toPublicKey();
-          const publicKeyHashHex = publicKey.hash.toString('hex');
+          // Use WASM SDK wallet function to derive key
+          const childKey = await walletFunctions.deriveKeyFromSeedWithPath(
+            mnemonic,
+            null, // no passphrase
+            path,
+            network
+          );
+
+          // Get public key and compute hash
+          const publicKeyHex = childKey.public_key;
+
+          // Use dashcore-lib to compute public key hash (RIPEMD160(SHA256(pubkey)))
+          const PublicKey = dashcoreLib.PublicKey;
+          const pubKey = new PublicKey(publicKeyHex);
+          const publicKeyHashHex = pubKey.toAddress(network).hashBuffer.toString('hex');
 
           // Query Platform directly via DAPI
           try {
@@ -754,13 +902,17 @@ export class IdentitiesFacade {
               const identityJson = identity.toJSON();
               const identityId = identityJson.id;
 
+              // Store the full identity JSON (no need to re-fetch later)
               foundIdentities.push({
                 index,
                 identityId,
                 publicKeyHash: publicKeyHashHex,
+                balance: identityJson.balance,
+                revision: identityJson.revision,
+                identityJson,
               });
               consecutiveNotFound = 0;
-              logger.debug(`  [${index}] ${identityId}`);
+              logger.debug(`  [${index}] ${identityId} (balance: ${identityJson.balance})`);
             } else {
               consecutiveNotFound++;
             }
@@ -773,39 +925,34 @@ export class IdentitiesFacade {
               consecutiveNotFound++;
             }
           }
-
-          // Check gap limit
-          if (consecutiveNotFound >= gapLimit) {
-            logger.debug(`Gap limit (${gapLimit}) reached at index ${index}`);
-            break;
-          }
+        } catch (error: any) {
+          logger.debug(`Key derivation error for index ${index}: ${error.message}`);
+          consecutiveNotFound++;
         }
 
-        // Progress callback
-        if (onProgress) {
-          try {
-            onProgress({
-              currentIndex,
-              foundCount: foundIdentities.length,
-            });
-          } catch {
-            // Non-fatal callback error
-          }
+        // Check gap limit
+        if (consecutiveNotFound >= gapLimit) {
+          logger.debug(`Gap limit (${gapLimit}) reached at index ${index}`);
+          break;
         }
       }
 
-      logger.info(`Discovery complete: ${foundIdentities.length} identities found`);
-      return foundIdentities;
-    } finally {
-      // Cleanup wallet
-      if (wallet && typeof wallet.disconnect === 'function') {
+      // Progress callback
+      if (onProgress) {
         try {
-          await wallet.disconnect();
+          onProgress({
+            currentIndex,
+            foundCount: foundIdentities.length,
+            batchNumber,
+          });
         } catch {
-          // Non-fatal cleanup error
+          // Non-fatal callback error
         }
       }
     }
+
+    logger.info(`Discovery complete: ${foundIdentities.length} identities found`);
+    return foundIdentities;
   }
 
   /**
@@ -832,7 +979,7 @@ export class IdentitiesFacade {
     options?: {
       gapLimit?: number;
       batchSize?: number;
-      onProgress?: (state: { currentIndex: number; foundCount: number }) => void;
+      onProgress?: (state: { currentIndex: number; foundCount: number; batchNumber: number }) => void;
     }
   ): Promise<number> {
     const identities = await this.getIdentityIds(mnemonic, options);

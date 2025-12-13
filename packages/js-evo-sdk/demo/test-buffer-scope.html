@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buffer Scope Diagnosis</title>
+    <style>
+        body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
+        .test { background: #2a2a2a; padding: 15px; margin: 15px 0; border-left: 4px solid #00ff00; }
+        .pass { color: #00ff00; }
+        .fail { color: #ff3333; }
+        .info { color: #00ccff; }
+    </style>
+</head>
+<body>
+    <h1>Buffer Scope Diagnosis</h1>
+
+    <div class="test">
+        <h2>Test 1: Before SDK Import</h2>
+        <div id="test1"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 2: After SDK Import (at module level)</h2>
+        <div id="test2"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 3: Within Module Scope</h2>
+        <div id="test3"></div>
+    </div>
+
+    <div class="test">
+        <h2>Test 4: Check window.Buffer</h2>
+        <div id="test4"></div>
+    </div>
+
+    <script>
+        // Test 1: Check Buffer before importing SDK
+        const test1 = document.getElementById('test1');
+        if (typeof Buffer === 'undefined') {
+            test1.innerHTML = '<span class="fail">✗ Buffer is undefined BEFORE SDK import</span>';
+        } else {
+            test1.innerHTML = '<span class="pass">✓ Buffer exists BEFORE SDK import</span>';
+        }
+
+        // Test 4: Check window.Buffer before import
+        const test4 = document.getElementById('test4');
+        test4.innerHTML = `window.Buffer: ${typeof window.Buffer}<br>`;
+    </script>
+
+    <script type="module">
+        // Test 2: Within module scope after import
+        const test2 = document.getElementById('test2');
+
+        try {
+            const sdkModule = await import('../dist/sdk.js');
+            console.log('SDK imported, keys:', Object.keys(sdkModule).slice(0, 5));
+
+            // Now check if Buffer is available in module scope
+            if (typeof Buffer === 'undefined') {
+                test2.innerHTML = '<span class="fail">✗ Buffer is undefined in module scope after import</span>';
+            } else {
+                test2.innerHTML = `<span class="pass">✓ Buffer IS available in module scope after import</span><br><span class="info">Buffer type: ${typeof Buffer}, Buffer.from: ${typeof Buffer.from}</span>`;
+
+                // Try to use it
+                try {
+                    const buf = Buffer.from('test');
+                    test2.innerHTML += `<br><span class="pass">✓ Buffer.from() works! Created buffer of length ${buf.length}</span>`;
+                } catch (e) {
+                    test2.innerHTML += `<br><span class="fail">✗ Buffer.from() failed: ${e.message}</span>`;
+                }
+            }
+        } catch (error) {
+            test2.innerHTML = `<span class="fail">✗ Failed to import SDK: ${error.message}</span>`;
+        }
+
+        // Test 3: Direct test in module scope
+        const test3 = document.getElementById('test3');
+        try {
+            const buf1 = Buffer.from('deadbeef', 'hex');
+            const buf2 = Buffer.from('cafe', 'hex');
+            const combined = Buffer.concat([buf1, buf2]);
+            test3.innerHTML = `<span class="pass">✓ All Buffer operations work in module scope</span><br><span class="info">Combined length: ${combined.length}</span>`;
+        } catch (error) {
+            test3.innerHTML = `<span class="fail">✗ Buffer operations failed: ${error.message}</span>`;
+        }
+
+        // Test 4 continued: Check window.Buffer after import
+        test4.innerHTML += `window.Buffer after import: ${typeof window.Buffer}<br>`;
+        if (typeof window.Buffer === 'undefined') {
+            test4.innerHTML += '<span class="fail">✗ window.Buffer is NOT globally exposed (ES module scope isolation)</span>';
+        } else {
+            test4.innerHTML += '<span class="pass">✓ window.Buffer is globally exposed</span>';
+        }
+    </script>
+</body>
+</html>

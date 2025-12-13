@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet-lib Discovery Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .status-box {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            color: #333;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .output div {
+            padding: 2px 0;
+        }
+
+        .output div:nth-child(n) {
+            color: #00ff00;
+        }
+
+        .output div:contains("✅") {
+            color: #4ade80;
+        }
+
+        .output div:contains("❌") {
+            color: #ff4444;
+        }
+
+        .output div:contains("⚠️") {
+            color: #ffaa00;
+        }
+
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .info strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(102, 126, 234, 0.2);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success .status-box {
+            border-left-color: #4ade80;
+            background: #f0fdf4;
+            color: #166534;
+            animation: none;
+        }
+
+        .error .status-box {
+            border-left-color: #ff4444;
+            background: #fef2f2;
+            color: #991b1b;
+            animation: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔎 Wallet-lib Discovery Test</h1>
+            <p>Minimal standalone test for browser wallet integration</p>
+        </div>
+
+        <div class="content">
+            <div class="status-box" id="status">
+                <span class="loader"></span>
+                Initializing test...
+            </div>
+
+            <div class="output" id="output"></div>
+
+            <div class="info">
+                <strong>What this test does:</strong>
+                <div>
+                    1. Creates a wallet from test mnemonic<br/>
+                    2. Syncs with testnet DAPI<br/>
+                    3. Discovers identities using EvoSDK<br/>
+                    4. Reports results
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the bundled test script -->
+    <script src="./dist/test-discovery-bundle.js"></script>
+
+    <script>
+        // Fallback if bundle fails to load
+        window.addEventListener('error', (event) => {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = '❌ Error: ' + event.message;
+            console.error('Window error:', event);
+        });
+
+        // Check if bundle loaded
+        setTimeout(() => {
+            if (!window.testBundleLoaded && document.querySelectorAll('#output div').length === 0) {
+                document.getElementById('status').textContent = '❌ Failed to load test bundle. Make sure dist/test-discovery-bundle.js exists.';
+                document.querySelector('.container').classList.add('error');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

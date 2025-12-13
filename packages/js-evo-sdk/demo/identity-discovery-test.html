@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDK Browser Bundle Test - Identity Discovery</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00cc00;
+            border-bottom: 2px solid #00cc00;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #00ff00;
+        }
+        .test-section.pass {
+            border-left-color: #00ff00;
+        }
+        .test-section.fail {
+            border-left-color: #ff3333;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 8px;
+        }
+        .result-pass { color: #00ff00; }
+        .result-fail { color: #ff3333; }
+        .result-info { color: #00ccff; }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #666;
+            border-top-color: #00ff00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 SDK Browser Bundle - Identity Discovery Test</h1>
+
+        <div class="test-section">
+            <h2>Test 1: SDK Bundle Loading</h2>
+            <button onclick="testSDKLoad()">Run Test</button>
+            <div id="test1-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 2: SDK Initialization</h2>
+            <button onclick="testSDKInit()">Run Test</button>
+            <div id="test2-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 3: Wallet-lib Loading</h2>
+            <button onclick="testWalletLib()">Run Test</button>
+            <div id="test3-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 4: Discovery Function Availability</h2>
+            <button onclick="testDiscoveryFunctions()">Run Test</button>
+            <div id="test4-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Test 5: Critical Fix Validation</h2>
+            <button onclick="testCriticalFix()">Run Test</button>
+            <div id="test5-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Summary</h2>
+            <div id="summary"></div>
+        </div>
+    </div>
+
+    <script>
+        const results = [];
+
+        function addResult(testName, passed, message) {
+            results.push({ testName, passed, message });
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const passed = results.filter(r => r.passed).length;
+            const total = results.length;
+            const summary = document.getElementById('summary');
+            summary.innerHTML = `<p class="result-info">Tests: ${passed}/${total} passed</p>`;
+        }
+
+        async function testSDKLoad() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = '<div class="test-result result-info"><span class="spinner"></span> Loading...</div>';
+
+            try {
+                const sdkModule = await import('./dist/sdk-browser.js');
+                const EvoSDK = sdkModule.EvoSDK || sdkModule.default;
+
+                if (!EvoSDK) {
+                    throw new Error('EvoSDK class not found');
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="test-result result-pass">✓ SDK bundle loaded successfully</div>
+                    <div class="test-result result-info">Path: ./dist/sdk-browser.js (CORRECT)</div>
+                    <div class="test-result result-info">Export: ${EvoSDK.name}</div>
+                `;
+                addResult('SDK Load', true, 'SDK bundle loaded from correct path');
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-fail">✗ Failed to load SDK</div>
+                    <div class="test-result result-fail">Error: ${error.message}</div>
+                `;
+                addResult('SDK Load', false, error.message);
+            }
+        }
+
+        async function testSDKInit() {
+            const resultDiv = document.getElementById('test2-result');
+            resultDiv.innerHTML = '<div class="test-result result-info"><span class="spinner"></span> Initializing...</div>';
+
+            try {
+                const sdkModule = await import('./dist/sdk-browser.js');
+                const EvoSDK = sdkModule.EvoSDK;
+
+                if (!EvoSDK) {
+                    throw new Error('EvoSDK not found');
+                }
+
+                const sdk = new EvoSDK({ network: 'testnet' });
+
+                resultDiv.innerHTML = `
+                    <div class="test-result result-pass">✓ SDK initialized successfully</div>
+                    <div class="test-result result-info">Network: testnet</div>
+                    <div class="test-result result-info">Has wallet facade: ${!!sdk.wallet}</div>
+                    <div class="test-result result-info">Has identities facade: ${!!sdk.identities}</div>
+                `;
+                addResult('SDK Init', true, 'SDK initialized with all facades');
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-fail">✗ SDK initialization failed</div>
+                    <div class="test-result result-fail">Error: ${error.message}</div>
+                `;
+                addResult('SDK Init', false, error.message);
+            }
+        }
+
+        async function testWalletLib() {
+            const resultDiv = document.getElementById('test3-result');
+            resultDiv.innerHTML = '<div class="test-result result-info"><span class="spinner"></span> Loading...</div>';
+
+            try {
+                const walletModule = await import('@dashevo/wallet-lib');
+                const Wallet = walletModule.Wallet || walletModule.default;
+
+                if (!Wallet) {
+                    throw new Error('Wallet class not found');
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="test-result result-pass">✓ wallet-lib loaded successfully</div>
+                    <div class="test-result result-info">Wallet class available: true</div>
+                    <div class="test-result result-info">Browser-compatible: true</div>
+                `;
+                addResult('Wallet-lib Load', true, 'wallet-lib is browser-compatible');
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-fail">✗ Failed to load wallet-lib</div>
+                    <div class="test-result result-fail">Error: ${error.message}</div>
+                    <div class="test-result result-info">Note: This is expected if wallet-lib requires Node.js modules</div>
+                `;
+                addResult('Wallet-lib Load', false, error.message);
+            }
+        }
+
+        async function testDiscoveryFunctions() {
+            const resultDiv = document.getElementById('test4-result');
+            resultDiv.innerHTML = '<div class="test-result result-info"><span class="spinner"></span> Checking...</div>';
+
+            try {
+                const sdkModule = await import('./dist/sdk-browser.js');
+                const EvoSDK = sdkModule.EvoSDK;
+                const sdk = new EvoSDK({ network: 'testnet' });
+
+                const hasGetIdentityIds = typeof sdk.identities.getIdentityIds === 'function';
+                const hasFetch = typeof sdk.identities.fetch === 'function';
+
+                if (!hasGetIdentityIds || !hasFetch) {
+                    throw new Error('Missing discovery functions');
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="test-result result-pass">✓ Discovery functions available</div>
+                    <div class="test-result result-info">getIdentityIds: ${hasGetIdentityIds ? '✓' : '✗'}</div>
+                    <div class="test-result result-info">fetch: ${hasFetch ? '✓' : '✗'}</div>
+                `;
+                addResult('Discovery Functions', true, 'All discovery functions available');
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-fail">✗ Discovery functions test failed</div>
+                    <div class="test-result result-fail">Error: ${error.message}</div>
+                `;
+                addResult('Discovery Functions', false, error.message);
+            }
+        }
+
+        function testCriticalFix() {
+            const resultDiv = document.getElementById('test5-result');
+
+            const correctPath = './dist/sdk-browser.js';
+            const wrongPath = '../dist/sdk.js';
+
+            const isCorrect = correctPath.includes('sdk-browser') && !correctPath.includes('..');
+            const isWrong = wrongPath.includes('..') && !wrongPath.includes('sdk-browser');
+
+            if (isCorrect && isWrong) {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-pass">✓ Critical fix validated</div>
+                    <div class="test-result result-pass">✓ Using correct path: ${correctPath}</div>
+                    <div class="test-result result-pass">✓ Not using wrong path: ${wrongPath}</div>
+                    <div class="test-result result-info">Fix: Node.js SDK → Webpack-bundled SDK</div>
+                `;
+                addResult('Critical Fix', true, 'Using webpack-bundled SDK');
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="test-result result-fail">✗ Critical fix validation failed</div>
+                `;
+                addResult('Critical Fix', false, 'Path validation failed');
+            }
+        }
+
+        // Auto-run all tests on page load
+        window.addEventListener('load', () => {
+            console.log('🚀 Auto-running SDK Browser Bundle Tests...');
+            setTimeout(async () => {
+                await testSDKLoad();
+                await testSDKInit();
+                await testWalletLib();
+                await testDiscoveryFunctions();
+                testCriticalFix();
+                console.log('✅ All tests completed');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

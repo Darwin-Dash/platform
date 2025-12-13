@@ -2,25 +2,27 @@
  * IdentityCreator Facade - Create new identities
  *
  * Provides operations for:
- * - Creating identities with wallet coordination (new architecture)
- * - Creating identities with pre-synced accounts (deprecated)
+ * - Creating identities with wallet coordination (mnemonic-based)
  *
  * Architecture: Uses modular coordinators (WalletCoordinator, TransactionBuilder, AssetLockProofManager)
- * Completely independent of wallet-lib Wallet class.
+ * Completely independent of wallet-lib. Uses WASM SDK for HD derivation.
  */
 
 import type { EvoSDK } from '../../sdk.js';
-import { WalletCoordinator } from '../coordination/wallet-coordinator.js';
+import { WalletCoordinator, type DerivedAddressInfo } from '../coordination/wallet-coordinator.js';
 import { TransactionBuilder } from '../coordination/transaction-builder.js';
 import { IdentityKeyGenerator } from '../coordination/identity-key-generator.js';
 import { AssetLockProofManager } from '../coordination/asset-lock-proof-manager.js';
-import { TransactionOptionsBuilder } from '../utils/transaction-options-builder.js';
 import { IdentityDiscovery } from './identity-discovery.js';
+import { UTXOFinder } from '../coordination/utxo-finder.js';
+import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
+import DAPIClient from '@dashevo/dapi-client';
 import {
   IDENTITY_CONFIG,
   BLOCKCHAIN_CONFIG,
   WALLET_CONFIG,
   WORKER_CONFIG,
+  DAPI_CONFIG,
 } from '../config/operation-config.js';
 import { createLogger } from '../utils/identity-logger.js';
 import {
@@ -35,6 +37,9 @@ import type { OperationEvent } from '../contracts/operation-events.js';
 import { OperationEventFactory } from '../contracts/operation-events.js';
 
 const logger = createLogger('IdentityCreator');
+
+// Declare process for Node.js environment (TypeScript compatibility)
+declare const process: { env: { [key: string]: string | undefined } } | undefined;
 
 /**
  * Identity creation result
@@ -447,99 +452,360 @@ export class IdentityCreator {
   }
 
   /**
-   * Create identity with pre-synced account (DEPRECATED)
+   * Create a new identity with a pre-found UTXO
    *
-   * @deprecated Use createWithWallet() instead
-   * This method is maintained for backward compatibility but uses the old pattern.
-   * Consider migrating to createWithWallet() for better architecture.
+   * Unlike createWithWallet which scans the blockchain for UTXOs, this method
+   * uses a UTXO that was already found via findSpendableUTXO(). This provides:
+   * - Faster execution (no redundant blockchain scan)
+   * - Separation between UTXO finding and identity creation
+   * - Ability to show user the balance before committing
    *
-   * @param account Pre-synced wallet-lib account
-   * @param amount Amount in duffs
-   * @param options Advanced options
+   * @param options Creation options with pre-found UTXO
    * @returns Identity creation result
+   * @throws ValidationError if inputs invalid
+   * @throws TransactionCreationError if transaction creation fails
+   * @throws TransactionBroadcastError if broadcast fails
+   * @throws ConfirmationTimeoutError if confirmation times out
+   * @throws PlatformSubmissionError if identity creation fails
+   *
+   * @example
+   * ```typescript
+   * // Step 1: Find UTXO
+   * const utxoResult = await sdk.identities.findSpendableUTXO({
+   *   mnemonic,
+   *   startHeight: 1000000,
+   *   minAmount: 200000,
+   * });
+   *
+   * // Step 2: Create identity with the found UTXO
+   * const identity = await creator.createWithUTXO({
+   *   mnemonic,
+   *   utxo: utxoResult.utxo,
+   *   amount: 200000,
+   *   derivedAddresses: utxoResult.derivedAddresses, // Reuse to avoid re-deriving
+   *   onProgress: (event) => console.log(event.message)
+   * });
+   * ```
    */
-  async createWithAccount(
-    account: any,
-    amount: number,
-    options: {
-      identityIndex?: number;
-      useSourceAsChangeAddress?: boolean;
-      onProgress?: (event: OperationEvent) => void;
-    } = {}
-  ): Promise<IdentityCreationResult> {
-    logger.warn(
-      'createWithAccount() is deprecated - use createWithWallet() instead for cleaner architecture'
-    );
+  async createWithUTXO(options: {
+    mnemonic: string;
+    utxo: UTXO;
+    amount: number;
+    identityIndex?: number;
+    skipDiscovery?: boolean;
+    useSourceAsChangeAddress?: boolean;
+    derivedAddresses?: {
+      external: DerivedAddressInfo[];
+      internal: DerivedAddressInfo[];
+    };
+    onProgress?: (event: OperationEvent) => void;
+  }): Promise<IdentityCreationResult> {
+    const {
+      mnemonic,
+      utxo,
+      amount,
+      identityIndex: explicitIndex,
+      skipDiscovery = false,
+      useSourceAsChangeAddress = true,
+      derivedAddresses: providedAddresses,
+      onProgress,
+    } = options;
 
-    if (!account) {
-      throw new ValidationError(
-        'account_validation',
-        'Account is required',
-        'account',
-        false
-      );
-    }
+    // Validate mnemonic and amount
+    this.validateMnemonicAndAmount(mnemonic, amount);
 
-    if (typeof amount !== 'number' || isNaN(amount) ||
-        amount < IDENTITY_CONFIG.CREATE_MIN_AMOUNT || amount > IDENTITY_CONFIG.MAX_AMOUNT) {
+    // Validate UTXO has sufficient balance
+    if (utxo.satoshis < amount) {
       throw new ValidationError(
-        'amount_validation',
-        `Invalid amount: must be between ${IDENTITY_CONFIG.CREATE_MIN_AMOUNT} and ${IDENTITY_CONFIG.MAX_AMOUNT} duffs`,
-        'amount',
+        'utxo_validation',
+        `UTXO balance (${utxo.satoshis} duffs) is less than requested amount (${amount} duffs)`,
+        'utxo',
         false,
-        { amount }
+        { utxoBalance: utxo.satoshis, requestedAmount: amount }
       );
     }
 
     try {
-      const onProgress = options.onProgress;
+      logger.info(`Starting identity creation with pre-found UTXO (${amount} duffs)`);
+      logger.debug(`   UTXO: ${utxo.satoshis} duffs at ${utxo.address} (txid: ${utxo.txId}:${utxo.vout})`);
 
-      logger.info(`Creating identity with pre-synced account (${amount} duffs)`);
+      // Emit start event
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart(
+            'wallet_setup',
+            'Setting up wallet with provided UTXO...'
+          )
+        );
+      }
 
-      // Build transaction using account's UTXOs
-      const txOptionsBuilder = new TransactionOptionsBuilder();
-      const { transactionOptions, utxos } = await txOptionsBuilder.buildTransactionOptions({
-        account,
-        amount,
-        useSourceAsChangeAddress: options.useSourceAsChangeAddress !== false,
-        validateUtxoFreshness: false,
-      });
+      // Step 1: Use provided addresses or derive fresh ones
+      let derivedAddresses: {
+        external: DerivedAddressInfo[];
+        internal: DerivedAddressInfo[];
+      };
 
-      // Create and broadcast transaction
+      if (providedAddresses && providedAddresses.external.length > 0) {
+        derivedAddresses = providedAddresses;
+        logger.debug(`Using ${derivedAddresses.external.length} provided addresses`);
+      } else {
+        // Derive fresh addresses using UTXOFinder's logic
+        logger.debug('Deriving fresh addresses...');
+        const utxoFinder = new UTXOFinder(this.sdk);
+        const result = await utxoFinder.findAllUTXOs({
+          mnemonic,
+          startHeight: 1,
+          toHeight: 1, // Minimal scan - we just need addresses
+          addressCount: 20,
+        });
+        derivedAddresses = result.derivedAddresses;
+      }
+
+      // Step 2: Find the DerivedAddressInfo that matches the UTXO address
+      const allAddresses = [...derivedAddresses.external, ...derivedAddresses.internal];
+      const sourceAddress = allAddresses.find(a => a.address === utxo.address);
+
+      if (!sourceAddress) {
+        throw new ValidationError(
+          'utxo_validation',
+          `UTXO address ${utxo.address} not found in derived addresses. The UTXO may not belong to this wallet.`,
+          'utxo',
+          false,
+          { utxoAddress: utxo.address }
+        );
+      }
+
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseComplete(
+            'wallet_setup',
+            `Using UTXO at ${sourceAddress.address}`
+          )
+        );
+      }
+
+      // Step 3: Determine identity index
+      let identityIndex: number;
+
+      if (explicitIndex !== undefined) {
+        identityIndex = explicitIndex;
+        logger.info(`Using explicit identity index: ${identityIndex}`);
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              `Using explicit index: ${identityIndex}`
+            )
+          );
+        }
+      } else if (skipDiscovery) {
+        identityIndex = 0;
+        logger.info('Skipping identity discovery - using index 0');
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              'Skipped (using index 0)'
+            )
+          );
+        }
+      } else {
+        // Full discovery - scan for existing identities
+        logger.debug('Discovering existing identities...');
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseStart('identity_discovery', 'Scanning for existing identities...')
+          );
+        }
+
+        const { IdentitiesFacade } = await import('../facade.js');
+        const facade = new IdentitiesFacade(this.sdk);
+        const discoveredIdentities = await facade.getIdentityIds(mnemonic, {
+          gapLimit: 20,
+          batchSize: 10,
+        });
+
+        if (onProgress) {
+          onProgress(
+            OperationEventFactory.phaseComplete(
+              'identity_discovery',
+              `${discoveredIdentities.length} identities found`
+            )
+          );
+        }
+
+        identityIndex = discoveredIdentities.length > 0
+          ? Math.max(...discoveredIdentities.map(i => i.index)) + 1
+          : 0;
+      }
+
+      logger.info(`Next available identity index: ${identityIndex}`);
+
+      // Step 4: Create asset lock transaction
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart('transaction_creation', 'Building transaction...')
+        );
+      }
+
       const txBuilder = new TransactionBuilder();
+      const changeAddress = useSourceAsChangeAddress
+        ? sourceAddress.address
+        : derivedAddresses.internal[0]?.address || sourceAddress.address;
+
       const txResult = await txBuilder.createAssetLockTransaction({
         amount,
-        account, // Still need account for key derivation in old pattern
-        changeAddress: transactionOptions.change,
-        utxos: utxos as any,  // UTXO type compatibility across modules
+        utxo,
+        sourceAddress,
+        changeAddress,
         network: this.sdk.networkConfig.network,
       });
 
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseComplete(
+            'transaction_creation',
+            'Transaction created and signed'
+          )
+        );
+      }
+
+      // Step 5: Setup REALTIME monitoring for transaction confirmation
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart(
+            'instantlock_wait',
+            'Starting InstantSend/ChainLock monitoring...'
+          )
+        );
+      }
+
+      // Create DAPI client for monitoring
+      let dapiAddresses: string[] | undefined;
+      if (typeof process !== 'undefined' && process?.env?.DAPI_ADDRESSES) {
+        dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map((a: string) => a.trim());
+      }
+
+      const dapiClient = new DAPIClient({
+        network: this.sdk.networkConfig.network as 'mainnet' | 'testnet' | 'regtest',
+        timeout: DAPI_CONFIG.TIMEOUT_MS,
+        retries: DAPI_CONFIG.MAX_RETRIES,
+        baseBanTime: DAPI_CONFIG.BAN_TIME_MS,
+        ...(dapiAddresses && { dapiAddresses }),
+      });
+
+      // Create TransactionFinder in REALTIME mode for monitoring only (no historic scan)
+      const monitor = new TransactionFinder({
+        mode: FinderMode.REALTIME,
+        network: this.sdk.networkConfig.network as 'mainnet' | 'testnet' | 'regtest',
+        addresses: [sourceAddress.address],
+        dapiClient: dapiClient as any,
+        logLevel: DAPI_CONFIG.LOG_LEVEL as any,
+        autoPruneOnConfirmation: true,
+      });
+
+      logger.info('🔌 Starting IS/CL monitoring BEFORE transaction broadcast...');
+      await monitor.monitorAddresses([sourceAddress.address], {
+        onInstantLock: (lock) => {
+          logger.info(`🔒 InstantLock received for ${lock.txid} (latency: ${lock.latency}ms)`);
+        },
+        onChainLock: (cl) => {
+          logger.info(`⛓️ ChainLock received at height ${cl.blockHeight}`);
+        },
+        onTransaction: (tx) => {
+          logger.debug(`📨 Transaction detected: ${tx.txid}`);
+        },
+      });
+
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseProgress(
+            'instantlock_wait',
+            50,
+            'IS/CL monitoring active, ready for broadcast'
+          )
+        );
+      }
+
+      // Step 6: Pre-register txid BEFORE broadcast
+      const expectedTxid = txResult.transactionId;
+      logger.info(`📝 Pre-registering txid for monitoring: ${expectedTxid}`);
+      monitor.preRegisterTransaction(expectedTxid);
+
+      // Step 7: Broadcast transaction
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart(
+            'transaction_broadcast',
+            'Broadcasting transaction to network...'
+          )
+        );
+      }
+
       const transactionIdString = await txBuilder.broadcastTransaction(
         txResult.transactionHex,
-        account
+        dapiClient
       );
 
       logger.info(`Transaction broadcasted: ${transactionIdString}`);
 
-      // Use provided identity index or default to 0
-      const identityIndex = options.identityIndex ?? 0;
-      logger.debug(`Using identity index: ${identityIndex}`);
+      if (transactionIdString !== expectedTxid) {
+        logger.warn(`⚠️ Broadcast txid ${transactionIdString} differs from expected ${expectedTxid}`);
+      }
 
-      // Generate keys
-      const keyGenerator = new IdentityKeyGenerator();
-      const identityKeys = await keyGenerator.generateFromWallet(account, identityIndex);
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseComplete(
+            'transaction_broadcast',
+            `Transaction ID: ${transactionIdString}`
+          )
+        );
+      }
 
-      // Wait for confirmation
+      // Step 8: Wait for transaction confirmation
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart(
+            'confirmation_wait',
+            'Waiting for InstantLock or ChainLock...'
+          )
+        );
+      }
+
       const proofManager = new AssetLockProofManager(this.sdk);
       const transactionData = await proofManager.waitForConfirmation(
-        undefined as any, // Simplified - would need monitor
+        monitor,
         transactionIdString,
         txResult.transactionHex,
-        [transactionOptions.change]
+        [sourceAddress.address]
       );
 
-      // Submit to Platform
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseComplete(
+            'confirmation_wait',
+            `Confirmed via ${transactionData.proofType}`
+          )
+        );
+      }
+
+      // Step 9: Generate identity keys
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseStart('identity_creation', 'Generating identity keys...')
+        );
+      }
+
+      const keyGenerator = new IdentityKeyGenerator();
+      const identityKeys = await keyGenerator.generateFromMnemonic(
+        mnemonic,
+        identityIndex,
+        this.sdk.networkConfig.network as 'testnet' | 'mainnet'
+      );
+
+      // Step 10: Submit to Platform via worker
+      logger.info('Submitting identity creation to Platform...');
+
       const { runWasmOperation } = await import('../utils/wasm-worker-runner.js');
 
       const result = await runWasmOperation(
@@ -555,6 +821,20 @@ export class IdentityCreator {
         }
       );
 
+      // Stop the monitor
+      monitor.stop();
+
+      if (onProgress) {
+        onProgress(
+          OperationEventFactory.phaseComplete(
+            'finalization',
+            'Identity created successfully'
+          )
+        );
+      }
+
+      logger.info(`Identity created successfully: ${result.identityId} at index ${identityIndex}`);
+
       return {
         status: 'success',
         identityId: result.identityId,
@@ -562,17 +842,35 @@ export class IdentityCreator {
         publicKeysCount: identityKeys.length,
         transactionHash: transactionIdString,
         identityIndex,
-        changeRoutedToSource: options.useSourceAsChangeAddress !== false,
-        message: 'Identity created with pre-synced account (deprecated method)',
+        sourceAddress: sourceAddress.address,
+        changeRoutedToSource: useSourceAsChangeAddress,
+        message: 'Identity created successfully with pre-found UTXO',
       };
     } catch (error) {
-      logger.error('Identity creation with account failed:', error);
-      throw new PlatformSubmissionError(
-        'identity_create',
-        `Identity creation failed: ${(error as Error).message}`,
-        undefined,
-        false
-      );
+      logger.error('Identity creation with UTXO failed:', error);
+
+      // Re-throw domain errors as-is
+      if (error instanceof ValidationError ||
+          error instanceof WalletSetupError ||
+          error instanceof TransactionCreationError ||
+          error instanceof TransactionBroadcastError ||
+          error instanceof ConfirmationTimeoutError ||
+          error instanceof PlatformSubmissionError) {
+        throw error;
+      }
+
+      // Wrap other errors
+      if (error instanceof Error) {
+        throw new PlatformSubmissionError(
+          'identity_create',
+          `Identity creation with UTXO failed: ${error.message}`,
+          undefined,
+          false,
+          { originalError: error.message }
+        );
+      }
+
+      throw new Error(`Identity creation with UTXO failed: ${String(error)}`);
     }
   }
 
@@ -619,6 +917,43 @@ export class IdentityCreator {
         'startHeight',
         false,
         { startHeight }
+      );
+    }
+  }
+
+  /**
+   * Validate mnemonic and amount only (no startHeight)
+   * Used by createWithUTXO which doesn't require startHeight
+   */
+  private validateMnemonicAndAmount(mnemonic: string, amount: number): void {
+    if (!mnemonic) {
+      throw new ValidationError(
+        'mnemonic_validation',
+        'Mnemonic is required',
+        'mnemonic',
+        false
+      );
+    }
+
+    const mnemonicWords = mnemonic.trim().split(/\s+/);
+    if (mnemonicWords.length !== 12) {
+      throw new ValidationError(
+        'mnemonic_validation',
+        `Invalid mnemonic: expected 12 words, got ${mnemonicWords.length}`,
+        'mnemonic',
+        false,
+        { wordCount: mnemonicWords.length }
+      );
+    }
+
+    if (typeof amount !== 'number' || isNaN(amount) ||
+        amount < IDENTITY_CONFIG.CREATE_MIN_AMOUNT || amount > IDENTITY_CONFIG.MAX_AMOUNT) {
+      throw new ValidationError(
+        'amount_validation',
+        `Invalid amount: must be between ${IDENTITY_CONFIG.CREATE_MIN_AMOUNT} and ${IDENTITY_CONFIG.MAX_AMOUNT}`,
+        'amount',
+        false,
+        { amount }
       );
     }
   }
