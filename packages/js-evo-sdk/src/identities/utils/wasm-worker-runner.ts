@@ -233,6 +233,86 @@ async function runWebWorker<T = any>(
 }
 
 /**
+ * Run batch WASM operations directly in main thread (browser environment)
+ *
+ * Web Workers can't resolve bare module imports like '@dashevo/wasm-sdk/compressed',
+ * so we run operations directly in main thread with sequential processing.
+ *
+ * This is safe from mutex locks because:
+ * - Single SDK instance (created once, reused for all operations)
+ * - Sequential for loop with await (one operation at a time)
+ * - No parallel WASM access
+ */
+async function runBatchWebWorker<T = any>(
+  operation: WasmOperationType,
+  paramsArray: WasmOperationParams[],
+  options: WasmWorkerOptions
+): Promise<T[]> {
+  // Browser: Run WASM operations directly in main thread (sequential)
+  // Web Workers can't resolve bare module imports like '@dashevo/wasm-sdk/compressed'
+
+  const network = options.network || 'testnet';
+  const logs = options.logs;
+
+  if (typeof window !== 'undefined' && (window as any).LOG_LEVEL === 'debug') {
+    console.log(`[Browser] Running ${paramsArray.length} ${operation} operations in main thread`);
+  }
+
+  // Dynamic import the SDK (webpack-bundled, resolves all imports)
+  const { EvoSDK } = await import('../../sdk.js');
+
+  // Create ONE SDK instance for all operations (prevents mutex issues)
+  const sdkOptions: any = { network, trusted: true };
+  if (logs) sdkOptions.logs = logs;
+  const sdk = new EvoSDK(sdkOptions);
+
+  try {
+    // Get connected WASM SDK
+    const wasmSdk = await sdk.getWasmSdkConnected();
+
+    // Process operations SEQUENTIALLY (one at a time - no mutex issues)
+    const results: T[] = [];
+    for (let i = 0; i < paramsArray.length; i++) {
+      const params = paramsArray[i];
+
+      if (operation === 'identity-discover') {
+        // Identity discovery by public key hash
+        const { publicKeyHashHex } = params;
+
+        try {
+          // Call wasm-sdk's getIdentityByPublicKeyHash method (takes hex string)
+          const identity = await wasmSdk.getIdentityByPublicKeyHash(publicKeyHashHex);
+
+          // Convert to JSON to extract identity data
+          const identityJson = await identity.toJSON();
+
+          results.push({
+            found: true,
+            identityId: identityJson.id,
+            balance: identityJson.balance,
+            revision: identityJson.revision,
+          } as T);
+        } catch (error: any) {
+          // NOT_FOUND errors are expected during discovery
+          if (error?.message?.includes('not found')) {
+            results.push({ found: false } as T);
+          } else {
+            throw error; // Re-throw unexpected errors
+          }
+        }
+      } else {
+        throw new Error(`Unsupported batch operation in browser: ${operation}`);
+      }
+    }
+
+    return results;
+  } finally {
+    // Cleanup WASM resources
+    await sdk.resetWasmSdk();
+  }
+}
+
+/**
  * Run a WASM SDK operation in an isolated worker process (Node.js) or Web Worker (browser)
  *
  * @param operation - Operation type to run
@@ -276,10 +356,11 @@ export async function runBatchWasmOperation<T = any>(
   }
 
   if (!isNodeEnvironment()) {
-    throw new Error('Batch WASM operations are not supported in browser environment');
+    // Browser: Use Web Worker for batch operations
+    return runBatchWebWorker<T>(operation, paramsArray, options);
   }
 
-  // Use dynamic import for Node.js modules
+  // Node.js: Use dynamic import for Node.js modules
   // @ts-ignore - Node.js built-in module
   const { createRequire } = await import('module');
   // @ts-ignore - import.meta.url is valid in ES modules
