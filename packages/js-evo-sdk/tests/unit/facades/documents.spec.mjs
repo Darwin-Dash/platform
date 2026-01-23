@@ -188,4 +188,60 @@ describe('DocumentsFacade', () => {
       expect(wasmSdk.documentSetPrice).to.be.calledOnceWithExactly(options);
     });
   });
+
+  describe('Error Handling', () => {
+    it('query() wraps errors with context', async function () {
+      const originalError = new Error('Connection timeout');
+      wasmSdk.getDocuments.rejects(originalError);
+
+      const query = {
+        dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+        documentTypeName: 'note',
+      };
+
+      try {
+        await client.documents.query(query);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message).to.include('Failed to query documents');
+        expect(error.message).to.include('Connection timeout');
+        expect(error.cause).to.equal(originalError);
+      }
+    });
+
+    it('get() wraps errors with document ID context', async function () {
+      const originalError = new Error('Document not found');
+      wasmSdk.getDocument.rejects(originalError);
+
+      try {
+        await client.documents.get('contractId', 'type', 'docId123');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message).to.include('Failed to fetch document');
+        expect(error.message).to.include('docId123');
+        expect(error.message).to.include('Document not found');
+        expect(error.cause).to.equal(originalError);
+      }
+    });
+
+    it('create() wraps errors with helpful context', async function () {
+      const originalError = new Error('Insufficient balance');
+      wasmSdk.documentCreate.rejects(originalError);
+
+      const options = {
+        document,
+        identityKey,
+        signer,
+      };
+
+      try {
+        await client.documents.create(options);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error.message).to.include('Failed to create document');
+        expect(error.message).to.include('Insufficient balance');
+        expect(error.cause).to.equal(originalError);
+      }
+    });
+  });
 });
