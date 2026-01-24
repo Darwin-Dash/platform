@@ -1,0 +1,7 @@
+# Generated files
+coverage/
+*.log
+
+# IDE
+.idea/
+.vscode/

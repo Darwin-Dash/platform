@@ -1,0 +1,88 @@
+{
+  "name": "@dashevo/transaction-finder",
+  "version": "1.0.0",
+  "description": "Unified transaction finding library for Dash Platform - supports historic blockchain scanning, real-time InstantSend/ChainLock monitoring, and hybrid operation",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:unit": "vitest run tests/unit/",
+    "test:integration": "vitest run tests/integration/ --testTimeout=60000",
+    "test:realtime": "vitest run tests/integration/testnet-realtime.spec.ts --testTimeout=360000",
+    "test:realtime:auto": "vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=360000",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "typecheck": "tsc --noEmit",
+    "prepare": "cd ../.. && husky packages/transaction-finder/.husky || true",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "dash",
+    "utxo",
+    "transaction",
+    "finder",
+    "instantsend",
+    "chainlock",
+    "payment",
+    "monitoring",
+    "blockchain",
+    "cryptocurrency"
+  ],
+  "author": "Dash Core Group",
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "peerDependencies": {
+    "@dashevo/dapi-client": "^1.0.0",
+    "@dashevo/dashcore-lib": "~0.22.0",
+    "@dashevo/resilient-dapi-client": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@dashevo/dapi-client": {
+      "optional": true
+    },
+    "@dashevo/resilient-dapi-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@dashevo/dash-rpc-client": "file:../dash-rpc-client",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "dotenv": "^17.0.0",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,js}": [
+      "eslint --fix"
+    ],
+    "tests/**/*.{ts,js}": [
+      "eslint --fix"
+    ]
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dashevo/platform.git",
+    "directory": "packages/transaction-finder"
+  }
+}

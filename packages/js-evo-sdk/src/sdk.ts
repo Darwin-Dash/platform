@@ -75,6 +75,13 @@ export class EvoSDK {
 
   get isConnected(): boolean { return !!this.wasmSdk; }
 
+  /**
+   * Get the network configuration
+   */
+  get networkConfig(): { network: 'testnet' | 'mainnet' | 'local' } {
+    return { network: this.options.network };
+  }
+
   async getWasmSdkConnected(): Promise<wasm.WasmSdk> {
     if (!this.wasmSdk) {
       await this.connect();
@@ -133,6 +140,14 @@ export class EvoSDK {
     const sdk = new EvoSDK();
     (sdk as any).wasmSdk = wasmSdk;
     return sdk;
+  }
+
+  /**
+   * Reset the WASM SDK instance.
+   * Used internally by identity operations to manage WASM state.
+   */
+  resetWasmSdk(): void {
+    this.wasmSdk = undefined;
   }
 
   version(): number {

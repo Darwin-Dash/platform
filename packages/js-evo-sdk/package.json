@@ -22,6 +22,9 @@
     "README.md"
   ],
   "dependencies": {
+    "@dashevo/dapi-client": "workspace:*",
+    "@dashevo/dashcore-lib": "~0.22.0",
+    "@dashevo/transaction-finder": "workspace:*",
     "@dashevo/wasm-sdk": "workspace:*"
   },
   "scripts": {
@@ -31,6 +34,7 @@
     "test:unit": "mocha tests/unit/**/*.spec.mjs && karma start ./tests/karma/karma.conf.cjs --single-run"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
     "@typescript-eslint/parser": "^5.55.0",
     "assert": "^2.0.0",
@@ -59,7 +63,7 @@
     "string_decoder": "^1.3.0",
     "terser-webpack-plugin": "^5.3.11",
     "ts-loader": "^9.5.0",
-    "typescript": "^3.9.5",
+    "typescript": "^5.3.0",
     "url": "^0.11.3",
     "util": "^0.12.4",
     "webpack": "^5.94.0",
