@@ -180,3 +180,56 @@ xcodebuild -project SwiftExampleApp/SwiftExampleApp.xcodeproj \
 - Type visibility: Make DPP types public in Swift
 - C header issues: Use pointers for opaque FFI types
 - After merges: Always clean and rebuild from scratch
+
+## Ralph Autonomous Loop Configuration
+
+This project uses the [snarktank/ralph](https://github.com/snarktank/ralph) autonomous coding loop format.
+
+### Files
+- `prd.json` - Task definitions with user stories and acceptance criteria
+- `progress.txt` - Persistent memory across iterations
+- `ralph.sh` - Loop orchestrator script
+
+### Running Ralph
+```bash
+# Run with default 10 iterations
+./ralph.sh
+
+# Run single iteration (for testing)
+./ralph.sh 1
+
+# Run with custom max iterations
+./ralph.sh 20
+```
+
+### For Claude (Autonomous Mode)
+
+When running in Ralph loop:
+1. Read `prd.json` to find the first incomplete user story
+2. Read `progress.txt` for previous learnings and context
+3. Implement the story completely
+4. Verify with commands in `passes` array
+5. Update `completed: true` in prd.json when done
+6. Append learnings to progress.txt
+7. Commit changes
+
+**Verification Commands:**
+```bash
+cd packages/js-evo-sdk && yarn tsc -p tsconfig.json --noEmit
+npm test
+```
+
+**Completion Signal:**
+When all stories are complete, output:
+```
+<promise>COMPLETE</promise>
+```
+
+### Current Project Status
+- **Phase 1 (Identity)**: Complete
+- **Phase 2 (DPNS)**: Complete
+- **Phase 3 (Documents)**: Complete
+- **Phase 4 (DashPay)**: Pending
+- **Phase 5 (Tokens)**: Pending
+
+See `progress.txt` for detailed history and learnings.
