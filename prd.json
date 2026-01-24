@@ -74,7 +74,8 @@
         "cd packages/js-evo-sdk && yarn tsc -p tsconfig.json --noEmit",
         "npm test"
       ],
-      "completed": false
+      "completed": true,
+      "notes": "Implemented DashPayFacade with profile query/mutation methods, contact request methods (inbound/outbound), contacts management, and deriveContactKey helper. 19 unit tests passing."
     },
     {
       "id": "PHASE-005",
@@ -91,7 +92,8 @@
         "cd packages/js-evo-sdk && yarn tsc -p tsconfig.json --noEmit",
         "npm test"
       ],
-      "completed": false
+      "completed": true,
+      "notes": "Already implemented in v3.0-dev with improved type safety (tokens/facade.ts, tokens.spec.mjs)"
     }
   ]
 }

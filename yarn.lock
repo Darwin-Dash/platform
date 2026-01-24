@@ -1763,6 +1763,7 @@ __metadata:
     "@dashevo/dashcore-lib": "npm:~0.22.0"
     "@dashevo/transaction-finder": "workspace:*"
     "@dashevo/wasm-sdk": "workspace:*"
+    "@types/crypto-js": "npm:^4.2.2"
     "@types/node": "npm:^20.0.0"
     "@typescript-eslint/eslint-plugin": "npm:^5.55.0"
     "@typescript-eslint/parser": "npm:^5.55.0"
@@ -1770,6 +1771,7 @@ __metadata:
     buffer: "npm:^6.0.3"
     chai: "npm:^4.3.10"
     chai-as-promised: "npm:^7.1.1"
+    crypto-js: "npm:^4.2.0"
     dirty-chai: "npm:^2.0.1"
     eslint: "npm:^8.53.0"
     eslint-config-airbnb-base: "npm:^15.0.0"
@@ -4000,6 +4002,13 @@ __metadata:
   version: 2.8.12
   resolution: "@types/cors@npm:2.8.12"
   checksum: 10/8c45f112c7d1d2d831b4b266f2e6ed33a1887a35dcbfe2a18b28370751fababb7cd045e745ef84a523c33a25932678097bf79afaa367c6cb3fa0daa7a6438257
+  languageName: node
+  linkType: hard
+
+"@types/crypto-js@npm:^4.2.2":
+  version: 4.2.2
+  resolution: "@types/crypto-js@npm:4.2.2"
+  checksum: 10/a40fc5a9219fd33f54ba3e094c5e5ab2904d3106681a76f1029bb038976591e9c8959099963bf4474fde21c2d8d00c1f896445206a3a58f85588f9cb1bd96a9a
   languageName: node
   linkType: hard
 

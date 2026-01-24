@@ -42,9 +42,30 @@ as a full Platform SDK replacement with zero wallet-lib dependency.
   - f47447caf feat(sdk): add error handling and documentation to DocumentsFacade
   - b7256ce9b test(sdk): add error handling tests for DocumentsFacade
 
+### Phase 4 - DashPay (COMPLETE)
+- DashPayFacade for social payments functionality
+- Profile Methods:
+  - getProfile(), getProfileWithProof() - query profiles by identity ID
+  - createProfile(), updateProfile() - delegates to documentCreate/Replace
+- Contact Request Methods:
+  - sendContactRequest(), acceptContactRequest() - delegates to documentCreate
+  - getInboundContactRequests() - queries by toUserId
+  - getOutboundContactRequests() - queries by $ownerId
+  - Pagination support via startAfter timestamp
+- Contact Methods:
+  - getContacts(), getContactsWithProof() - query contactInfo documents
+- Helper Methods:
+  - deriveContactKey() - DIP15 contact key derivation via WasmSdk
+  - getContract() - fetch DashPay data contract
+  - getContractId() - returns DashPay contract ID
+- Exported interfaces: ProfileData, ContactRequestData, ContactInfoData
+- Default contract ID: Bwr4WHCPz5rFVAD87RqTs3izo4zpzwsEdKPWUT1NS1C7
+- Tests: tests/unit/facades/dashpay.spec.mjs (19 tests passing)
+
 ## Current Test Status
-- Total: 235/244 passing
+- Total: 312 passing (19 new DashPay tests)
 - Phase 1 failures: 9 (deprecated Identity methods - known issue)
+- DashPay: 19/19 passing
 - Documents: 14/14 passing
 - TypeScript: Compiles cleanly
 
@@ -61,14 +82,21 @@ as a full Platform SDK replacement with zero wallet-lib dependency.
 - DocumentCreateOptions, DocumentReplaceOptions, etc. for mutations
 - All methods wrapped with withErrorHandling for better debugging
 
+### DashPay Patterns
+- DashPay uses DocumentsQuery for profile/contact lookups
+- Three document types: profile, contactRequest, contactInfo
+- Profile queries use $ownerId filter for identity lookup
+- Contact request queries support pagination via timestamp (startAfter)
+- Mutation methods delegate to documentCreate/documentReplace
+- deriveContactKey uses static WasmSdk.deriveDashpayContactKey
+
 ### Known Issues
 - Webpack build has issues due to Node.js dependencies in Identity facade
   (winston, wasm-x11-hash, etc.) - this is a Phase 1 issue
 - 9 deprecated method tests failing - not blocking development
 
 ## Next Steps
-- Phase 4: DashPay facade (profiles, contact requests)
-- Phase 5: Tokens facade (transfers, admin operations)
+- All phases complete! Review for any additional improvements
 
 ## Reference Files
 - Full spec: .ralph-archive/specs/js-evo-sdk-port-plan.md
@@ -76,3 +104,4 @@ as a full Platform SDK replacement with zero wallet-lib dependency.
 
 ---
 Last Updated: 2026-01-24
+Completed: 2026-01-24 (All 5 phases)

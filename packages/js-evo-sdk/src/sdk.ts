@@ -11,6 +11,7 @@ import { ProtocolFacade } from './protocol/facade.js';
 import { SystemFacade } from './system/facade.js';
 import { GroupFacade } from './group/facade.js';
 import { VotingFacade } from './voting/facade.js';
+import { DashPayFacade } from './dashpay/facade.js';
 
 export interface ConnectionOptions {
   version?: number;
@@ -50,6 +51,7 @@ export class EvoSDK {
   public system!: SystemFacade;
   public group!: GroupFacade;
   public voting!: VotingFacade;
+  public dashpay!: DashPayFacade;
   constructor(options: EvoSDKOptions = {}) {
     // Apply defaults while preserving any future connection options
     const { network = 'testnet', trusted = false, addresses, ...connection } = options;
@@ -66,6 +68,7 @@ export class EvoSDK {
     this.system = new SystemFacade(this);
     this.group = new GroupFacade(this);
     this.voting = new VotingFacade(this);
+    this.dashpay = new DashPayFacade(this);
   }
 
   get wasm(): wasm.WasmSdk {
@@ -202,5 +205,6 @@ export { ProtocolFacade } from './protocol/facade.js';
 export { SystemFacade } from './system/facade.js';
 export { GroupFacade } from './group/facade.js';
 export { VotingFacade } from './voting/facade.js';
+export { DashPayFacade } from './dashpay/facade.js';
 export { wallet } from './wallet/functions.js';
 export * from './wasm.js';
