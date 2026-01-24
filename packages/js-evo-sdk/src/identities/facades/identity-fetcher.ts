@@ -98,10 +98,19 @@ export class IdentityFetcher {
       // This properly handles gRPC response parsing and deserialization
       const identity = await wasmSdk.getIdentity(identityId);
 
+      // Check if identity was found
+      if (!identity) {
+        throw new Error(`Identity not found: ${identityId}`);
+      }
+
       logger.debug(`Successfully fetched identity: ${identityId}`);
       return identity;
     } catch (error) {
       logger.error(`Failed to fetch identity ${identityId}:`, error);
+      // Re-throw "not found" errors directly
+      if ((error as Error).message.includes('Identity not found')) {
+        throw error;
+      }
       throw new Error(`Failed to fetch identity: ${(error as Error).message}`);
     }
   }
@@ -127,23 +136,59 @@ export class IdentityFetcher {
       // Use the SDK's native getIdentityWithProofInfo method
       const result = await wasmSdk.getIdentityWithProofInfo(identityId);
 
+      // Check if identity was found
+      if (!result) {
+        throw new Error(`Identity not found: ${identityId}`);
+      }
+
       logger.debug(`Successfully fetched identity with proof: ${identityId}`);
       return result;
     } catch (error) {
       logger.error(`Failed to fetch identity with proof ${identityId}:`, error);
+      // Re-throw "not found" errors directly
+      if ((error as Error).message.includes('Identity not found')) {
+        throw error;
+      }
       throw new Error(`Failed to fetch identity: ${(error as Error).message}`);
     }
   }
 
   /**
    * Fetch identity without proof from Platform (faster than fetchWithProof)
+   * Uses getIdentityUnproved which skips proof generation for better performance.
    * @param identityId Identity ID in Base58 format
    * @returns Identity object without proof
    * @throws Error if identity not found or network error
    */
   async fetchUnproved(identityId: string): Promise<wasm.IdentityWasm> {
-    // fetchUnproved is the same as fetch() with prove: false
-    return this.fetch(identityId);
+    if (!identityId) {
+      throw new Error('Identity ID is required');
+    }
+
+    try {
+      logger.debug(`Fetching identity (unproved): ${identityId}`);
+
+      // Use the connected WASM SDK which has proper gRPC handling
+      const wasmSdk = await this.sdk.getWasmSdkConnected();
+
+      // Use the SDK's native getIdentityUnproved method for better performance
+      const identity = await wasmSdk.getIdentityUnproved(identityId);
+
+      // Check if identity was found
+      if (!identity) {
+        throw new Error(`Identity not found: ${identityId}`);
+      }
+
+      logger.debug(`Successfully fetched identity (unproved): ${identityId}`);
+      return identity;
+    } catch (error) {
+      logger.error(`Failed to fetch identity (unproved) ${identityId}:`, error);
+      // Re-throw "not found" errors directly
+      if ((error as Error).message.includes('Identity not found')) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch identity: ${(error as Error).message}`);
+    }
   }
 
   /**

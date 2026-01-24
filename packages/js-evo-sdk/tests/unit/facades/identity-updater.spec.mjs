@@ -186,27 +186,8 @@ describe('IdentityUpdater', () => {
     });
   });
 
-  describe('topUpWithAccount() - Deprecated Method', () => {
-    it('should reject missing identity ID', async () => {
-      const mockAccount = { getUnusedAddress: () => ({}) };
-
-      await expect(updater.topUpWithAccount(null, TOPUP_MIN_AMOUNT, mockAccount))
-        .to.be.rejectedWith('Identity ID is required');
-
-      await expect(updater.topUpWithAccount('', TOPUP_MIN_AMOUNT, mockAccount))
-        .to.be.rejectedWith('Identity ID is required');
-    });
-
-    it('should validate amount for topUpWithAccount', async () => {
-      const mockAccount = { getUnusedAddress: () => ({}) };
-
-      await expect(updater.topUpWithAccount(VALID_IDENTITY_ID, TOPUP_MIN_AMOUNT - 1, mockAccount))
-        .to.be.rejectedWith(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
-
-      await expect(updater.topUpWithAccount(VALID_IDENTITY_ID, MAX_AMOUNT + 1, mockAccount))
-        .to.be.rejectedWith(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
-    });
-  });
+  // Note: topUpWithAccount() was a wallet-lib style API that was not ported.
+  // The js-evo-sdk uses topUpWithWallet() and topupWithUTXO() instead.
 
   describe('Edge cases', () => {
     it('should handle boundary amounts correctly', async () => {

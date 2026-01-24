@@ -179,25 +179,8 @@ describe('IdentityCreator', () => {
     });
   });
 
-  describe('createWithAccount() - Deprecated Method', () => {
-    it('should reject missing account', async () => {
-      await expect(creator.createWithAccount(null, 200000))
-        .to.be.rejectedWith('Account is required');
-
-      await expect(creator.createWithAccount(undefined, 200000))
-        .to.be.rejectedWith('Account is required');
-    });
-
-    it('should validate amount for createWithAccount', async () => {
-      const mockAccount = { getUnusedAddress: () => ({}) };
-
-      await expect(creator.createWithAccount(mockAccount, CREATE_MIN_AMOUNT - 1))
-        .to.be.rejectedWith(`Invalid amount: must be between ${CREATE_MIN_AMOUNT} and ${MAX_AMOUNT}`);
-
-      await expect(creator.createWithAccount(mockAccount, MAX_AMOUNT + 1))
-        .to.be.rejectedWith(`Invalid amount: must be between ${CREATE_MIN_AMOUNT} and ${MAX_AMOUNT}`);
-    });
-  });
+  // Note: createWithAccount() was a wallet-lib style API that was not ported.
+  // The js-evo-sdk uses createWithWallet() and createWithUTXO() instead.
 
   describe('Edge cases', () => {
     it('should handle boundary amounts correctly', async () => {
