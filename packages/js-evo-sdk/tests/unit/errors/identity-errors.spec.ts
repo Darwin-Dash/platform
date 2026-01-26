@@ -8,7 +8,7 @@
  * - Helper method functionality
  */
 
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 import {
   IdentityOperationError,
   WalletSetupError,
@@ -36,21 +36,21 @@ describe('Identity Error Classes', () => {
         { index: 5 }
       );
 
-      expect(error).to.be.instanceOf(IdentityOperationError);
-      expect(error).to.be.instanceOf(Error);
-      expect(error.name).to.equal('WalletSetupError');
-      expect(error.operation).to.equal('wallet_setup');
-      expect(error.step).to.equal('key_derivation');
-      expect(error.message).to.equal('Failed to derive HD keys');
-      expect(error.recoverable).to.equal(true);
-      expect(error.context).to.deep.equal({ index: 5 });
+      expect(error).toBeInstanceOf(IdentityOperationError);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.name).toBe('WalletSetupError');
+      expect(error.operation).toBe('wallet_setup');
+      expect(error.step).toBe('key_derivation');
+      expect(error.message).toBe('Failed to derive HD keys');
+      expect(error.recoverable).toBe(true);
+      expect(error.context).toEqual({ index: 5 });
     });
 
     it('should use default values for optional parameters', () => {
       const error = new WalletSetupError('utxo_discovery', 'No UTXOs found');
 
-      expect(error.recoverable).to.equal(false);
-      expect(error.context).to.deep.equal({});
+      expect(error.recoverable).toBe(false);
+      expect(error.context).toEqual({});
     });
   });
 
@@ -64,17 +64,17 @@ describe('Identity Error Classes', () => {
         true
       );
 
-      expect(error.operation).to.equal('identity_discovery');
-      expect(error.step).to.equal('platform_query');
-      expect(error.addresses).to.deep.equal(addresses);
-      expect(error.context.addressCount).to.equal(2);
+      expect(error.operation).toBe('identity_discovery');
+      expect(error.step).toBe('platform_query');
+      expect(error.addresses).toEqual(addresses);
+      expect(error.context.addressCount).toBe(2);
     });
 
     it('should handle missing addresses', () => {
       const error = new IdentityDiscoveryError('hash_derivation', 'Hash derivation failed');
 
-      expect(error.addresses).to.be.undefined;
-      expect(error.context.addressCount).to.be.undefined;
+      expect(error.addresses).toBeUndefined();
+      expect(error.context.addressCount).toBeUndefined();
     });
   });
 
@@ -88,11 +88,11 @@ describe('Identity Error Classes', () => {
         { utxoCount: 0 }
       );
 
-      expect(error.operation).to.equal('transaction_creation');
-      expect(error.step).to.equal('coin_selection');
-      expect(error.amount).to.equal(200000);
-      expect(error.context.amount).to.equal(200000);
-      expect(error.context.utxoCount).to.equal(0);
+      expect(error.operation).toBe('transaction_creation');
+      expect(error.step).toBe('coin_selection');
+      expect(error.amount).toBe(200000);
+      expect(error.context.amount).toBe(200000);
+      expect(error.context.utxoCount).toBe(0);
     });
   });
 
@@ -103,10 +103,10 @@ describe('Identity Error Classes', () => {
         'tx123'
       );
 
-      expect(error.step).to.equal('dapi_broadcast');
-      expect(error.transactionId).to.equal('tx123');
-      expect(error.recoverable).to.equal(true);
-      expect(error.context.transactionId).to.equal('tx123');
+      expect(error.step).toBe('dapi_broadcast');
+      expect(error.transactionId).toBe('tx123');
+      expect(error.recoverable).toBe(true);
+      expect(error.context.transactionId).toBe('tx123');
     });
 
     it('should allow non-recoverable broadcast errors', () => {
@@ -116,7 +116,7 @@ describe('Identity Error Classes', () => {
         false
       );
 
-      expect(error.recoverable).to.equal(false);
+      expect(error.recoverable).toBe(false);
     });
   });
 
@@ -128,19 +128,19 @@ describe('Identity Error Classes', () => {
         60000
       );
 
-      expect(error.operation).to.equal('confirmation_wait');
-      expect(error.step).to.equal('timeout');
-      expect(error.transactionId).to.equal('txabc');
-      expect(error.elapsedMs).to.equal(60000);
-      expect(error.recoverable).to.equal(true);
-      expect(error.context.elapsedMs).to.equal(60000);
+      expect(error.operation).toBe('confirmation_wait');
+      expect(error.step).toBe('timeout');
+      expect(error.transactionId).toBe('txabc');
+      expect(error.elapsedMs).toBe(60000);
+      expect(error.recoverable).toBe(true);
+      expect(error.context.elapsedMs).toBe(60000);
     });
 
     it('should generate default message from transaction ID', () => {
       const error = new ConfirmationTimeoutError('tx123');
 
-      expect(error.message).to.include('tx123');
-      expect(error.message).to.include('timeout');
+      expect(error.message).toContain('tx123');
+      expect(error.message.toLowerCase()).toContain('timeout');
     });
   });
 
@@ -154,10 +154,10 @@ describe('Identity Error Classes', () => {
         { proofType: 'instantlock' }
       );
 
-      expect(error.operation).to.equal('asset_lock_proof');
-      expect(error.step).to.equal('proof_generation');
-      expect(error.transactionId).to.equal('tx789');
-      expect(error.context.proofType).to.equal('instantlock');
+      expect(error.operation).toBe('asset_lock_proof');
+      expect(error.step).toBe('proof_generation');
+      expect(error.transactionId).toBe('tx789');
+      expect(error.context.proofType).toBe('instantlock');
     });
   });
 
@@ -170,10 +170,10 @@ describe('Identity Error Classes', () => {
         false
       );
 
-      expect(error.operation).to.equal('platform_submission');
-      expect(error.step).to.equal('identity_create');
-      expect(error.identityId).to.equal('identityXYZ');
-      expect(error.context.identityId).to.equal('identityXYZ');
+      expect(error.operation).toBe('platform_submission');
+      expect(error.step).toBe('identity_create');
+      expect(error.identityId).toBe('identityXYZ');
+      expect(error.context.identityId).toBe('identityXYZ');
     });
   });
 
@@ -187,11 +187,11 @@ describe('Identity Error Classes', () => {
         { wordCount: 11 }
       );
 
-      expect(error.operation).to.equal('validation');
-      expect(error.step).to.equal('mnemonic_validation');
-      expect(error.field).to.equal('mnemonic');
-      expect(error.context.field).to.equal('mnemonic');
-      expect(error.context.wordCount).to.equal(11);
+      expect(error.operation).toBe('validation');
+      expect(error.step).toBe('mnemonic_validation');
+      expect(error.field).toBe('mnemonic');
+      expect(error.context.field).toBe('mnemonic');
+      expect(error.context.wordCount).toBe(11);
     });
   });
 
@@ -203,22 +203,22 @@ describe('Identity Error Classes', () => {
         150000
       );
 
-      expect(error.operation).to.equal('transaction_creation');
-      expect(error.step).to.equal('insufficient_funds');
-      expect(error.requiredAmount).to.equal(250000);
-      expect(error.availableAmount).to.equal(150000);
-      expect(error.context.shortfall).to.equal(100000);
+      expect(error.operation).toBe('transaction_creation');
+      expect(error.step).toBe('insufficient_funds');
+      expect(error.requiredAmount).toBe(250000);
+      expect(error.availableAmount).toBe(150000);
+      expect(error.context.shortfall).toBe(100000);
 
       const userMsg = error.getUserMessage();
-      expect(userMsg).to.include('250000');
-      expect(userMsg).to.include('150000');
-      expect(userMsg).to.include('100000');
+      expect(userMsg).toContain('250000');
+      expect(userMsg).toContain('150000');
+      expect(userMsg).toContain('100000');
     });
 
     it('should handle exact match (zero shortfall)', () => {
       const error = new InsufficientFundsError('Exact match', 100000, 100000);
 
-      expect(error.context.shortfall).to.equal(0);
+      expect(error.context.shortfall).toBe(0);
     });
   });
 
@@ -229,9 +229,9 @@ describe('Identity Error Classes', () => {
         'Connection refused'
       );
 
-      expect(error.operation).to.equal('network');
-      expect(error.step).to.equal('dapi_connect');
-      expect(error.recoverable).to.equal(true);
+      expect(error.operation).toBe('network');
+      expect(error.step).toBe('dapi_connect');
+      expect(error.recoverable).toBe(true);
     });
 
     it('should allow non-recoverable network errors', () => {
@@ -241,7 +241,7 @@ describe('Identity Error Classes', () => {
         false
       );
 
-      expect(error.recoverable).to.equal(false);
+      expect(error.recoverable).toBe(false);
     });
   });
 
@@ -254,17 +254,17 @@ describe('Identity Error Classes', () => {
         'Operation timed out after 120 seconds'
       );
 
-      expect(error.operation).to.equal('identity_creation');
-      expect(error.step).to.equal('confirmation_wait');
-      expect(error.timeoutMs).to.equal(120000);
-      expect(error.context.timeoutMs).to.equal(120000);
-      expect(error.recoverable).to.equal(true);
+      expect(error.operation).toBe('identity_creation');
+      expect(error.step).toBe('confirmation_wait');
+      expect(error.timeoutMs).toBe(120000);
+      expect(error.context.timeoutMs).toBe(120000);
+      expect(error.recoverable).toBe(true);
     });
 
     it('should generate default message from timeout value', () => {
       const error = new TimeoutError('test_op', 'test_step', 60000);
 
-      expect(error.message).to.include('60000ms');
+      expect(error.message).toContain('60000ms');
     });
   });
 
@@ -275,11 +275,11 @@ describe('Identity Error Classes', () => {
         'Invalid network configuration'
       );
 
-      expect(error.operation).to.equal('configuration');
-      expect(error.step).to.equal('invalid_config');
-      expect(error.configKey).to.equal('network');
-      expect(error.context.configKey).to.equal('network');
-      expect(error.recoverable).to.equal(false);
+      expect(error.operation).toBe('configuration');
+      expect(error.step).toBe('invalid_config');
+      expect(error.configKey).toBe('network');
+      expect(error.context.configKey).toBe('network');
+      expect(error.recoverable).toBe(false);
     });
   });
 
@@ -294,34 +294,34 @@ describe('Identity Error Classes', () => {
     it('should initialize all base properties', () => {
       const error = new TestError();
 
-      expect(error.operation).to.equal('test_operation');
-      expect(error.step).to.equal('test_step');
-      expect(error.message).to.equal('Test message');
-      expect(error.recoverable).to.equal(true);
-      expect(error.context).to.deep.equal({ foo: 'bar' });
+      expect(error.operation).toBe('test_operation');
+      expect(error.step).toBe('test_step');
+      expect(error.message).toBe('Test message');
+      expect(error.recoverable).toBe(true);
+      expect(error.context).toEqual({ foo: 'bar' });
     });
 
     it('should implement getUserMessage', () => {
       const error = new TestError();
-      expect(error.getUserMessage()).to.equal('Test message');
+      expect(error.getUserMessage()).toBe('Test message');
     });
 
     it('should implement getDetails', () => {
       const error = new TestError();
       const details = error.getDetails();
 
-      expect(details.name).to.equal('TestError');
-      expect(details.operation).to.equal('test_operation');
-      expect(details.step).to.equal('test_step');
-      expect(details.message).to.equal('Test message');
-      expect(details.recoverable).to.equal(true);
-      expect(details.context).to.deep.equal({ foo: 'bar' });
+      expect(details.name).toBe('TestError');
+      expect(details.operation).toBe('test_operation');
+      expect(details.step).toBe('test_step');
+      expect(details.message).toBe('Test message');
+      expect(details.recoverable).toBe(true);
+      expect(details.context).toEqual({ foo: 'bar' });
     });
 
     it('should capture stack trace', () => {
       const error = new TestError();
-      expect(error.stack).to.be.a('string');
-      expect(error.stack).to.include('TestError');
+      expect(typeof error.stack).toBe('string');
+      expect(error.stack).toContain('TestError');
     });
   });
 
@@ -329,29 +329,29 @@ describe('Identity Error Classes', () => {
     describe('isRecoverable()', () => {
       it('should identify recoverable IdentityOperationError', () => {
         const error = new NetworkError('dapi_connect', 'Connection failed', true);
-        expect(ErrorHelpers.isRecoverable(error)).to.equal(true);
+        expect(ErrorHelpers.isRecoverable(error)).toBe(true);
       });
 
       it('should identify non-recoverable IdentityOperationError', () => {
         const error = new ValidationError('mnemonic_validation', 'Invalid mnemonic', 'mnemonic', false);
-        expect(ErrorHelpers.isRecoverable(error)).to.equal(false);
+        expect(ErrorHelpers.isRecoverable(error)).toBe(false);
       });
 
       it('should identify generic network errors as recoverable', () => {
         const error = new Error('network connection failed');
-        expect(ErrorHelpers.isRecoverable(error)).to.equal(true);
+        expect(ErrorHelpers.isRecoverable(error)).toBe(true);
       });
 
       it('should identify non-network generic errors as non-recoverable', () => {
         const error = new Error('Something went wrong');
-        expect(ErrorHelpers.isRecoverable(error)).to.equal(false);
+        expect(ErrorHelpers.isRecoverable(error)).toBe(false);
       });
 
       it('should handle non-Error objects', () => {
-        expect(ErrorHelpers.isRecoverable('string error')).to.equal(false);
-        expect(ErrorHelpers.isRecoverable(null)).to.equal(false);
-        expect(ErrorHelpers.isRecoverable(undefined)).to.equal(false);
-        expect(ErrorHelpers.isRecoverable(123)).to.equal(false);
+        expect(ErrorHelpers.isRecoverable('string error')).toBe(false);
+        expect(ErrorHelpers.isRecoverable(null)).toBe(false);
+        expect(ErrorHelpers.isRecoverable(undefined)).toBe(false);
+        expect(ErrorHelpers.isRecoverable(123)).toBe(false);
       });
     });
 
@@ -360,20 +360,20 @@ describe('Identity Error Classes', () => {
         const error = new NetworkError('dapi_query', 'Connection timeout');
         const message = ErrorHelpers.getUserMessage(error);
 
-        expect(message).to.equal('Connection timeout');
+        expect(message).toBe('Connection timeout');
       });
 
       it('should get message from generic Error', () => {
         const error = new Error('Generic error message');
         const message = ErrorHelpers.getUserMessage(error);
 
-        expect(message).to.equal('Generic error message');
+        expect(message).toBe('Generic error message');
       });
 
       it('should convert non-Error to string', () => {
-        expect(ErrorHelpers.getUserMessage('string error')).to.equal('string error');
-        expect(ErrorHelpers.getUserMessage(123)).to.equal('123');
-        expect(ErrorHelpers.getUserMessage(null)).to.equal('null');
+        expect(ErrorHelpers.getUserMessage('string error')).toBe('string error');
+        expect(ErrorHelpers.getUserMessage(123)).toBe('123');
+        expect(ErrorHelpers.getUserMessage(null)).toBe('null');
       });
     });
 
@@ -382,27 +382,27 @@ describe('Identity Error Classes', () => {
         const error = new ValidationError('mnemonic_validation', 'Invalid mnemonic', 'mnemonic');
         const details = ErrorHelpers.getDetails(error);
 
-        expect(details.name).to.equal('ValidationError');
-        expect(details.operation).to.equal('validation');
-        expect(details.step).to.equal('mnemonic_validation');
-        expect(details.message).to.equal('Invalid mnemonic');
+        expect(details.name).toBe('ValidationError');
+        expect(details.operation).toBe('validation');
+        expect(details.step).toBe('mnemonic_validation');
+        expect(details.message).toBe('Invalid mnemonic');
       });
 
       it('should get basic details from generic Error', () => {
         const error = new Error('Some error');
         const details = ErrorHelpers.getDetails(error);
 
-        expect(details.name).to.equal('Error');
-        expect(details.message).to.equal('Some error');
-        expect(details.stack).to.be.a('string');
+        expect(details.name).toBe('Error');
+        expect(details.message).toBe('Some error');
+        expect(typeof details.stack).toBe('string');
       });
 
       it('should handle non-Error objects', () => {
         const details1 = ErrorHelpers.getDetails('error string');
-        expect(details1.error).to.equal('error string');
+        expect(details1.error).toBe('error string');
 
         const details2 = ErrorHelpers.getDetails(null);
-        expect(details2.error).to.be.null;
+        expect(details2.error).toBeNull();
       });
     });
   });
@@ -417,7 +417,7 @@ describe('Identity Error Classes', () => {
         { batchSize: 50 }
       );
 
-      expect(error.context).to.deep.equal({
+      expect(error.context).toEqual({
         batchSize: 50,
         addressCount: 2,
       });
@@ -432,16 +432,16 @@ describe('Identity Error Classes', () => {
         { keyIndex: 0 }
       );
 
-      expect(error.context.amount).to.equal(300000);
-      expect(error.context.keyIndex).to.equal(0);
+      expect(error.context.amount).toBe(300000);
+      expect(error.context.keyIndex).toBe(0);
     });
 
     it('should calculate shortfall for InsufficientFundsError', () => {
       const error = new InsufficientFundsError('Not enough', 500000, 400000);
 
-      expect(error.context.requiredAmount).to.equal(500000);
-      expect(error.context.availableAmount).to.equal(400000);
-      expect(error.context.shortfall).to.equal(100000);
+      expect(error.context.requiredAmount).toBe(500000);
+      expect(error.context.availableAmount).toBe(400000);
+      expect(error.context.shortfall).toBe(100000);
     });
   });
 
@@ -457,12 +457,12 @@ describe('Identity Error Classes', () => {
 
       const details = error.getDetails();
 
-      expect(details.name).to.equal('PlatformSubmissionError');
-      expect(details.operation).to.equal('platform_submission');
-      expect(details.step).to.equal('identity_topup');
-      expect(details.message).to.equal('Top-up rejected');
-      expect(details.recoverable).to.equal(false);
-      expect(details.context).to.deep.equal({
+      expect(details.name).toBe('PlatformSubmissionError');
+      expect(details.operation).toBe('platform_submission');
+      expect(details.step).toBe('identity_topup');
+      expect(details.message).toBe('Top-up rejected');
+      expect(details.recoverable).toBe(false);
+      expect(details.context).toEqual({
         reason: 'insufficient balance',
         identityId: 'id123',
       });
@@ -488,11 +488,12 @@ describe('Identity Error Classes', () => {
     it('should all extend IdentityOperationError', () => {
       errorClasses.forEach(({ Class, step, args }) => {
         const constructorArgs = step ? [step, 'test message', ...args] : ['test message', ...args];
+        // @ts-expect-error - Dynamic constructor call
         const error = new Class(...constructorArgs);
 
-        expect(error).to.be.instanceOf(IdentityOperationError);
-        expect(error).to.be.instanceOf(Error);
-        expect(error.name).to.equal(Class.name);
+        expect(error).toBeInstanceOf(IdentityOperationError);
+        expect(error).toBeInstanceOf(Error);
+        expect(error.name).toBe(Class.name);
       });
     });
   });
