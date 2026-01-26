@@ -51,6 +51,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      // Use non-compressed WASM SDK in tests to avoid dynamic import issues
+      // The compressed version uses `new Function('return import("node:zlib")')`
+      // which Vitest's VM doesn't support
+      '@dashevo/wasm-sdk/compressed': '@dashevo/wasm-sdk',
     },
   },
 });
