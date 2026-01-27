@@ -2066,7 +2066,7 @@ class IdentityManagerApp {
     // 3. Derive keys and validate against on-chain
     try {
       // Import wallet functions directly for key derivation
-      const { wallet: walletFunctions } = await import('../dist/wallet/functions.js');
+      const { wallet: walletFunctions } = await import('../../dist/wallet/functions.js');
       const mnemonic = this.mnemonic;
 
       if (!mnemonic) {
@@ -2119,7 +2119,7 @@ class IdentityManagerApp {
   async scanForCorrectIndex(identity, maxIndex = 20) {
     try {
       // Import wallet functions directly for key derivation
-      const { wallet: walletFunctions } = await import('../dist/wallet/functions.js');
+      const { wallet: walletFunctions } = await import('../../dist/wallet/functions.js');
       const mnemonic = this.mnemonic;
 
       if (!mnemonic) {
@@ -2288,7 +2288,7 @@ class IdentityManagerApp {
         console.log('🔧 Initializing SDK for identity creation...');
         try {
           // Import SDK from dist - webpack will bundle it
-          const sdkModule = await import('../dist/sdk.js');
+          const sdkModule = await import('../../dist/sdk.js');
           const EvoSDK = sdkModule.EvoSDK || sdkModule.default;
           if (EvoSDK) {
             const sdkOptions = await getNetworkSdkOptions('testnet');
@@ -3092,7 +3092,7 @@ class IdentityManagerApp {
 
         // Derive a new key at the next available index using DIP13
         // DIP13 path: m/9'/coin_type'/5'/0'/0'/identityIndex'/keyIndex'
-        const { wallet: walletFunctions } = await import('../dist/wallet/functions.js');
+        const { wallet: walletFunctions } = await import('../../dist/wallet/functions.js');
 
         const coinType = 1; // testnet (would be 5 for mainnet)
         const path = `m/9'/${coinType}'/5'/0'/0'/${identity.index}'/${nextKeyIndex}'`;
@@ -3740,7 +3740,7 @@ class IdentityManagerApp {
           });
 
           // Derive private key from mnemonic using identity's HD index
-          const { IdentityKeyGenerator } = await import('../dist/identities/coordination/identity-key-generator.js');
+          const { IdentityKeyGenerator } = await import('../../dist/identities/coordination/identity-key-generator.js');
           const keyGenerator = new IdentityKeyGenerator();
           const mnemonic = this.mnemonic;
           if (!mnemonic) {
@@ -3793,7 +3793,7 @@ class IdentityManagerApp {
 
           // Derive public key from the WIF to compare with on-chain key
           // This uses the same wallet functions as IdentityKeyGenerator
-          const { wallet: walletFunctions } = await import('../dist/wallet/functions.js');
+          const { wallet: walletFunctions } = await import('../../dist/wallet/functions.js');
           const derivedKeyPath = `m/9'/1'/5'/0'/0'/${identity.index}'/1'`;
           const derivedKey = await walletFunctions.deriveKeyFromSeedWithPath(mnemonic, null, derivedKeyPath, 'testnet');
           const derivedPublicKeyHex = derivedKey.public_key.toLowerCase();

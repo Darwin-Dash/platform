@@ -497,7 +497,7 @@ export class MockPlatformOperations {
     }
 
     // Use WASM SDK for key derivation
-    const { IdentityKeyGenerator } = await import('../dist/identities/coordination/identity-key-generator.js');
+    const { IdentityKeyGenerator } = await import('../../dist/identities/coordination/identity-key-generator.js');
     if (!this.keyGenerator) {
       this.keyGenerator = new IdentityKeyGenerator();
     }
