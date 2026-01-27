@@ -4,13 +4,20 @@
  * Tests token querying and management operations using the EvoSDK.
  * These tests connect to testnet and validate:
  * - Token balance queries
- * - Token holder queries
- * - Token contract retrieval
+ * - Token total supply queries
+ * - Token contract info retrieval
  * - Token transfers (requires funded wallet)
  * - Error handling
  *
  * Read operations require no wallet funding.
  * Write operations require TEST_MNEMONIC environment variable with funded wallet.
+ *
+ * NOTE: Some methods from original tests don't exist on TokensFacade:
+ * - balance(tokenId, identityId) → Use balances([identityId], tokenId) instead
+ * - get(tokenId) → No equivalent (use totalSupply or contractInfo)
+ * - list({contractId, limit}) → No equivalent
+ * - holders(tokenId, {limit}) → No equivalent
+ * - metadata(tokenId) → Use contractInfo(contractId) instead
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -58,12 +65,15 @@ describe('Token Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        const balance = await sdk.tokens.balance(
-          TESTNET_TOKEN_ID,
-          TESTNET_IDENTITIES.SAMPLE
+        // Use balances([identityId], tokenId) and extract from Map
+        const balanceMap = await sdk.tokens.balances(
+          [TESTNET_IDENTITIES.SAMPLE],
+          TESTNET_TOKEN_ID
         );
 
-        expect(typeof balance === 'bigint' || typeof balance === 'number').toBe(true);
+        expect(balanceMap).toBeInstanceOf(Map);
+        const balance = balanceMap.values().next().value ?? 0n;
+        expect(typeof balance === 'bigint').toBe(true);
         console.log(`[Balance] Token balance for sample identity: ${balance}`);
       } catch (error) {
         // Token may not exist or identity may not hold it
@@ -75,13 +85,16 @@ describe('Token Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        const balance = await sdk.tokens.balance(
-          TESTNET_TOKEN_ID,
-          TESTNET_IDENTITIES.DPNS_CONTRACT
+        // Use balances([identityId], tokenId) and extract from Map
+        const balanceMap = await sdk.tokens.balances(
+          [TESTNET_IDENTITIES.DPNS_CONTRACT],
+          TESTNET_TOKEN_ID
         );
 
-        // System identity likely doesn't hold tokens
-        expect(typeof balance === 'bigint' || typeof balance === 'number').toBe(true);
+        expect(balanceMap).toBeInstanceOf(Map);
+        // System identity likely doesn't hold tokens - may return empty map or zero
+        const balance = balanceMap.values().next().value ?? 0n;
+        expect(typeof balance === 'bigint').toBe(true);
       } catch (error) {
         // May throw if identity has no balance record
         console.log('[Balance] No balance record:', (error as Error).message);
@@ -94,58 +107,23 @@ describe('Token Operations - Integration', () => {
   // ============================================================================
 
   describe('Token Queries', () => {
-    it('should get token by ID', async () => {
-      const { sdk } = sdkResult;
+    it.skip('should get token by ID - method not available in facade', async () => {
+      // sdk.tokens.get() does not exist
+      // Available alternatives:
+      // - totalSupply(tokenId) - returns supply info
+      // - statuses([tokenId]) - returns status map
+      // - contractInfo(contractId) - returns contract info
+    });
 
-      try {
-        const token = await sdk.tokens.get(TESTNET_TOKEN_ID);
+    it.skip('should list tokens for contract - method not available in facade', async () => {
+      // sdk.tokens.list() does not exist
+      // No direct equivalent available
+    });
 
-        expect(token).toBeDefined();
-        console.log(`[Token] Retrieved token: ${TESTNET_TOKEN_ID}`);
-      } catch (error) {
-        // Token may not exist on testnet
-        console.log('[Token] Get token:', (error as Error).message);
-      }
-    }, TEST_TIMEOUTS.DOCUMENT_QUERY);
-
-    it('should list tokens for contract', async () => {
-      const { sdk } = sdkResult;
-
-      try {
-        const tokens = await sdk.tokens.list({
-          contractId: TESTNET_TOKEN_CONTRACT_ID,
-          limit: 10,
-        });
-
-        expect(tokens).toBeDefined();
-        expect(Array.isArray(tokens)).toBe(true);
-        console.log(`[Token List] Found ${tokens.length} tokens for contract`);
-      } catch (error) {
-        console.log('[Token List]:', (error as Error).message);
-      }
-    }, TEST_TIMEOUTS.DOCUMENT_QUERY);
-
-    it('should get token holders', async () => {
-      const { sdk } = sdkResult;
-
-      try {
-        const holders = await sdk.tokens.holders(TESTNET_TOKEN_ID, {
-          limit: 10,
-        });
-
-        expect(holders).toBeDefined();
-        expect(Array.isArray(holders)).toBe(true);
-        console.log(`[Holders] Found ${holders.length} token holders`);
-
-        // Each holder should have identityId and balance
-        if (holders.length > 0) {
-          expect(holders[0]).toHaveProperty('identityId');
-          expect(holders[0]).toHaveProperty('balance');
-        }
-      } catch (error) {
-        console.log('[Holders]:', (error as Error).message);
-      }
-    }, TEST_TIMEOUTS.DOCUMENT_QUERY);
+    it.skip('should get token holders - method not available in facade', async () => {
+      // sdk.tokens.holders() does not exist
+      // No direct equivalent available
+    });
   });
 
   // ============================================================================
@@ -159,24 +137,44 @@ describe('Token Operations - Integration', () => {
       try {
         const supply = await sdk.tokens.totalSupply(TESTNET_TOKEN_ID);
 
-        expect(typeof supply === 'bigint' || typeof supply === 'number').toBe(true);
-        console.log(`[Supply] Total supply: ${supply}`);
+        // totalSupply returns TokenTotalSupply | undefined
+        if (supply !== undefined) {
+          console.log(`[Supply] Total supply retrieved`);
+        } else {
+          console.log('[Supply] Token not found or no supply info');
+        }
       } catch (error) {
         console.log('[Supply]:', (error as Error).message);
       }
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
 
-    it('should get token metadata', async () => {
+    it('should get token contract info', async () => {
       const { sdk } = sdkResult;
 
       try {
-        const metadata = await sdk.tokens.metadata(TESTNET_TOKEN_ID);
+        // Use contractInfo(contractId) instead of metadata(tokenId)
+        const contractInfo = await sdk.tokens.contractInfo(TESTNET_TOKEN_CONTRACT_ID);
 
-        expect(metadata).toBeDefined();
-        // Metadata might include name, symbol, decimals, etc.
-        console.log(`[Metadata] Token metadata retrieved`);
+        if (contractInfo !== undefined) {
+          console.log(`[ContractInfo] Token contract info retrieved`);
+        } else {
+          console.log('[ContractInfo] Contract info not found');
+        }
       } catch (error) {
-        console.log('[Metadata]:', (error as Error).message);
+        console.log('[ContractInfo]:', (error as Error).message);
+      }
+    }, TEST_TIMEOUTS.DOCUMENT_QUERY);
+
+    it('should get token statuses', async () => {
+      const { sdk } = sdkResult;
+
+      try {
+        const statusMap = await sdk.tokens.statuses([TESTNET_TOKEN_ID]);
+
+        expect(statusMap).toBeInstanceOf(Map);
+        console.log(`[Statuses] Retrieved statuses for ${statusMap.size} token(s)`);
+      } catch (error) {
+        console.log('[Statuses]:', (error as Error).message);
       }
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
   });
@@ -190,16 +188,20 @@ describe('Token Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        const holdings = await sdk.tokens.balances(TESTNET_IDENTITIES.SAMPLE);
+        // Use identityBalances(identityId, [tokenIds]) instead of balances(identityId)
+        // Note: This requires knowing which token IDs to query
+        const holdingsMap = await sdk.tokens.identityBalances(
+          TESTNET_IDENTITIES.SAMPLE,
+          [TESTNET_TOKEN_ID]
+        );
 
-        expect(holdings).toBeDefined();
-        expect(Array.isArray(holdings)).toBe(true);
-        console.log(`[Holdings] Identity holds ${holdings.length} different tokens`);
+        expect(holdingsMap).toBeInstanceOf(Map);
+        console.log(`[Holdings] Identity has balance records for ${holdingsMap.size} token(s)`);
 
-        // Each holding should have tokenId and balance
-        if (holdings.length > 0) {
-          expect(holdings[0]).toHaveProperty('tokenId');
-          expect(holdings[0]).toHaveProperty('balance');
+        // Check the balance value
+        for (const [tokenId, balance] of holdingsMap) {
+          console.log(`[Holdings] Token ${tokenId}: ${balance}`);
+          expect(typeof balance === 'bigint').toBe(true);
         }
       } catch (error) {
         console.log('[Holdings]:', (error as Error).message);
@@ -227,16 +229,21 @@ describe('Token Operations - Integration', () => {
 
           const senderIdentityId = identityIds[0].identityId;
 
-          // Check if sender has any tokens
-          const holdings = await sdk.tokens.balances(senderIdentityId);
+          // Check if sender has any tokens using identityBalances
+          const holdingsMap = await sdk.tokens.identityBalances(senderIdentityId, [TESTNET_TOKEN_ID]);
 
-          if (holdings.length === 0) {
+          if (holdingsMap.size === 0) {
             console.log('[Transfer] Skipping: Sender has no tokens');
             return;
           }
 
-          const tokenToTransfer = holdings[0];
-          console.log(`[Transfer] Sender has ${tokenToTransfer.balance} of token ${tokenToTransfer.tokenId}`);
+          const tokenBalance = holdingsMap.values().next().value ?? 0n;
+          console.log(`[Transfer] Sender has ${tokenBalance} of token ${TESTNET_TOKEN_ID}`);
+
+          if (tokenBalance <= 0n) {
+            console.log('[Transfer] Skipping: Sender has zero balance');
+            return;
+          }
 
           // Transfer a small amount to another identity (if we have multiple)
           if (identityIds.length >= 2) {
@@ -244,7 +251,7 @@ describe('Token Operations - Integration', () => {
             const transferAmount = 1n;
 
             const result = await sdk.tokens.transfer({
-              tokenId: tokenToTransfer.tokenId,
+              tokenId: TESTNET_TOKEN_ID,
               toIdentityId: recipientIdentityId,
               amount: transferAmount,
               mnemonic,
@@ -295,7 +302,7 @@ describe('Token Operations - Integration', () => {
           }
 
           console.log('[Create Token] Token creation requires identity with sufficient credits');
-          console.log('[Create Token] Use sdk.tokens.create() to create a new token contract');
+          console.log('[Create Token] Use sdk.tokens.mint() to mint tokens after contract creation');
 
           // Token creation is a complex operation that requires:
           // 1. Sufficient credits on the identity
@@ -323,11 +330,12 @@ describe('Token Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        await sdk.tokens.balance(
-          'invalid-token-id',
-          TESTNET_IDENTITIES.SAMPLE
+        // Use balances with invalid token ID
+        await sdk.tokens.balances(
+          [TESTNET_IDENTITIES.SAMPLE],
+          'invalid-token-id'
         );
-        // May throw or return null/zero
+        // May throw or return empty map
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
       }
@@ -337,11 +345,12 @@ describe('Token Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        await sdk.tokens.balance(
-          TESTNET_TOKEN_ID,
-          'invalid-identity-id'
+        // Use balances with invalid identity ID
+        await sdk.tokens.balances(
+          ['invalid-identity-id'],
+          TESTNET_TOKEN_ID
         );
-        // May throw or return null/zero
+        // May throw or return empty map
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
       }

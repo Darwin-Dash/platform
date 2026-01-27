@@ -192,12 +192,12 @@ export const TEST_AMOUNTS = {
  */
 export const TEST_TIMEOUTS = {
   SDK_CONNECT: 30000,
-  IDENTITY_FETCH: 10000,
+  IDENTITY_FETCH: 30000,        // Increased for testnet latency
   IDENTITY_CREATE: 120000,      // Identity creation is slow
   IDENTITY_TOPUP: 90000,
   STATE_TRANSITION: 60000,
-  DOCUMENT_QUERY: 10000,
-  DPNS_RESOLVE: 10000,
+  DOCUMENT_QUERY: 30000,        // Increased for testnet latency
+  DPNS_RESOLVE: 30000,          // Increased for testnet latency
 };
 
 /**
