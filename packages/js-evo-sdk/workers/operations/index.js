@@ -43,6 +43,12 @@ import {
 // Contract operations
 import { contractGetOperation } from './contracts.js';
 
+// System operations
+import {
+  systemStatusOperation,
+  systemEpochOperation,
+} from './system.js';
+
 /**
  * Registry of available WASM operations
  *
@@ -83,6 +89,10 @@ export const operations = {
 
   // Contract operations
   'contract-get': contractGetOperation,
+
+  // System operations
+  'system-status': systemStatusOperation,
+  'system-epoch': systemEpochOperation,
 };
 
 /**

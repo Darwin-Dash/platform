@@ -170,6 +170,8 @@ process.on('message', async (msg) => {
         'document-get',
         'document-query',
         'contract-get',
+        'system-status',
+        'system-epoch',
       ];
 
       if (!dapiOnlyOperations.includes(operation)) {
