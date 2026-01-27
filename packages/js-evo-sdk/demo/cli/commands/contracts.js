@@ -1,36 +1,40 @@
 /**
  * Contracts CLI Commands
+ *
+ * Uses worker operations to avoid WASM reader lock issues.
  */
 
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  createConnectedSDK,
   formatIdentityId,
   printTable,
   printJson,
 } from '../utils.js';
+import { runWasmOperation } from '../../../dist/identities/utils/wasm-worker-runner.js';
 
 /**
  * Get a data contract by ID
  */
 export async function contractsGet(contractId, globalOpts) {
   const spinner = ora('Fetching data contract...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'contract-get',
+      { contractId },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const contract = await sdk.contracts.get(contractId);
-
-    if (!contract) {
+    if (!result.found) {
       spinner.fail('Contract not found');
       return;
     }
 
     spinner.succeed('Contract fetched');
 
-    const data = contract.toJSON ? contract.toJSON() : contract;
+    const data = result.contract;
 
     printTable({
       'Contract ID': chalk.green(contractId),
@@ -70,3 +74,4 @@ export async function contractsGet(contractId, globalOpts) {
     throw err;
   }
 }
+

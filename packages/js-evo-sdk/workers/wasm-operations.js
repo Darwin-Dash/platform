@@ -170,6 +170,9 @@ process.on('message', async (msg) => {
         'document-get',
         'document-query',
         'contract-get',
+        'dashpay-profile',
+        'dashpay-contacts-sent',
+        'dashpay-contacts-received',
         'system-status',
         'system-epoch',
       ];

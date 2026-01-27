@@ -43,6 +43,13 @@ import {
 // Contract operations
 import { contractGetOperation } from './contracts.js';
 
+// DashPay operations
+import {
+  dashpayProfileOperation,
+  dashpayContactsSentOperation,
+  dashpayContactsReceivedOperation,
+} from './dashpay.js';
+
 // System operations
 import {
   systemStatusOperation,
@@ -89,6 +96,11 @@ export const operations = {
 
   // Contract operations
   'contract-get': contractGetOperation,
+
+  // DashPay operations
+  'dashpay-profile': dashpayProfileOperation,
+  'dashpay-contacts-sent': dashpayContactsSentOperation,
+  'dashpay-contacts-received': dashpayContactsReceivedOperation,
 
   // System operations
   'system-status': systemStatusOperation,

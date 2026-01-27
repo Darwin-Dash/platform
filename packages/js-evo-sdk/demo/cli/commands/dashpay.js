@@ -1,37 +1,40 @@
 /**
  * DashPay CLI Commands
+ *
+ * Uses worker operations to avoid WASM reader lock issues.
  */
 
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  createConnectedSDK,
   formatIdentityId,
   printTable,
   printJson,
-  success,
 } from '../utils.js';
+import { runWasmOperation } from '../../../dist/identities/utils/wasm-worker-runner.js';
 
 /**
  * Get DashPay profile for an identity
  */
 export async function dashpayProfile(identityId, globalOpts) {
   const spinner = ora('Fetching DashPay profile...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'dashpay-profile',
+      { identityId },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const profile = await sdk.dashpay.getProfile(identityId);
-
-    if (!profile) {
+    if (!result.found) {
       spinner.fail('No DashPay profile found for this identity');
       return;
     }
 
     spinner.succeed('Profile fetched');
 
-    const data = profile.toJSON ? profile.toJSON() : profile;
+    const data = result.profile;
     const props = data.data || data;
 
     printTable({
@@ -60,21 +63,26 @@ export async function dashpayProfile(identityId, globalOpts) {
  */
 export async function dashpayContacts(identityId, globalOpts) {
   const spinner = ora('Fetching contacts...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
-
-    // Get both sent and received contact requests
+    // Get both sent and received contact requests using worker operations
     spinner.text = 'Fetching contact requests...';
 
-    const [sentRequests, receivedRequests] = await Promise.all([
-      sdk.dashpay.getContactRequestsSent(identityId, { limit: 50 }),
-      sdk.dashpay.getContactRequestsReceived(identityId, { limit: 50 }),
+    const [sentResult, receivedResult] = await Promise.all([
+      runWasmOperation(
+        'dashpay-contacts-sent',
+        { identityId, limit: 50 },
+        { network: globalOpts.network || 'testnet' }
+      ),
+      runWasmOperation(
+        'dashpay-contacts-received',
+        { identityId, limit: 50 },
+        { network: globalOpts.network || 'testnet' }
+      ),
     ]);
 
-    const sentCount = sentRequests?.length || 0;
-    const receivedCount = receivedRequests?.length || 0;
+    const sentCount = sentResult.count || 0;
+    const receivedCount = receivedResult.count || 0;
 
     spinner.succeed(`Found ${chalk.cyan(sentCount + receivedCount)} contact requests`);
 
@@ -87,9 +95,8 @@ export async function dashpayContacts(identityId, globalOpts) {
       console.log(chalk.bold.cyan('\nSent Contact Requests:'));
       console.log(chalk.gray('─'.repeat(50)));
 
-      for (const req of sentRequests) {
-        const data = req.toJSON ? req.toJSON() : req;
-        const props = data.data || data;
+      for (const req of sentResult.requests) {
+        const props = req.data || req;
         console.log(`  ${chalk.gray('To:')} ${formatIdentityId(props.toUserId || 'N/A')}`);
         console.log(`    ${chalk.gray('Status:')} ${chalk.yellow('Pending')}`);
       }
@@ -99,10 +106,8 @@ export async function dashpayContacts(identityId, globalOpts) {
       console.log(chalk.bold.cyan('\nReceived Contact Requests:'));
       console.log(chalk.gray('─'.repeat(50)));
 
-      for (const req of receivedRequests) {
-        const data = req.toJSON ? req.toJSON() : req;
-        const props = data.data || data;
-        console.log(`  ${chalk.gray('From:')} ${formatIdentityId(data.$ownerId || 'N/A')}`);
+      for (const req of receivedResult.requests) {
+        console.log(`  ${chalk.gray('From:')} ${formatIdentityId(req.$ownerId || 'N/A')}`);
         console.log(`    ${chalk.gray('Status:')} ${chalk.yellow('Pending')}`);
       }
     }
