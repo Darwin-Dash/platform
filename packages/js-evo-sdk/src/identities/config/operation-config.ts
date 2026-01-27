@@ -12,19 +12,23 @@
  * DAPI Client Configuration
  *
  * Settings for DAPI server communication, retry logic, and timeouts.
+ * Tuned for testnet reliability with unreliable nodes.
  */
 export const DAPI_CONFIG = {
-  /** Request timeout in milliseconds (reduced for faster failover) */
-  TIMEOUT_MS: 15000, // 15 seconds
+  /** Request timeout in milliseconds (increased for slow testnet nodes) */
+  TIMEOUT_MS: 20000, // 20 seconds (was 15s)
 
-  /** Maximum number of retries with different servers (reduced for faster failover) */
-  MAX_RETRIES: 3,
+  /** Maximum number of retries with different servers (increased for testnet reliability) */
+  MAX_RETRIES: 5, // (was 3)
 
-  /** Time to ban failed servers in milliseconds (reduced for faster recovery) */
-  BAN_TIME_MS: 30000, // 30 seconds
+  /** Time to ban failed servers in milliseconds (longer ban for consistently bad nodes) */
+  BAN_TIME_MS: 60000, // 60 seconds (was 30s)
 
   /** Default log level for DAPI operations */
-  LOG_LEVEL: 'debug' as const
+  LOG_LEVEL: 'debug' as const,
+
+  /** Whether to ban addresses that fail requests */
+  BAN_FAILED_ADDRESS: true,
 } as const;
 
 /**

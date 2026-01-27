@@ -7,13 +7,58 @@
  * - Common test patterns and utilities
  */
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { EvoSDK, type EvoSDKOptions, type ConnectionOptions } from '../../src/sdk.js';
 import { ensureInitialized as initWasm } from '../../src/wasm.js';
 import { wallet } from '../../src/wallet/functions.js';
+import { DAPI_CONFIG } from '../../src/identities/config/operation-config.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ============================================================================
 // Configuration
 // ============================================================================
+
+/**
+ * Load healthy DAPI nodes from JSON file (built by scripts/build-healthy-nodes.js)
+ *
+ * Checks multiple locations:
+ * 1. SDK root: healthy-nodes.json
+ * 2. Demo folder: demo/healthy-nodes.json
+ * 3. Demo web: demo/web/healthy-nodes.json
+ *
+ * @returns Array of healthy node addresses, or empty array if not found
+ */
+function loadHealthyNodes(): string[] {
+  // Locations relative to tests/lib/ directory
+  const locations = [
+    path.join(__dirname, '../../healthy-nodes.json'),           // SDK root
+    path.join(__dirname, '../../demo/healthy-nodes.json'),      // demo folder
+    path.join(__dirname, '../../demo/web/healthy-nodes.json'),  // demo/web folder
+  ];
+
+  for (const location of locations) {
+    try {
+      if (fs.existsSync(location)) {
+        const data = JSON.parse(fs.readFileSync(location, 'utf-8'));
+        if (data.nodes && Array.isArray(data.nodes) && data.nodes.length > 0) {
+          console.log(`[TEST_CONFIG] Loaded ${data.nodes.length} healthy nodes from ${path.basename(location)} (generated: ${data.generated})`);
+          return data.nodes;
+        }
+      }
+    } catch (error) {
+      // Try next location
+    }
+  }
+
+  console.log('[TEST_CONFIG] No healthy-nodes.json found, using network defaults');
+  return []; // Return empty if not found (will use default network nodes)
+}
+
+// Pre-load healthy nodes once at module load time
+const HEALTHY_NODES = loadHealthyNodes();
 
 /**
  * Default configuration for test helpers
@@ -34,8 +79,16 @@ export const TEST_CONFIG = {
   /** Whether a test mnemonic is available */
   hasMnemonic: !!process.env.TEST_MNEMONIC,
 
-  /** DAPI addresses (comma-separated) */
-  dapiAddresses: process.env.DAPI_ADDRESSES?.split(',').map((a) => a.trim()).filter(Boolean) || [],
+  /** DAPI addresses: env var takes priority, then healthy nodes from JSON, then empty (network defaults) */
+  dapiAddresses: process.env.DAPI_ADDRESSES?.split(',').map((a) => a.trim()).filter(Boolean)
+    || HEALTHY_NODES,
+
+  /** SDK connection settings for tests (imported from centralized config) */
+  sdkSettings: {
+    timeoutMs: DAPI_CONFIG.TIMEOUT_MS,
+    retries: DAPI_CONFIG.MAX_RETRIES,
+    banFailedAddress: DAPI_CONFIG.BAN_FAILED_ADDRESS,
+  },
 };
 
 // ============================================================================
@@ -178,15 +231,18 @@ export async function createEvoSDKWithWallet(
     isNewMnemonic = true;
   }
 
-  // Create SDK options
+  // Create SDK options with centralized DAPI settings
   const sdkOptions: EvoSDKOptions = {
     network,
     ...connectionOptions,
+    settings: TEST_CONFIG.sdkSettings,  // Apply resilience settings from DAPI_CONFIG
   };
 
-  // Add custom addresses if provided
+  // Add custom addresses if provided, otherwise use healthy nodes from JSON
   if (addresses && addresses.length > 0) {
     sdkOptions.addresses = addresses;
+  } else if (TEST_CONFIG.dapiAddresses.length > 0) {
+    sdkOptions.addresses = TEST_CONFIG.dapiAddresses;
   }
 
   // Create SDK instance
