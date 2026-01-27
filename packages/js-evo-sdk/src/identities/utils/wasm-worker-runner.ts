@@ -12,8 +12,9 @@
 declare const process: { env: { [key: string]: string | undefined }; versions?: { node?: string } };
 declare const window: any;
 
-// Operation type definitions
+// Operation type definitions - all supported WASM worker operations
 export type WasmOperationType =
+  // Identity operations
   | 'identity-create'
   | 'identity-topup'
   | 'identity-discover'
@@ -23,7 +24,22 @@ export type WasmOperationType =
   | 'identity-fetch'
   | 'identity-fetch-with-proof'
   | 'identity-fetch-unproved'
-  | 'identity-get-keys';
+  | 'identity-get-keys'
+  // DPNS operations
+  | 'dpns-resolve'
+  | 'dpns-is-available'
+  | 'dpns-username'
+  | 'dpns-get-username-by-name'
+  // Document operations
+  | 'document-get'
+  | 'document-query'
+  // Token operations
+  | 'token-balances'
+  | 'token-identity-balances'
+  | 'token-total-supply'
+  | 'token-statuses'
+  // Contract operations
+  | 'contract-get';
 
 export interface TransactionData {
   transactionId: string;

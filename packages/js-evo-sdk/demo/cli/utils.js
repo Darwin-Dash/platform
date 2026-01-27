@@ -4,15 +4,20 @@
 
 import chalk from 'chalk';
 import ora from 'ora';
-import { EvoSDK } from '../../dist/evo-sdk.module.js';
+import { EvoSDK } from '../../dist/sdk.js';
 
 /**
- * Create and connect SDK instance
+ * Create SDK instance (lazy connection - connects on first operation)
+ *
+ * NOTE: We don't call connect() explicitly because the WASM SDK has a reader lock
+ * issue that prevents operations after an explicit connect(). Instead, each facade
+ * operation calls getWasmSdkConnected() which handles connection lazily.
+ *
  * @param {object} globalOpts - Global options from commander
- * @returns {Promise<EvoSDK>} Connected SDK instance
+ * @returns {Promise<EvoSDK>} SDK instance (not yet connected)
  */
 export async function createConnectedSDK(globalOpts) {
-  const spinner = ora('Connecting to Dash Platform...').start();
+  const spinner = ora('Initializing Dash Platform SDK...').start();
 
   try {
     const network = globalOpts.network || 'testnet';
@@ -21,11 +26,12 @@ export async function createConnectedSDK(globalOpts) {
       logs: globalOpts.verbose ? 'info' : 'error',
     });
 
-    await sdk.connect();
-    spinner.succeed(`Connected to ${chalk.cyan(network)}`);
+    // Don't call connect() here - let operations connect lazily
+    // This avoids the WASM SDK reader lock issue
+    spinner.succeed(`SDK initialized for ${chalk.cyan(network)} (will connect on first operation)`);
     return sdk;
   } catch (error) {
-    spinner.fail('Failed to connect');
+    spinner.fail('Failed to initialize SDK');
     throw error;
   }
 }

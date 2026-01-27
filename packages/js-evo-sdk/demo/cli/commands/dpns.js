@@ -1,16 +1,19 @@
 /**
  * DPNS CLI Commands
+ *
+ * Uses worker-based operations to avoid WASM reader lock issues.
+ * All DPNS operations are executed in isolated Node.js child processes.
  */
 
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  createConnectedSDK,
   formatIdentityId,
   printTable,
   success,
   error,
 } from '../utils.js';
+import { runWasmOperation } from '../../../dist/identities/utils/wasm-worker-runner.js';
 
 /**
  * Resolve a DPNS name
@@ -20,31 +23,25 @@ export async function dpnsResolve(name, globalOpts) {
   const normalizedName = name.endsWith('.dash') ? name : `${name}.dash`;
 
   const spinner = ora(`Resolving ${normalizedName}...`).start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'dpns-resolve',
+      { name: normalizedName },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const result = await sdk.dpns.resolve(normalizedName);
-
-    if (!result) {
+    if (!result.found) {
       spinner.fail(`Name "${normalizedName}" not found`);
       return;
     }
 
     spinner.succeed(`Name resolved: ${chalk.green(normalizedName)}`);
-
-    // Extract document data
-    const data = result.toJSON ? result.toJSON() : result;
-    const properties = data.$dataContractId ? data : data.data || data;
-
     printTable({
       'Name': chalk.green(normalizedName),
-      'Label': properties.label || normalizedName.replace('.dash', ''),
-      'Owner ID': formatIdentityId(data.$ownerId || properties.$ownerId || 'N/A'),
-      'Record': properties.records?.dashUniqueIdentityId || properties.records?.dashAliasIdentityId || 'N/A',
-      'Normalized Label': properties.normalizedLabel || 'N/A',
-      'Parent Domain': properties.normalizedParentDomainName || 'dash',
+      'Label': normalizedName.replace('.dash', ''),
+      'Identity ID': formatIdentityId(result.identityId),
     }, 'DPNS Name');
 
   } catch (err) {
@@ -55,48 +52,46 @@ export async function dpnsResolve(name, globalOpts) {
 
 /**
  * Search for DPNS names
+ * NOTE: Search functionality is not currently available in the WASM SDK
  */
 export async function dpnsSearch(prefix, options, globalOpts) {
-  const limit = parseInt(options.limit, 10) || 10;
-
   const spinner = ora(`Searching for names starting with "${prefix}"...`).start();
-  let sdk;
+  spinner.fail('Search functionality is not currently available in the SDK');
+  console.log(chalk.gray('\nNote: DPNS name search requires document queries, which are not yet implemented.'));
+  console.log(chalk.gray('Use "dpns resolve <name>" to look up specific names.'));
+}
+
+/**
+ * Check DPNS name availability
+ */
+export async function dpnsCheckAvailable(name, globalOpts) {
+  const label = name.replace('.dash', '');
+  const spinner = ora(`Checking if "${label}.dash" is available...`).start();
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'dpns-is-available',
+      { label },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const results = await sdk.dpns.search(prefix, 'dash', { limit });
-
-    spinner.succeed(`Found ${chalk.cyan(results.length)} names`);
-
-    if (results.length === 0) {
-      console.log(chalk.gray('\nNo names found with that prefix.'));
-      return;
+    if (result.isAvailable) {
+      spinner.succeed(`Name "${chalk.green(label + '.dash')}" is available!`);
+    } else {
+      spinner.info(`Name "${chalk.yellow(label + '.dash')}" is taken.`);
     }
 
-    console.log(chalk.bold.cyan('\nMatching Names:'));
-    console.log(chalk.gray('─'.repeat(50)));
-
-    for (const doc of results) {
-      const data = doc.toJSON ? doc.toJSON() : doc;
-      const properties = data.$dataContractId ? data : data.data || data;
-      const label = properties.label || 'unknown';
-      const ownerId = data.$ownerId || properties.$ownerId || 'N/A';
-
-      console.log(`  ${chalk.green(label + '.dash')}`);
-      console.log(`    ${chalk.gray('Owner:')} ${formatIdentityId(ownerId)}`);
-    }
-
-    console.log();
-
+    return result.isAvailable;
   } catch (err) {
-    spinner.fail('Search failed');
+    spinner.fail('Availability check failed');
     throw err;
   }
 }
 
 /**
  * Register a DPNS name
+ * NOTE: Registration requires write operations which are not yet worker-enabled
  */
 export async function dpnsRegister(options, globalOpts) {
   const { name, identity, key } = options;
@@ -108,35 +103,25 @@ export async function dpnsRegister(options, globalOpts) {
   }
 
   const spinner = ora(`Registering ${name}.dash...`).start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
-
-    // Check availability first
+    // Check availability first using worker
     spinner.text = 'Checking name availability...';
-    const isAvailable = await sdk.dpns.isAvailable(name, 'dash');
+    const availResult = await runWasmOperation(
+      'dpns-is-available',
+      { label: name },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    if (!isAvailable) {
+    if (!availResult.isAvailable) {
       spinner.fail(`Name "${name}.dash" is not available`);
       return;
     }
 
     spinner.text = 'Registering name...';
-
-    const result = await sdk.dpns.register({
-      label: name,
-      identityId: identity,
-      privateKeyWif: key,
-    });
-
-    spinner.succeed(`Name registered: ${chalk.green(name + '.dash')}`);
-
-    printTable({
-      'Name': chalk.green(`${name}.dash`),
-      'Owner': formatIdentityId(identity),
-      'Status': chalk.green('Registered'),
-    }, 'Registration Complete');
+    spinner.fail('DPNS registration is not yet implemented in CLI demo');
+    console.log(chalk.gray('\nNote: Name registration requires identity key management.'));
+    console.log(chalk.gray('Use the web demo or SDK directly for full registration.'));
 
   } catch (err) {
     spinner.fail('Registration failed');

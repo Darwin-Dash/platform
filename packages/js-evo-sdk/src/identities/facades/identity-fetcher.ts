@@ -35,10 +35,11 @@ export class IdentityFetcher {
    * @param buffer Raw identity buffer from Platform
    * @returns Parsed Identity object
    */
-  async fromBuffer(buffer: Uint8Array): Promise<wasm.IdentityWasm> {
+  async fromBuffer(buffer: Uint8Array): Promise<wasm.Identity> {
     const wasmSdk = await import('@dashevo/wasm-sdk');
-    const { IdentityWasm } = wasmSdk;
-    return IdentityWasm.fromBuffer(buffer);
+    // Note: Identity class (not IdentityWasm) with fromBytes (not fromBuffer)
+    const { Identity } = wasmSdk;
+    return Identity.fromBytes(buffer);
   }
 
   /**

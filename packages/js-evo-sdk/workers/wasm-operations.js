@@ -157,19 +157,40 @@ process.on('message', async (msg) => {
         console.log('[Worker] SDK instance created');
       }
 
-      // CRITICAL: Connect SDK BEFORE running operations to complete prefetch + builder.build()
-      // This ensures all WASM mutex locks are properly acquired and released before
-      // any operation-specific WASM calls (like createAssetLockProof) are made.
-      // Without this, static WASM functions may conflict with SDK connection.
-      if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] Connecting SDK (prefetch + build)...');
-      }
-      await sdk.connect();
-      if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] SDK connected');
+      // Operations that use direct DAPI calls (bypassing WASM) don't need SDK connection
+      // Connecting would acquire WASM RwLock which causes "already locked to a reader" errors
+      const dapiOnlyOperations = [
+        'identity-fetch',
+        'identity-fetch-unproved',
+        'identity-discover-mnemonic',
+        'dpns-resolve',
+        'dpns-is-available',
+        'dpns-username',
+        'dpns-get-username-by-name',
+        'document-get',
+        'document-query',
+        'contract-get',
+      ];
+
+      if (!dapiOnlyOperations.includes(operation)) {
+        // CRITICAL: Connect SDK BEFORE running operations to complete prefetch + builder.build()
+        // This ensures all WASM mutex locks are properly acquired and released before
+        // any operation-specific WASM calls (like createAssetLockProof) are made.
+        // Without this, static WASM functions may conflict with SDK connection.
+        if (process.env.LOG_LEVEL === 'debug') {
+          console.log('[Worker] Connecting SDK (prefetch + build)...');
+        }
+        await sdk.connect();
+        if (process.env.LOG_LEVEL === 'debug') {
+          console.log('[Worker] SDK connected');
+        }
+      } else {
+        if (process.env.LOG_LEVEL === 'debug') {
+          console.log('[Worker] Skipping SDK connection (DAPI-only operation)');
+        }
       }
 
-      // Execute operation with fully connected SDK
+      // Execute operation with SDK (connected or not based on operation type)
       // Pass network as 4th param for operations that need it
       const result = await operationHandler(params, sdk, wasmModule, network || 'testnet');
 
@@ -177,13 +198,15 @@ process.on('message', async (msg) => {
         console.log(`[Worker] Operation ${operation} completed successfully`);
       }
 
-      // CRITICAL: Free WASM resources before exit
-      if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] Cleaning up WASM resources...');
-      }
-      await sdk.resetWasmSdk();
-      if (process.env.LOG_LEVEL === 'debug') {
-        console.log('[Worker] WASM cleanup completed');
+      // CRITICAL: Free WASM resources before exit (only if we connected)
+      if (!dapiOnlyOperations.includes(operation)) {
+        if (process.env.LOG_LEVEL === 'debug') {
+          console.log('[Worker] Cleaning up WASM resources...');
+        }
+        await sdk.resetWasmSdk();
+        if (process.env.LOG_LEVEL === 'debug') {
+          console.log('[Worker] WASM cleanup completed');
+        }
       }
 
       // Send success result back to parent

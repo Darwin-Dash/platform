@@ -9,10 +9,21 @@
  *   node demo/cli/index.js identity discover --mnemonic "..."
  *   node demo/cli/index.js dpns resolve --name "alice.dash"
  *
- * Environment Variables:
+ * Environment Variables (loaded from .env file):
  *   MNEMONIC - Default mnemonic for wallet operations
  *   NETWORK  - Network to use (testnet, mainnet, local). Default: testnet
  */
+
+// Load environment variables from .env file
+import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from package root (two levels up from demo/cli/)
+config({ path: join(__dirname, '..', '..', '.env') });
 
 import { Command } from 'commander';
 import chalk from 'chalk';

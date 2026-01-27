@@ -94,6 +94,7 @@ declare module '@dashevo/wasm-sdk' {
   }
 
   // IdentityWasm as a class with static and instance methods
+  // Note: The wasm-sdk actually exports this as "Identity" not "IdentityWasm"
   export class IdentityWasm {
     constructor(data: any);
     static fromBuffer(buffer: Uint8Array): IdentityWasm;
@@ -102,6 +103,29 @@ declare module '@dashevo/wasm-sdk' {
     getPublicKeys(): any[];
     getRevision(): number;
     toJSON(): any;
+    [key: string]: any;
+  }
+
+  // Identity class - actual export from wasm-sdk (with fromBytes method)
+  export class Identity {
+    constructor(data: any);
+    static fromBytes(buffer: Uint8Array): Identity;
+    static fromBase64(base64: string): Identity;
+    static fromHex(hex: string): Identity;
+    static fromJSON(json: any): Identity;
+    static fromObject(obj: any): Identity;
+    id(): any;
+    balance(): number;
+    revision(): number;
+    getPublicKeys(): any[];
+    getPublicKeyById(id: number): any;
+    addPublicKey(key: any): void;
+    toJSON(): any;
+    toBytes(): Uint8Array;
+    toBase64(): string;
+    toHex(): string;
+    toObject(): any;
+    free(): void;
     [key: string]: any;
   }
 

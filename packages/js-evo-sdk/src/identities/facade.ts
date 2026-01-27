@@ -821,11 +821,12 @@ export class IdentitiesFacade {
     const DAPIClient = (await import('@dashevo/dapi-client')).default;
     const wasmSdk = await import('@dashevo/wasm-sdk');
     const initWasm = wasmSdk.default;
-    const { IdentityWasm } = wasmSdk;
+    // Note: Identity class (not IdentityWasm) with fromBytes (not fromBuffer)
+    const { Identity } = wasmSdk;
     const { wallet: walletFunctions } = await import('../wallet/functions.js');
     const dashcoreLib = (await import('@dashevo/dashcore-lib')).default;
 
-    // Initialize wasm-sdk for key derivation and IdentityWasm.fromBuffer() decoding
+    // Initialize wasm-sdk for key derivation and Identity.fromBytes() decoding
     await initWasm();
 
     // Get DAPI addresses - prioritize env var, then healthy nodes file, then whitelist
@@ -949,8 +950,8 @@ export class IdentitiesFacade {
             const response = await client.platform.getIdentityByPublicKeyHash(hashBuffer, { prove: false });
 
             if (response.identity && response.identity.length > 0) {
-              // Decode identity buffer using IdentityWasm.fromBuffer()
-              const identity = IdentityWasm.fromBuffer(response.identity);
+              // Decode identity buffer using Identity.fromBytes()
+              const identity = Identity.fromBytes(response.identity);
               const identityJson = identity.toJSON();
               const identityId = identityJson.id;
 

@@ -1,11 +1,13 @@
 /**
  * Identity CLI Commands
+ *
+ * Uses worker-based operations to avoid WASM reader lock issues.
+ * All WASM SDK operations are executed in isolated Node.js child processes.
  */
 
 import chalk from 'chalk';
 import ora from 'ora';
 import {
-  createConnectedSDK,
   formatCredits,
   formatIdentityId,
   printTable,
@@ -16,6 +18,7 @@ import {
   parseAmount,
   createProgressCallback,
 } from '../utils.js';
+import { runWasmOperation } from '../../../dist/identities/utils/wasm-worker-runner.js';
 
 /**
  * Discover identities from mnemonic
@@ -24,22 +27,23 @@ export async function identityDiscover(options, globalOpts) {
   validateMnemonic(options.mnemonic);
 
   const spinner = ora('Discovering identities...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
-
     const gapLimit = parseInt(options.gapLimit, 10) || 20;
 
     spinner.text = 'Scanning wallet for identities...';
 
-    const identities = await sdk.identities.getIdentityIds(options.mnemonic, {
-      gapLimit,
-      onProgress: (state) => {
-        spinner.text = `Scanning index ${state.currentIndex}, found ${state.foundCount} identities...`;
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'identity-discover-mnemonic',
+      {
+        mnemonic: options.mnemonic,
+        gapLimit,
       },
-    });
+      { network: globalOpts.network || 'testnet' }
+    );
 
+    const identities = result.identities || [];
     spinner.succeed(`Found ${chalk.cyan(identities.length)} identities`);
 
     if (identities.length === 0) {
@@ -73,19 +77,18 @@ export async function identityCreate(options, globalOpts) {
   const amount = parseAmount(options.amount);
 
   const spinner = ora('Creating identity...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
-
     spinner.text = 'Finding UTXOs and creating identity...';
 
-    const result = await sdk.identities.createWithWallet(
-      options.mnemonic,
-      amount,
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'identity-create',
       {
-        onProgress: createProgressCallback(spinner),
-      }
+        mnemonic: options.mnemonic,
+        amount,
+      },
+      { network: globalOpts.network || 'testnet', timeout: 300000 }
     );
 
     spinner.succeed('Identity created successfully!');
@@ -113,33 +116,28 @@ export async function identityTopUp(options, globalOpts) {
   const amount = parseAmount(options.amount);
 
   const spinner = ora('Topping up identity...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
-
-    // Get current balance
-    spinner.text = 'Getting current balance...';
-    const currentBalance = await sdk.identities.balance(options.id);
-
     spinner.text = 'Processing top-up...';
 
-    const result = await sdk.identities.topUpWithWallet(
-      options.id,
-      amount,
-      options.mnemonic,
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'identity-topup',
       {
-        onProgress: createProgressCallback(spinner),
-      }
+        identityId: options.id,
+        mnemonic: options.mnemonic,
+        amount,
+      },
+      { network: globalOpts.network || 'testnet', timeout: 300000 }
     );
 
     spinner.succeed('Identity topped up successfully!');
 
     printTable({
       'Identity ID': formatIdentityId(options.id),
-      'Previous Balance': formatCredits(currentBalance),
+      'Previous Balance': formatCredits(result.previousBalance || 0),
       'Added': formatCredits(amount * 1000),
-      'New Balance': formatCredits(result.newBalance || (currentBalance + BigInt(amount * 1000))),
+      'New Balance': formatCredits(result.newBalance || 0),
     }, 'Top-Up Result');
 
   } catch (err) {
@@ -153,20 +151,26 @@ export async function identityTopUp(options, globalOpts) {
  */
 export async function identityGet(identityId, globalOpts) {
   const spinner = ora('Fetching identity...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'identity-fetch',
+      { identityId },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const identity = await sdk.identities.get(identityId);
+    if (!result.found) {
+      spinner.fail('Identity not found');
+      return;
+    }
 
     spinner.succeed('Identity fetched');
 
-    // Convert to JSON for display
-    const data = identity.toJSON ? identity.toJSON() : identity;
+    const data = result.identity || {};
 
     printTable({
-      'Identity ID': chalk.green(data.id),
+      'Identity ID': chalk.green(data.id || identityId),
       'Balance': formatCredits(data.balance || 0),
       'Revision': data.revision?.toString() || 'N/A',
       'Keys Count': data.publicKeys?.length?.toString() || 'N/A',
@@ -190,15 +194,23 @@ export async function identityGet(identityId, globalOpts) {
  */
 export async function identityBalance(identityId, globalOpts) {
   const spinner = ora('Fetching balance...').start();
-  let sdk;
 
   try {
-    sdk = await createConnectedSDK(globalOpts);
+    // Use worker-based operation to avoid WASM reader lock
+    const result = await runWasmOperation(
+      'identity-fetch',
+      { identityId },
+      { network: globalOpts.network || 'testnet' }
+    );
 
-    const balance = await sdk.identities.balance(identityId);
+    if (!result.found) {
+      spinner.fail('Identity not found');
+      return;
+    }
 
     spinner.succeed('Balance fetched');
 
+    const balance = result.identity?.balance || 0;
     console.log(`\n  ${chalk.gray('Identity:')} ${formatIdentityId(identityId)}`);
     console.log(`  ${chalk.gray('Balance:')}  ${chalk.green(formatCredits(balance))}\n`);
 
