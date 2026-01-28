@@ -11,8 +11,8 @@ export const TESTNET_IDENTITIES = {
   // A real identity on testnet that can be used for read-only tests
   SAMPLE: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
 
-  // DPNS contract owner (system identity)
-  DPNS_CONTRACT: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  // NOTE: DPNS_CONTRACT was removed because it was actually a contract ID,
+  // not an identity ID. Use TESTNET_CONTRACTS.DPNS for contract operations.
 };
 
 // Known testnet contracts
@@ -198,6 +198,7 @@ export const TEST_TIMEOUTS = {
   STATE_TRANSITION: 60000,
   DOCUMENT_QUERY: 30000,        // Increased for testnet latency
   DPNS_RESOLVE: 30000,          // Increased for testnet latency
+  TOKEN_QUERY: 60000,           // Token operations need 60s (WASM SDK's own tests use this)
 };
 
 /**

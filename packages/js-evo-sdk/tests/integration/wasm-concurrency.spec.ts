@@ -75,8 +75,9 @@ describe('WASM Concurrency - Integration', () => {
       const balance = await sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE);
       expect(typeof balance).toBe('bigint');
 
-      // Fetch again
-      const identity2 = await sdk.identities.fetch(TESTNET_IDENTITIES.DPNS_CONTRACT);
+      // Fetch same identity again to verify sequential ops work
+      // Note: DPNS_CONTRACT is a contract ID, not an identity ID, so we use SAMPLE again
+      const identity2 = await sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE);
       expect(identity2).toBeDefined();
     }, TEST_TIMEOUTS.IDENTITY_FETCH * 3);
   });

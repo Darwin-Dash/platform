@@ -61,35 +61,42 @@ describe('Document Operations - Integration', () => {
     it('should query documents by type', async () => {
       const { sdk } = sdkResult;
 
-      const documents = await sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: DOMAIN_DOCUMENT_TYPE,
+      // API expects dataContractId and documentTypeName (not contractId/type)
+      const documentsMap = await sdk.documents.query({
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: DOMAIN_DOCUMENT_TYPE,
         limit: 10,
       });
 
-      expect(documents).toBeDefined();
-      expect(Array.isArray(documents)).toBe(true);
-      expect(documents.length).toBeGreaterThan(0);
-      console.log(`[Query] Found ${documents.length} domain documents`);
+      expect(documentsMap).toBeDefined();
+      expect(documentsMap instanceof Map).toBe(true);
+      expect(documentsMap.size).toBeGreaterThan(0);
+      console.log(`[Query] Found ${documentsMap.size} domain documents`);
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
 
     it('should query documents with ordering', async () => {
       const { sdk } = sdkResult;
 
-      const documents = await sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: DOMAIN_DOCUMENT_TYPE,
+      const documentsMap = await sdk.documents.query({
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: DOMAIN_DOCUMENT_TYPE,
         limit: 5,
         orderBy: [['normalizedLabel', 'asc']],
       });
 
-      expect(documents).toBeDefined();
-      expect(Array.isArray(documents)).toBe(true);
-      console.log(`[Query] Found ${documents.length} ordered documents`);
+      expect(documentsMap).toBeDefined();
+      expect(documentsMap instanceof Map).toBe(true);
+      console.log(`[Query] Found ${documentsMap.size} ordered documents`);
 
       // Verify ordering if documents returned
-      if (documents.length >= 2) {
-        const labels = documents.map((d: any) => d.normalizedLabel || d.data?.normalizedLabel);
+      if (documentsMap.size >= 2) {
+        const labels: string[] = [];
+        for (const [, doc] of documentsMap) {
+          if (doc) {
+            const data = doc.data || doc;
+            labels.push(data.normalizedLabel);
+          }
+        }
         const sortedLabels = [...labels].sort();
         expect(labels).toEqual(sortedLabels);
       }
@@ -99,16 +106,16 @@ describe('Document Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       // Query domains with a specific normalized parent
-      const documents = await sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: DOMAIN_DOCUMENT_TYPE,
+      const documentsMap = await sdk.documents.query({
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: DOMAIN_DOCUMENT_TYPE,
         where: [['normalizedParentDomainName', '==', 'dash']],
         limit: 5,
       });
 
-      expect(documents).toBeDefined();
-      expect(Array.isArray(documents)).toBe(true);
-      console.log(`[Query] Found ${documents.length} .dash domain documents`);
+      expect(documentsMap).toBeDefined();
+      expect(documentsMap instanceof Map).toBe(true);
+      console.log(`[Query] Found ${documentsMap.size} .dash domain documents`);
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
 
     it('should query with pagination using limit', async () => {
@@ -116,31 +123,31 @@ describe('Document Operations - Integration', () => {
 
       // First page
       const page1 = await sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: DOMAIN_DOCUMENT_TYPE,
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: DOMAIN_DOCUMENT_TYPE,
         limit: 3,
       });
 
       expect(page1).toBeDefined();
-      expect(Array.isArray(page1)).toBe(true);
-      expect(page1.length).toBeLessThanOrEqual(3);
-      console.log(`[Pagination] Page 1: ${page1.length} documents`);
+      expect(page1 instanceof Map).toBe(true);
+      expect(page1.size).toBeLessThanOrEqual(3);
+      console.log(`[Pagination] Page 1: ${page1.size} documents`);
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
 
-    it('should return empty array for no matches', async () => {
+    it('should return empty map for no matches', async () => {
       const { sdk } = sdkResult;
 
       // Query with impossible condition
-      const documents = await sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: DOMAIN_DOCUMENT_TYPE,
+      const documentsMap = await sdk.documents.query({
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: DOMAIN_DOCUMENT_TYPE,
         where: [['normalizedLabel', '==', 'definitelynonexistentname12345678901234567890']],
         limit: 10,
       });
 
-      expect(documents).toBeDefined();
-      expect(Array.isArray(documents)).toBe(true);
-      expect(documents.length).toBe(0);
+      expect(documentsMap).toBeDefined();
+      expect(documentsMap instanceof Map).toBe(true);
+      expect(documentsMap.size).toBe(0);
     }, TEST_TIMEOUTS.DOCUMENT_QUERY);
   });
 
@@ -252,15 +259,15 @@ describe('Document Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        const profiles = await sdk.documents.query({
-          contractId: DASHPAY_CONTRACT_ID,
-          type: 'profile',
+        const profilesMap = await sdk.documents.query({
+          dataContractId: DASHPAY_CONTRACT_ID,
+          documentTypeName: 'profile',
           limit: 5,
         });
 
-        expect(profiles).toBeDefined();
-        expect(Array.isArray(profiles)).toBe(true);
-        console.log(`[DashPay] Found ${profiles.length} profiles`);
+        expect(profilesMap).toBeDefined();
+        expect(profilesMap instanceof Map).toBe(true);
+        console.log(`[DashPay] Found ${profilesMap.size} profiles`);
       } catch (error) {
         // DashPay may not have many profiles on testnet
         console.log('[DashPay] Profile query:', (error as Error).message);
@@ -271,15 +278,15 @@ describe('Document Operations - Integration', () => {
       const { sdk } = sdkResult;
 
       try {
-        const contacts = await sdk.documents.query({
-          contractId: DASHPAY_CONTRACT_ID,
-          type: 'contactRequest',
+        const contactsMap = await sdk.documents.query({
+          dataContractId: DASHPAY_CONTRACT_ID,
+          documentTypeName: 'contactRequest',
           limit: 5,
         });
 
-        expect(contacts).toBeDefined();
-        expect(Array.isArray(contacts)).toBe(true);
-        console.log(`[DashPay] Found ${contacts.length} contact requests`);
+        expect(contactsMap).toBeDefined();
+        expect(contactsMap instanceof Map).toBe(true);
+        console.log(`[DashPay] Found ${contactsMap.size} contact requests`);
       } catch (error) {
         console.log('[DashPay] Contact query:', (error as Error).message);
       }
@@ -296,8 +303,8 @@ describe('Document Operations - Integration', () => {
 
       try {
         await sdk.documents.query({
-          contractId: 'invalid-contract-id',
-          type: 'domain',
+          dataContractId: 'invalid-contract-id',
+          documentTypeName: 'domain',
           limit: 5,
         });
         // May throw or return empty
@@ -311,8 +318,8 @@ describe('Document Operations - Integration', () => {
 
       try {
         await sdk.documents.query({
-          contractId: DPNS_CONTRACT_ID,
-          type: 'nonexistent_type',
+          dataContractId: DPNS_CONTRACT_ID,
+          documentTypeName: 'nonexistent_type',
           limit: 5,
         });
         // May throw or return empty
@@ -326,8 +333,8 @@ describe('Document Operations - Integration', () => {
 
       try {
         await sdk.documents.query({
-          contractId: DPNS_CONTRACT_ID,
-          type: DOMAIN_DOCUMENT_TYPE,
+          dataContractId: DPNS_CONTRACT_ID,
+          documentTypeName: DOMAIN_DOCUMENT_TYPE,
           where: [['nonexistentField', '==', 'value']],
           limit: 5,
         });
