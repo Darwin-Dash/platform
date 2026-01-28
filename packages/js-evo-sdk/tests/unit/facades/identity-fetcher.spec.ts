@@ -1,8 +1,11 @@
 /**
- * Unit tests for IdentityFetcher facade
+ * Unit tests for Identity read operations in IdentitiesFacade
  *
  * Tests the read-only operations for fetching and retrieving identity information.
  * Uses mocked WASM SDK to avoid network dependencies.
+ *
+ * Note: These tests mirror the expected behavior of the IdentitiesFacade's read methods
+ * which now use direct WASM SDK calls via wasmOperationQueue.
  */
 
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
@@ -36,8 +39,8 @@ const validateKeyRequestType = (type: string): void => {
   }
 };
 
-// Create a mock IdentityFetcher facade
-const createMockIdentityFetcher = () => ({
+// Create a mock identities facade that mirrors IdentitiesFacade behavior
+const createMockIdentitiesFacade = () => ({
   fetch: async (id: string) => {
     validateIdentityId(id);
     try {
@@ -147,19 +150,11 @@ const createMockIdentityFetcher = () => ({
 
 // Create mock EvoSDK with identities facade
 const createMockEvoSDK = () => {
-  const fetcher = createMockIdentityFetcher();
-  return {
-    identities: {
-      fetch: fetcher.fetch,
-      fetchWithProof: fetcher.fetchWithProof,
-      fetchUnproved: fetcher.fetchUnproved,
-      getKeys: fetcher.getKeys,
-      fetcher,
-    },
-  };
+  const identities = createMockIdentitiesFacade();
+  return { identities };
 };
 
-describe('IdentityFetcher', () => {
+describe('Identity Read Operations', () => {
   let client: ReturnType<typeof createMockEvoSDK>;
 
   beforeEach(() => {
@@ -365,9 +360,7 @@ describe('IdentityFetcher', () => {
       const mockKey = { id: 5, type: 'ECDSA_SECP256K1' };
       mockWasmSdk.getIdentityKeys.mockResolvedValueOnce([mockKey]);
 
-      // getKey is on the fetcher, not exposed on main facade
-      const fetcher = client.identities.fetcher;
-      const result = await fetcher.getKey('test-id', 5);
+      const result = await client.identities.getKey('test-id', 5);
 
       const call = (mockWasmSdk.getIdentityKeys as Mock).mock.calls[0];
       expect(call[0]).toBe('test-id');
@@ -377,11 +370,10 @@ describe('IdentityFetcher', () => {
     });
 
     it('should throw error for invalid keyId', async () => {
-      const fetcher = client.identities.fetcher;
-      await expect(fetcher.getKey('test-id', -1))
+      await expect(client.identities.getKey('test-id', -1))
         .rejects.toThrow('Invalid keyId: -1');
 
-      await expect(fetcher.getKey('test-id', 'not-a-number' as unknown as number))
+      await expect(client.identities.getKey('test-id', 'not-a-number' as unknown as number))
         .rejects.toThrow('Invalid keyId: not-a-number');
     });
   });
@@ -391,8 +383,7 @@ describe('IdentityFetcher', () => {
       const mockKeys = Array.from({ length: 100 }, (_, i) => ({ id: i }));
       mockWasmSdk.getIdentityKeys.mockResolvedValueOnce(mockKeys);
 
-      const fetcher = client.identities.fetcher;
-      const result = await fetcher.listKeys('test-id');
+      const result = await client.identities.listKeys('test-id');
 
       const call = (mockWasmSdk.getIdentityKeys as Mock).mock.calls[0];
       expect(call[0]).toBe('test-id');
@@ -405,8 +396,7 @@ describe('IdentityFetcher', () => {
     it('should support custom pagination', async () => {
       mockWasmSdk.getIdentityKeys.mockResolvedValueOnce([]);
 
-      const fetcher = client.identities.fetcher;
-      await fetcher.listKeys('test-id', 50, 10);
+      await client.identities.listKeys('test-id', 50, 10);
 
       const call = (mockWasmSdk.getIdentityKeys as Mock).mock.calls[0];
       expect(call[4]).toBe(50);   // custom limit
@@ -414,17 +404,15 @@ describe('IdentityFetcher', () => {
     });
 
     it('should throw error for invalid limit', async () => {
-      const fetcher = client.identities.fetcher;
-      await expect(fetcher.listKeys('test-id', 0))
+      await expect(client.identities.listKeys('test-id', 0))
         .rejects.toThrow('Invalid limit: 0');
 
-      await expect(fetcher.listKeys('test-id', -10))
+      await expect(client.identities.listKeys('test-id', -10))
         .rejects.toThrow('Invalid limit: -10');
     });
 
     it('should throw error for invalid offset', async () => {
-      const fetcher = client.identities.fetcher;
-      await expect(fetcher.listKeys('test-id', 100, -5))
+      await expect(client.identities.listKeys('test-id', 100, -5))
         .rejects.toThrow('Invalid offset: -5');
     });
   });

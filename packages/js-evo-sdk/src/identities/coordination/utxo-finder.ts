@@ -12,7 +12,9 @@
  */
 
 import type { EvoSDK } from '../../sdk.js';
-import DAPIClient from '@dashevo/dapi-client';
+// IMPORTANT: DAPIClient is imported DYNAMICALLY to avoid loading wasm-dpp at module init time.
+// Loading wasm-dpp statically conflicts with wasm-sdk's RwLock in single-threaded WASM runtime.
+import type DAPIClientType from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
 import dashcoreLib from '@dashevo/dashcore-lib';
 import * as wasm from '../../wasm.js';
@@ -20,6 +22,15 @@ import { wallet as walletFunctions } from '../../wallet/functions.js';
 import { DAPI_CONFIG, IDENTITY_CONFIG } from '../config/operation-config.js';
 import { createLogger } from '../utils/identity-logger.js';
 import type { DerivedAddressInfo } from './wallet-coordinator.js';
+
+// Lazy-loaded DAPIClient to avoid wasm-dpp conflict
+let DAPIClient: typeof DAPIClientType | null = null;
+async function getDAPIClient(): Promise<typeof DAPIClientType> {
+  if (!DAPIClient) {
+    DAPIClient = (await import('@dashevo/dapi-client')).default;
+  }
+  return DAPIClient;
+}
 
 const logger = createLogger('UTXOFinder');
 
@@ -158,7 +169,8 @@ export class UTXOFinder {
       logger.debug(`   Using explicit DAPI addresses: ${dapiAddresses.join(', ')}`);
     }
 
-    const dapiClient = new DAPIClient({
+    const DAPIClientClass = await getDAPIClient();
+    const dapiClient = new DAPIClientClass({
       network: network as 'mainnet' | 'testnet' | 'regtest',
       timeout: DAPI_CONFIG.TIMEOUT_MS,
       retries: DAPI_CONFIG.MAX_RETRIES,
@@ -334,7 +346,8 @@ export class UTXOFinder {
       dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map(a => a.trim());
     }
 
-    const dapiClient = new DAPIClient({
+    const DAPIClientClass = await getDAPIClient();
+    const dapiClient = new DAPIClientClass({
       network: network as 'mainnet' | 'testnet' | 'regtest',
       timeout: DAPI_CONFIG.TIMEOUT_MS,
       retries: DAPI_CONFIG.MAX_RETRIES,

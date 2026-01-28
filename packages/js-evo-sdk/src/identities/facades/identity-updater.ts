@@ -14,7 +14,18 @@ import { TransactionBuilder } from '../coordination/transaction-builder.js';
 import { AssetLockProofManager } from '../coordination/asset-lock-proof-manager.js';
 import { UTXOFinder } from '../coordination/utxo-finder.js';
 import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
-import DAPIClient from '@dashevo/dapi-client';
+// IMPORTANT: DAPIClient is imported DYNAMICALLY to avoid loading wasm-dpp at module init time.
+// Loading wasm-dpp statically conflicts with wasm-sdk's RwLock in single-threaded WASM runtime.
+import type DAPIClientType from '@dashevo/dapi-client';
+
+// Lazy-loaded DAPIClient to avoid wasm-dpp conflict
+let DAPIClient: typeof DAPIClientType | null = null;
+async function getDAPIClient(): Promise<typeof DAPIClientType> {
+  if (!DAPIClient) {
+    DAPIClient = (await import('@dashevo/dapi-client')).default;
+  }
+  return DAPIClient;
+}
 import {
   IDENTITY_CONFIG,
   BLOCKCHAIN_CONFIG,
@@ -547,7 +558,8 @@ export class IdentityUpdater {
         dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map((a: string) => a.trim());
       }
 
-      const dapiClient = new DAPIClient({
+      const DAPIClientClass = await getDAPIClient();
+      const dapiClient = new DAPIClientClass({
         network: this.sdk.networkConfig.network as 'mainnet' | 'testnet' | 'regtest',
         timeout: DAPI_CONFIG.TIMEOUT_MS,
         retries: DAPI_CONFIG.MAX_RETRIES,

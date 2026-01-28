@@ -11,9 +11,20 @@
  */
 
 import type { EvoSDK } from '../../sdk.js';
-import DAPIClient from '@dashevo/dapi-client';
+// IMPORTANT: DAPIClient is imported DYNAMICALLY to avoid loading wasm-dpp at module init time.
+// Loading wasm-dpp statically conflicts with wasm-sdk's RwLock in single-threaded WASM runtime.
+import type DAPIClientType from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode, type UTXO } from '@dashevo/transaction-finder';
 import dashcoreLib from '@dashevo/dashcore-lib';
+
+// Lazy-loaded DAPIClient to avoid wasm-dpp conflict
+let DAPIClient: typeof DAPIClientType | null = null;
+async function getDAPIClient(): Promise<typeof DAPIClientType> {
+  if (!DAPIClient) {
+    DAPIClient = (await import('@dashevo/dapi-client')).default;
+  }
+  return DAPIClient;
+}
 import * as wasm from '../../wasm.js';
 import { wallet as walletFunctions } from '../../wallet/functions.js';
 import { DAPI_CONFIG, WALLET_CONFIG } from '../config/operation-config.js';
@@ -39,7 +50,7 @@ export interface DerivedAddressInfo {
 }
 
 export interface WalletSetupResult {
-  dapiClient: DAPIClient;
+  dapiClient: DAPIClientType;
   monitor: TransactionFinder;
   addresses: {
     external: DerivedAddressInfo[];
@@ -108,7 +119,8 @@ export class WalletCoordinator {
       ...(dapiAddresses && { dapiAddresses }),
     };
 
-    const dapiClient = new DAPIClient(dapiClientOptions);
+    const DAPIClientClass = await getDAPIClient();
+    const dapiClient = new DAPIClientClass(dapiClientOptions);
 
     // Step 3: Get current blockchain height for logging
     let currentBlockHeight: number | undefined;
@@ -324,7 +336,8 @@ export class WalletCoordinator {
       dapiClientOptions.dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map(a => a.trim());
     }
 
-    const dapiClient = new DAPIClient(dapiClientOptions);
+    const DAPIClientClass = await getDAPIClient();
+    const dapiClient = new DAPIClientClass(dapiClientOptions);
     const blockchainStatus = await dapiClient.core.getBlockchainStatus();
 
     // Multi-source height extraction
