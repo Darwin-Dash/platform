@@ -52,7 +52,8 @@
     "demo:tui": "node demo/tui/index.js",
     "demo:web:dev": "cd demo/web && webpack serve --mode development",
     "demo:web:build": "cd demo/web && webpack --mode production",
-    "demo:web:serve": "cd demo/web && npx http-server dist -p 8080 -s -c-1"
+    "demo:web:serve": "cd demo/web && npx http-server dist -p 8080 -s -c-1",
+    "build:healthy-nodes": "node scripts/build-healthy-nodes.js"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",

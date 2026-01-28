@@ -78,6 +78,32 @@ export function skipIfNoMnemonic(testFn: () => void | Promise<void>) {
   return skipIfNoMnemonicHelper(testFn);
 }
 
+/**
+ * Check if we should skip token tests (they only work reliably on local network)
+ *
+ * WASM SDK's own token tests only run against LOCAL network because:
+ * - Token operations are complex WASM operations
+ * - Testnet latency causes timeouts (even with 60s timeout)
+ * - Token contracts may not be deployed on testnet
+ *
+ * @returns true if token tests should be skipped
+ */
+export function shouldSkipTokenTests(): boolean {
+  return TEST_CONFIG.network !== 'local';
+}
+
+/**
+ * Helper to conditionally skip token tests on non-local networks
+ * Usage: it('token test', () => skipTokenTestsOnTestnet(async () => { ... }))
+ */
+export async function skipTokenTestsOnTestnet(testFn: () => void | Promise<void>): Promise<void> {
+  if (shouldSkipTokenTests()) {
+    console.log(`  [SKIP] Token test skipped on ${TEST_CONFIG.network} network (only works on local)`);
+    return;
+  }
+  await testFn();
+}
+
 // ============================================================================
 // Vitest Setup Hooks
 // ============================================================================

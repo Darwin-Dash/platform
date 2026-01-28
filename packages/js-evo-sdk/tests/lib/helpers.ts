@@ -44,8 +44,12 @@ function loadHealthyNodes(): string[] {
       if (fs.existsSync(location)) {
         const data = JSON.parse(fs.readFileSync(location, 'utf-8'));
         if (data.nodes && Array.isArray(data.nodes) && data.nodes.length > 0) {
-          console.log(`[TEST_CONFIG] Loaded ${data.nodes.length} healthy nodes from ${path.basename(location)} (generated: ${data.generated})`);
-          return data.nodes;
+          // Ensure addresses have https:// prefix (SDK requires full URLs)
+          const nodes = data.nodes.map((addr: string) =>
+            addr.startsWith('http') ? addr : `https://${addr}`
+          );
+          console.log(`[TEST_CONFIG] Loaded ${nodes.length} healthy nodes from ${path.basename(location)} (generated: ${data.generated})`);
+          return nodes;
         }
       }
     } catch (error) {

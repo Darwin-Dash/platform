@@ -12,6 +12,7 @@ import { SystemFacade } from './system/facade.js';
 import { GroupFacade } from './group/facade.js';
 import { VotingFacade } from './voting/facade.js';
 import { DashPayFacade } from './dashpay/facade.js';
+import { NetworkClient } from './network/client.js';
 
 export interface ConnectionOptions {
   version?: number;
@@ -52,10 +53,16 @@ export class EvoSDK {
   public group!: GroupFacade;
   public voting!: VotingFacade;
   public dashpay!: DashPayFacade;
+  public network!: NetworkClient;
+
   constructor(options: EvoSDKOptions = {}) {
     // Apply defaults while preserving any future connection options
-    const { network = 'testnet', trusted = false, addresses, ...connection } = options;
+    // Note: trusted defaults to true to match yappr's working pattern
+    const { network = 'testnet', trusted = true, addresses, ...connection } = options;
     this.options = { network, trusted, addresses, ...connection };
+
+    // Initialize NetworkClient for wallet integration operations
+    this.network = new NetworkClient({ network });
 
     this.addresses = new AddressesFacade(this);
     this.documents = new DocumentsFacade(this);
@@ -100,9 +107,11 @@ export class EvoSDK {
 
     let builder: wasm.WasmSdkBuilder;
 
-    // If specific addresses are provided, use them instead of network presets
+    // Prefetch trusted quorums BEFORE building the SDK.
+    // This is REQUIRED to avoid RwLock deadlock when the SDK makes network requests.
+    // Non-trusted mode is not supported in WASM - use trusted builders only.
     if (addresses && addresses.length > 0) {
-      // Prefetch trusted quorums for the network before creating builder with addresses
+      // Prefetch for the appropriate network before using custom addresses
       if (network === 'mainnet') {
         await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
       } else if (network === 'testnet') {
@@ -113,16 +122,12 @@ export class EvoSDK {
       builder = wasm.WasmSdkBuilder.withAddresses(addresses, network);
     } else if (network === 'mainnet') {
       await wasm.WasmSdk.prefetchTrustedQuorumsMainnet();
-
       builder = trusted ? wasm.WasmSdkBuilder.mainnetTrusted() : wasm.WasmSdkBuilder.mainnet();
     } else if (network === 'testnet') {
       await wasm.WasmSdk.prefetchTrustedQuorumsTestnet();
-
       builder = trusted ? wasm.WasmSdkBuilder.testnetTrusted() : wasm.WasmSdkBuilder.testnet();
     } else if (network === 'local') {
-      // Default local dashmate gateway and quorum list sidecar
       await wasm.WasmSdk.prefetchTrustedQuorumsLocal();
-
       builder = trusted ? wasm.WasmSdkBuilder.localTrusted() : wasm.WasmSdkBuilder.local();
     } else {
       throw new Error(`Unknown network: ${network}`);

@@ -71,7 +71,7 @@ describe('EvoSDK', () => {
       );
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('testnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
       expect(sdk.options.addresses).toEqual([TEST_ADDRESS_1]);
       expect(sdk.options.version).toBe(1);
       expect(sdk.options.proofs).toBe(true);
@@ -92,7 +92,7 @@ describe('EvoSDK', () => {
       });
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('testnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
       expect(sdk.isConnected).toBe(false);
     });
 
@@ -102,7 +102,7 @@ describe('EvoSDK', () => {
       });
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('testnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
     });
 
     it('works with mainnet', () => {
@@ -112,7 +112,7 @@ describe('EvoSDK', () => {
       });
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('mainnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
     });
 
     it('combines addresses with other options', () => {
@@ -131,7 +131,7 @@ describe('EvoSDK', () => {
       });
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('testnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
       expect(sdk.options.addresses).toEqual([TEST_ADDRESS_1]);
       expect(sdk.options.version).toBe(1);
       expect(sdk.options.proofs).toBe(true);
@@ -171,20 +171,20 @@ describe('EvoSDK', () => {
   });
 
   describe('factory methods for standard configurations', () => {
-    it('testnet() creates testnet instance', () => {
+    it('testnet() creates testnet instance with trusted mode default', () => {
       const sdk = EvoSDK.testnet();
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('testnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
       expect(sdk.options.addresses).toBeUndefined();
       expect(sdk.isConnected).toBe(false);
     });
 
-    it('mainnet() creates mainnet instance', () => {
+    it('mainnet() creates mainnet instance with trusted mode default', () => {
       const sdk = EvoSDK.mainnet();
       expect(sdk).toBeInstanceOf(EvoSDK);
       expect(sdk.options.network).toBe('mainnet');
-      expect(sdk.options.trusted).toBe(false);
+      expect(sdk.options.trusted).toBe(true);  // Default is now trusted mode
       expect(sdk.isConnected).toBe(false);
     });
 
