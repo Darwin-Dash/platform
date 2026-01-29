@@ -12,8 +12,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-// Global statics maintained for backward compatibility with existing prefetch pattern.
-// New code should prefer using WasmPrefetchedContext for explicit instance-based state.
+// Global statics for the prefetch pattern.
+// These are written during prefetch (Mutex lock is fine for infrequent writes)
+// and cloned to instance state during build() (ArcSwap for lock-free reads).
 pub(crate) static MAINNET_TRUSTED_CONTEXT: Lazy<Mutex<Option<WasmTrustedContext>>> =
     Lazy::new(|| Mutex::new(None));
 pub(crate) static TESTNET_TRUSTED_CONTEXT: Lazy<Mutex<Option<WasmTrustedContext>>> =
@@ -323,135 +324,6 @@ impl WasmSdk {
         *LOCAL_TRUSTED_CONTEXT.lock().unwrap() = Some(trusted_context);
 
         Ok(())
-    }
-
-    /// Prefetch mainnet quorum data and return a prefetched context.
-    /// This is the new recommended pattern that avoids global state.
-    ///
-    /// # Example
-    /// ```javascript
-    /// const prefetched = await WasmSdk.prefetchMainnet();
-    /// const sdk = WasmSdkBuilder.mainnet().withPrefetchedContext(prefetched).build();
-    /// ```
-    #[wasm_bindgen(js_name = "prefetchMainnet")]
-    pub async fn prefetch_mainnet() -> Result<WasmPrefetchedContext, WasmSdkError> {
-        let trusted_context = WasmTrustedContext::new_mainnet()
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        trusted_context
-            .prefetch_quorums()
-            .await
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        let address_list = trusted_context
-            .fetch_masternode_addresses()
-            .await
-            .map_err(|e| WasmSdkError::generic(format!("Failed to fetch masternodes: {}", e)))?;
-
-        let addresses: Vec<Address> = address_list
-            .into_iter()
-            .map(|(addr, _status)| addr)
-            .collect();
-
-        Ok(WasmPrefetchedContext {
-            context: trusted_context,
-            addresses,
-            network: Network::Dash,
-        })
-    }
-
-    /// Prefetch testnet quorum data and return a prefetched context.
-    /// This is the new recommended pattern that avoids global state.
-    ///
-    /// # Example
-    /// ```javascript
-    /// const prefetched = await WasmSdk.prefetchTestnet();
-    /// const sdk = WasmSdkBuilder.testnet().withPrefetchedContext(prefetched).build();
-    /// ```
-    #[wasm_bindgen(js_name = "prefetchTestnet")]
-    pub async fn prefetch_testnet() -> Result<WasmPrefetchedContext, WasmSdkError> {
-        let trusted_context = WasmTrustedContext::new_testnet()
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        trusted_context
-            .prefetch_quorums()
-            .await
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        let address_list = trusted_context
-            .fetch_masternode_addresses()
-            .await
-            .map_err(|e| WasmSdkError::generic(format!("Failed to fetch masternodes: {}", e)))?;
-
-        let addresses: Vec<Address> = address_list
-            .into_iter()
-            .map(|(addr, _status)| addr)
-            .collect();
-
-        Ok(WasmPrefetchedContext {
-            context: trusted_context,
-            addresses,
-            network: Network::Testnet,
-        })
-    }
-
-    /// Prefetch local quorum data and return a prefetched context.
-    /// This is the new recommended pattern that avoids global state.
-    ///
-    /// # Example
-    /// ```javascript
-    /// const prefetched = await WasmSdk.prefetchLocal();
-    /// const sdk = WasmSdkBuilder.local().withPrefetchedContext(prefetched).build();
-    /// ```
-    #[wasm_bindgen(js_name = "prefetchLocal")]
-    pub async fn prefetch_local() -> Result<WasmPrefetchedContext, WasmSdkError> {
-        let trusted_context = WasmTrustedContext::new_local_with_url(DEFAULT_LOCAL_QUORUM_URL)
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        trusted_context
-            .prefetch_quorums()
-            .await
-            .map_err(|e| WasmSdkError::from(dash_sdk::Error::from(e)))?;
-
-        let address_list = trusted_context
-            .fetch_masternode_addresses()
-            .await
-            .map_err(|e| WasmSdkError::generic(format!("Failed to fetch masternodes: {}", e)))?;
-
-        let addresses: Vec<Address> = address_list
-            .into_iter()
-            .map(|(addr, _status)| addr)
-            .collect();
-
-        Ok(WasmPrefetchedContext {
-            context: trusted_context,
-            addresses,
-            network: Network::Regtest,
-        })
-    }
-}
-
-/// Prefetched context containing quorum data and discovered addresses.
-/// This allows explicit passing of prefetched context to new SDK instances,
-/// avoiding global state and enabling instance isolation.
-#[wasm_bindgen]
-pub struct WasmPrefetchedContext {
-    context: WasmTrustedContext,
-    addresses: Vec<Address>,
-    network: Network,
-}
-
-#[wasm_bindgen]
-impl WasmPrefetchedContext {
-    /// Get the network this prefetched context is for
-    #[wasm_bindgen(getter)]
-    pub fn network(&self) -> String {
-        match self.network {
-            Network::Dash => "mainnet".to_string(),
-            Network::Testnet => "testnet".to_string(),
-            Network::Regtest => "local".to_string(),
-            _ => "unknown".to_string(),
-        }
     }
 }
 
@@ -861,27 +733,6 @@ impl WasmSdkBuilder {
         }
     }
 
-    /// Use a prefetched context for this SDK builder.
-    /// This allows explicit passing of prefetched context to new SDK instances,
-    /// enabling instance isolation and avoiding global state issues.
-    ///
-    /// Note: This creates a new SdkBuilder with the prefetched addresses, replacing
-    /// any addresses previously configured.
-    #[wasm_bindgen(js_name = "withPrefetchedContext")]
-    pub fn with_prefetched_context(self, prefetched: WasmPrefetchedContext) -> Self {
-        let address_list = dash_sdk::sdk::AddressList::from_iter(prefetched.addresses);
-
-        // Create a new SdkBuilder with the prefetched addresses
-        let new_inner = SdkBuilder::new(address_list)
-            .with_network(prefetched.network)
-            .with_context_provider(prefetched.context.clone());
-
-        Self {
-            inner: new_inner,
-            trusted_context: Some(prefetched.context),
-            network: prefetched.network,
-        }
-    }
 }
 
 #[wasm_bindgen]

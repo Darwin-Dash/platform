@@ -33,21 +33,11 @@ describe('WasmSdkBuilder', () => {
     built.free();
   });
 
-  it('WasmSdk has new prefetch static methods', () => {
-    // These are the new instance-based prefetch methods that avoid global state
-    expect(sdk.WasmSdk.prefetchMainnet).to.be.a('function');
-    expect(sdk.WasmSdk.prefetchTestnet).to.be.a('function');
-    expect(sdk.WasmSdk.prefetchLocal).to.be.a('function');
-  });
-
-  it('WasmSdkBuilder has withPrefetchedContext method', () => {
-    // This method allows using prefetched context with the builder
-    expect(sdk.WasmSdkBuilder.prototype.withPrefetchedContext).to.be.a('function');
-  });
-
-  it('WasmPrefetchedContext class is exported', () => {
-    // The prefetched context class should be available
-    expect(sdk.WasmPrefetchedContext).to.be.a('function');
+  it('WasmSdk has prefetch quorum static methods (original API)', () => {
+    // These are the original prefetch methods that populate global state
+    expect(sdk.WasmSdk.prefetchTrustedQuorumsMainnet).to.be.a('function');
+    expect(sdk.WasmSdk.prefetchTrustedQuorumsTestnet).to.be.a('function');
+    expect(sdk.WasmSdk.prefetchTrustedQuorumsLocal).to.be.a('function');
   });
 
   it('WasmSdk has removeCachedContract method', () => {
