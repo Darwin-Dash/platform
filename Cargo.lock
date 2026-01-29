@@ -7335,6 +7335,7 @@ dependencies = [
 name = "wasm-sdk"
 version = "3.0.0-rc.1"
 dependencies = [
+ "arc-swap",
  "base64 0.22.1",
  "bip39",
  "console_error_panic_hook",

@@ -84,6 +84,7 @@ bip39 = { version = "2.0", features = ["rand", "all-languages"] }
 rand = { version = "0.8", features = ["std"] }
 rs-sdk-trusted-context-provider = { path = "../rs-sdk-trusted-context-provider" }
 once_cell = "1.19"
+arc-swap = "1.7"
 js-sys = "0.3.64"
 dapi-grpc = { path = "../dapi-grpc" }
 rs-dapi-client = { path = "../rs-dapi-client" }

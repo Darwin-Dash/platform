@@ -32,4 +32,36 @@ describe('WasmSdkBuilder', () => {
     expect(built).to.be.ok();
     built.free();
   });
+
+  it('WasmSdk has new prefetch static methods', () => {
+    // These are the new instance-based prefetch methods that avoid global state
+    expect(sdk.WasmSdk.prefetchMainnet).to.be.a('function');
+    expect(sdk.WasmSdk.prefetchTestnet).to.be.a('function');
+    expect(sdk.WasmSdk.prefetchLocal).to.be.a('function');
+  });
+
+  it('WasmSdkBuilder has withPrefetchedContext method', () => {
+    // This method allows using prefetched context with the builder
+    expect(sdk.WasmSdkBuilder.prototype.withPrefetchedContext).to.be.a('function');
+  });
+
+  it('WasmPrefetchedContext class is exported', () => {
+    // The prefetched context class should be available
+    expect(sdk.WasmPrefetchedContext).to.be.a('function');
+  });
+
+  it('WasmSdk has removeCachedContract method', () => {
+    // This method is part of the instance-based cache operations
+    expect(sdk.WasmSdk.prototype.removeCachedContract).to.be.a('function');
+  });
+
+  it('withAddresses static method exists', () => {
+    // New static method for creating builder with custom addresses
+    expect(sdk.WasmSdkBuilder.withAddresses).to.be.a('function');
+  });
+
+  it('local and localTrusted builder methods exist', () => {
+    expect(sdk.WasmSdkBuilder.local).to.be.a('function');
+    expect(sdk.WasmSdkBuilder.localTrusted).to.be.a('function');
+  });
 });
