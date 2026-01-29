@@ -125,47 +125,84 @@ describe('WASM Concurrency - Integration', () => {
   });
 
   // ============================================================================
-  // Concurrent Operation Detection
+  // Concurrent Operations (RwLock Fix Verification)
   // ============================================================================
 
   describe('Concurrent Operations', () => {
-    it('should detect concurrent operation conflicts', async () => {
+    it('should handle concurrent identity fetches with Promise.all', async () => {
       const { sdk } = sdkResult;
 
-      // Note: The WASM SDK does NOT support concurrent operations.
-      // This test verifies that sequential operations work correctly.
-      // True concurrent operations will fail with "already locked to a reader" error.
+      // With the RwLock fix (ArcSwap for lock-free reads), this should now work!
+      // Before the fix, this would fail with "already locked to a reader" error.
+      const results = await Promise.all([
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+      ]);
 
-      const results = [];
-
-      // Execute operations sequentially (NOT concurrently)
-      for (let i = 0; i < 2; i++) {
-        const identity = await sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE);
-        results.push(identity);
+      expect(results.length).toBe(3);
+      for (const identity of results) {
+        expect(identity).toBeDefined();
+        expect(identity).toHaveProperty('id');
       }
-
-      expect(results.length).toBe(2);
-      expect(results[0]).toBeDefined();
-      expect(results[1]).toBeDefined();
     }, TEST_TIMEOUTS.IDENTITY_FETCH * 2);
 
-    it('should document concurrent operation limitation', async () => {
+    it('should handle concurrent balance queries with Promise.all', async () => {
       const { sdk } = sdkResult;
 
-      // This test documents the expected behavior when concurrent operations are attempted
-      // The WASM SDK will throw "already locked to a reader" error
+      // Multiple concurrent balance queries
+      const balances = await Promise.all([
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+      ]);
 
-      // Sequential approach (works)
-      const result1 = await sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE);
-      expect(result1).toBeDefined();
+      expect(balances.length).toBe(3);
+      for (const balance of balances) {
+        expect(typeof balance).toBe('bigint');
+        expect(balance).toBeGreaterThanOrEqual(0n);
+      }
+    }, TEST_TIMEOUTS.IDENTITY_FETCH * 2);
 
-      // Note: DO NOT use Promise.all() with WASM SDK operations
-      // The following would fail:
-      // await Promise.all([
-      //   sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
-      //   sdk.identities.fetch(TESTNET_IDENTITIES.DPNS_CONTRACT),
-      // ]);
-    }, TEST_TIMEOUTS.IDENTITY_FETCH);
+    it('should handle mixed concurrent operations with Promise.all', async () => {
+      const { sdk } = sdkResult;
+
+      // Mix of different operation types - this validates that the lock-free
+      // reads work across different WASM SDK methods
+      const [identity, balance, identity2] = await Promise.all([
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+      ]);
+
+      expect(identity).toBeDefined();
+      expect(identity).toHaveProperty('id');
+      expect(typeof balance).toBe('bigint');
+      expect(identity2).toBeDefined();
+    }, TEST_TIMEOUTS.IDENTITY_FETCH * 2);
+
+    it('should handle 5 concurrent operations without deadlock', async () => {
+      const { sdk } = sdkResult;
+
+      // Stress test with more concurrent operations
+      const operations = [
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.balance(TESTNET_IDENTITIES.SAMPLE),
+        sdk.identities.fetch(TESTNET_IDENTITIES.SAMPLE),
+      ];
+
+      const results = await Promise.all(operations);
+      expect(results.length).toBe(5);
+
+      // Verify results are correct types
+      expect(results[0]).toHaveProperty('id'); // identity
+      expect(typeof results[1]).toBe('bigint'); // balance
+      expect(results[2]).toHaveProperty('id'); // identity
+      expect(typeof results[3]).toBe('bigint'); // balance
+      expect(results[4]).toHaveProperty('id'); // identity
+    }, TEST_TIMEOUTS.IDENTITY_FETCH * 3);
   });
 
   // ============================================================================
