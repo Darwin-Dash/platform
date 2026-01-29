@@ -53,6 +53,9 @@ export default defineConfig({
   },
 
   // Configure projects for major browsers
+  // Run specific projects with --project flag:
+  //   yarn playwright test --project=firefox
+  //   yarn playwright test --project=testnet
   projects: [
     {
       name: 'chromium',
@@ -66,24 +69,40 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    // Testnet project with longer timeouts
+    // Testnet project with longer timeouts for real network tests (read-only tests)
     {
       name: 'testnet',
+      testDir: './demo/tests/e2e/real-network',
+      testIgnore: '**/write-*.spec.js', // Skip write tests that need funded wallet
       use: {
         ...devices['Desktop Chrome'],
-        actionTimeout: 60000,
-        navigationTimeout: 60000,
+        actionTimeout: 120000,
+        navigationTimeout: 120000,
       },
       timeout: 300000, // 5 minutes for testnet operations
+    },
+    // Testnet-funded project for write operations requiring pre-funded wallet
+    // Uses TEST_MNEMONIC env var for wallet with funds
+    {
+      name: 'testnet-funded',
+      testDir: './demo/tests/e2e/real-network',
+      testMatch: '**/write-*.spec.js', // Only run write tests
+      use: {
+        ...devices['Desktop Chrome'],
+        actionTimeout: 180000, // 3 minutes for UTXO discovery
+        navigationTimeout: 180000,
+      },
+      timeout: 600000, // 10 minutes for full create/topup operations
+      retries: 1, // Retry once on failure (testnet can be flaky)
     },
   ],
 
   // Run your local dev server before starting the tests
   webServer: process.env.CI ? undefined : {
-    command: 'yarn demo:serve',
+    command: 'yarn demo:web:dev',
     url: 'http://localhost:8080',
     reuseExistingServer: !process.env.CI,
-    timeout: 60000,
+    timeout: 120000,
   },
 
   // Output folders

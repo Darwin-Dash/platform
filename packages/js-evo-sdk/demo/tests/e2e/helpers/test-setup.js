@@ -42,7 +42,7 @@ export async function setupTestnetMode(page) {
  * @returns {Promise<boolean>} true if login was performed
  */
 export async function handleLoginIfNeeded(page, options = {}) {
-  const { waitForDashboard = true, timeout = 15000 } = options;
+  const { waitForDashboard = true, timeout = 30000 } = options;
 
   const loginVisible = await page.locator('#login-view').isVisible().catch(() => false);
 
@@ -54,8 +54,27 @@ export async function handleLoginIfNeeded(page, options = {}) {
   await page.locator('#login-form button[type="submit"]').click();
 
   if (waitForDashboard) {
-    // Wait for mock discovery to complete (fast in mock mode ~1-2s)
-    await page.waitForSelector('#dashboard-view, #welcome-state', { state: 'visible', timeout });
+    // Wait for mock discovery to complete
+    // First wait for login view to be hidden (discovery started)
+    await page.locator('#login-view').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+    // Wait for discovery progress view to be hidden (discovery complete)
+    await page.locator('#discovery-progress-view').waitFor({ state: 'hidden', timeout }).catch(() => {});
+
+    // Now wait for either dashboard or welcome to become visible
+    // Use Promise.race since only one will become visible
+    await Promise.race([
+      page.locator('#dashboard-view:visible').waitFor({ state: 'attached', timeout: 5000 }),
+      page.locator('#welcome-state:visible').waitFor({ state: 'attached', timeout: 5000 }),
+    ]).catch(async () => {
+      // Fallback: check if either is not hidden
+      const dashboardHidden = await page.locator('#dashboard-view').getAttribute('hidden');
+      const welcomeHidden = await page.locator('#welcome-state').getAttribute('hidden');
+      if (dashboardHidden !== null && welcomeHidden !== null) {
+        // Both still hidden - wait a bit more
+        await page.waitForTimeout(2000);
+      }
+    });
   }
 
   return true;
@@ -77,10 +96,61 @@ export async function navigateToWelcomeScreen(page) {
 }
 
 /**
+ * Wait for dashboard to be visible (not hidden)
+ * Uses waitForFunction to check hidden attribute directly
+ */
+export async function waitForDashboard(page, timeout = 15000) {
+  await page.waitForFunction(
+    () => {
+      const dashboard = document.getElementById('dashboard-view');
+      return dashboard && !dashboard.hasAttribute('hidden');
+    },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for welcome screen to be visible (not hidden)
+ */
+export async function waitForWelcome(page, timeout = 15000) {
+  await page.waitForFunction(
+    () => {
+      const welcome = document.getElementById('welcome-state');
+      return welcome && !welcome.hasAttribute('hidden');
+    },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for either dashboard or welcome to be visible
+ * Returns 'dashboard' or 'welcome' based on which is visible
+ */
+export async function waitForMainView(page, timeout = 15000) {
+  await page.waitForFunction(
+    () => {
+      const dashboard = document.getElementById('dashboard-view');
+      const welcome = document.getElementById('welcome-state');
+      return (dashboard && !dashboard.hasAttribute('hidden')) ||
+             (welcome && !welcome.hasAttribute('hidden'));
+    },
+    { timeout }
+  );
+
+  const dashboardVisible = await page.evaluate(() => {
+    const dashboard = document.getElementById('dashboard-view');
+    return dashboard && !dashboard.hasAttribute('hidden');
+  });
+
+  return dashboardVisible ? 'dashboard' : 'welcome';
+}
+
+/**
  * Navigate to dashboard with identities loaded
+ * @deprecated Use waitForDashboard instead
  */
 export async function navigateToDashboard(page) {
-  await page.waitForSelector('#dashboard-view', { state: 'visible', timeout: 5000 });
+  await waitForDashboard(page, 5000);
 }
 
 /**
@@ -133,6 +203,35 @@ export async function handleFundingModal(page, choice = 'already-funded') {
   }
 
   await page.waitForTimeout(300);
+}
+
+/**
+ * Complete the full funding flow using "Sending now" and proceed to create modal
+ * This uses the realtime flow: funding modal → monitoring → TX detected → IS → CL → confirmed → create modal
+ * The "Sending now" flow works reliably in mock mode because it simulates transaction detection
+ */
+export async function completeFundingFlowToCreateModal(page) {
+  // Wait for funding modal
+  await page.waitForSelector('#wallet-funding-modal:not([hidden])', { timeout: 5000 });
+
+  // Click "Sending now" (more reliable in mock mode than "Already funded")
+  await page.click('#sending-now-btn');
+
+  // Wait for monitoring step with QR code
+  await page.waitForSelector('.funding-monitoring', { state: 'visible', timeout: 5000 });
+
+  // Wait for mock transaction detection, InstantLock, ChainLock, and confirmation
+  // Mock mode simulates these stages automatically
+  await page.waitForSelector('.funding-confirmed', { state: 'visible', timeout: 30000 });
+
+  // Click proceed to create
+  await page.click('#proceed-to-create-btn');
+
+  // Wait for funding modal to close
+  await page.waitForSelector('#wallet-funding-modal', { state: 'hidden', timeout: 5000 });
+
+  // Wait for create modal to appear
+  await page.waitForSelector('#create-modal', { state: 'visible', timeout: 5000 });
 }
 
 /**

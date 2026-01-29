@@ -66,6 +66,11 @@ jobs:
       - name: Build demo application
         run: yarn demo:web:build
 
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
       - name: Run E2E tests
         run: npx playwright test --project=${{ matrix.browser }}
         env:
@@ -99,7 +104,7 @@ jobs:
           retention-days: 14
 
   e2e-testnet:
-    name: E2E Tests (Testnet)
+    name: E2E Tests (Testnet Read-Only)
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     # Only run testnet tests on main branch or manual trigger
@@ -128,7 +133,12 @@ jobs:
       - name: Build demo application
         run: yarn demo:web:build
 
-      - name: Run E2E tests against testnet
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests against testnet (read-only)
         run: npx playwright test --project=testnet
         env:
           CI: true
@@ -149,6 +159,67 @@ jobs:
         if: always()
         with:
           name: test-results-testnet-${{ github.sha }}
+          path: packages/js-evo-sdk/test-results
+          retention-days: 30
+
+  e2e-testnet-funded:
+    name: E2E Tests (Testnet Funded)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    # Only run funded testnet tests on main branch or manual trigger when secret is available
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.repository == 'dashpay/platform'
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build demo application
+        run: yarn demo:web:build
+
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests against testnet (funded wallet)
+        run: npx playwright test --project=testnet-funded
+        env:
+          CI: true
+          DEMO_URL: http://localhost:8080
+          DASH_NETWORK: testnet
+          TEST_MNEMONIC: ${{ secrets.TESTNET_WALLET_MNEMONIC }}
+          UTXO_TIMEOUT_MS: 300000
+          OPERATION_TIMEOUT_MS: 120000
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-testnet-funded-${{ github.sha }}
+          path: packages/js-evo-sdk/playwright-report
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-testnet-funded-${{ github.sha }}
           path: packages/js-evo-sdk/test-results
           retention-days: 30
 
