@@ -29,6 +29,7 @@ import * as wasm from '../../wasm.js';
 import { wallet as walletFunctions } from '../../wallet/functions.js';
 import { DAPI_CONFIG, WALLET_CONFIG } from '../config/operation-config.js';
 import { createLogger } from '../utils/identity-logger.js';
+import { resourceTracker } from '../utils/resource-tracker.js';
 
 const logger = createLogger('WalletCoordinator');
 
@@ -121,6 +122,9 @@ export class WalletCoordinator {
 
     const DAPIClientClass = await getDAPIClient();
     const dapiClient = new DAPIClientClass(dapiClientOptions);
+
+    // Track DAPIClient for cleanup
+    resourceTracker.track(dapiClient);
 
     // Step 3: Get current blockchain height for logging
     let currentBlockHeight: number | undefined;
@@ -338,6 +342,10 @@ export class WalletCoordinator {
 
     const DAPIClientClass = await getDAPIClient();
     const dapiClient = new DAPIClientClass(dapiClientOptions);
+
+    // Track DAPIClient for cleanup
+    resourceTracker.track(dapiClient);
+
     const blockchainStatus = await dapiClient.core.getBlockchainStatus();
 
     // Multi-source height extraction

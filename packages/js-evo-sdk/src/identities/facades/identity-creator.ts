@@ -36,6 +36,7 @@ import {
   DAPI_CONFIG,
 } from '../config/operation-config.js';
 import { createLogger } from '../utils/identity-logger.js';
+import { resourceTracker } from '../utils/resource-tracker.js';
 import {
   ValidationError,
   WalletSetupError,
@@ -140,6 +141,9 @@ export class IdentityCreator {
     // Input validation
     this.validateInputs(mnemonic, amount, startHeight);
 
+    // Track resources for cleanup
+    let walletSetup: Awaited<ReturnType<WalletCoordinator['setupWallet']>> | null = null;
+
     try {
       logger.info(`Starting identity creation (${amount} duffs)`);
 
@@ -155,7 +159,7 @@ export class IdentityCreator {
 
       // Step 1: Setup wallet with key derivation and UTXO discovery
       const coordinator = new WalletCoordinator(this.sdk);
-      const walletSetup = await coordinator.setupWallet({
+      walletSetup = await coordinator.setupWallet({
         mnemonic,
         network: this.sdk.networkConfig.network,
         startHeight,
@@ -459,6 +463,16 @@ export class IdentityCreator {
       }
 
       throw new Error(`Identity creation failed: ${String(error)}`);
+    } finally {
+      // Cleanup resources - stop monitor to release WebSocket connections and event listeners
+      if (walletSetup?.monitor) {
+        try {
+          walletSetup.monitor.stop();
+          logger.debug('Monitor stopped during cleanup');
+        } catch (cleanupError) {
+          logger.warn('Failed to stop monitor during cleanup:', cleanupError);
+        }
+      }
     }
   }
 
@@ -535,6 +549,9 @@ export class IdentityCreator {
         { utxoBalance: utxo.satoshis, requestedAmount: amount }
       );
     }
+
+    // Track resources for cleanup
+    let monitor: TransactionFinder | null = null;
 
     try {
       logger.info(`Starting identity creation with pre-found UTXO (${amount} duffs)`);
@@ -706,8 +723,11 @@ export class IdentityCreator {
         ...(dapiAddresses && { dapiAddresses }),
       });
 
+      // Track DAPIClient for cleanup
+      resourceTracker.track(dapiClient);
+
       // Create TransactionFinder in REALTIME mode for monitoring only (no historic scan)
-      const monitor = new TransactionFinder({
+      monitor = new TransactionFinder({
         mode: FinderMode.REALTIME,
         network: this.sdk.networkConfig.network as 'mainnet' | 'testnet' | 'regtest',
         addresses: [sourceAddress.address],
@@ -833,9 +853,6 @@ export class IdentityCreator {
         }
       );
 
-      // Stop the monitor
-      monitor.stop();
-
       if (onProgress) {
         onProgress(
           OperationEventFactory.phaseComplete(
@@ -883,6 +900,16 @@ export class IdentityCreator {
       }
 
       throw new Error(`Identity creation with UTXO failed: ${String(error)}`);
+    } finally {
+      // Cleanup resources - stop monitor to release WebSocket connections and event listeners
+      if (monitor) {
+        try {
+          monitor.stop();
+          logger.debug('Monitor stopped during cleanup');
+        } catch (cleanupError) {
+          logger.warn('Failed to stop monitor during cleanup:', cleanupError);
+        }
+      }
     }
   }
 

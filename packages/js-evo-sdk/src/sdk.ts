@@ -13,6 +13,7 @@ import { GroupFacade } from './group/facade.js';
 import { VotingFacade } from './voting/facade.js';
 import { DashPayFacade } from './dashpay/facade.js';
 import { NetworkClient } from './network/client.js';
+import { resourceTracker } from './identities/utils/resource-tracker.js';
 
 export interface ConnectionOptions {
   version?: number;
@@ -158,6 +159,31 @@ export class EvoSDK {
     this.wasmSdk = undefined;
   }
 
+  /**
+   * Cleanup all tracked resources (DAPIClient instances, etc.)
+   * Call this when done with identity operations to prevent memory leaks
+   * in long-running browser sessions.
+   *
+   * @returns Number of resources cleaned up
+   *
+   * @example
+   * ```typescript
+   * // After completing identity operations
+   * const cleaned = await sdk.cleanup();
+   * console.log(`Cleaned up ${cleaned} resources`);
+   * ```
+   */
+  async cleanup(): Promise<number> {
+    return resourceTracker.cleanup();
+  }
+
+  /**
+   * Get the number of tracked resources awaiting cleanup
+   */
+  get trackedResourceCount(): number {
+    return resourceTracker.size;
+  }
+
   version(): number {
     return this.wasm.version();
   }
@@ -212,4 +238,5 @@ export { GroupFacade } from './group/facade.js';
 export { VotingFacade } from './voting/facade.js';
 export { DashPayFacade } from './dashpay/facade.js';
 export { wallet } from './wallet/functions.js';
+export { resourceTracker } from './identities/utils/resource-tracker.js';
 export * from './wasm.js';

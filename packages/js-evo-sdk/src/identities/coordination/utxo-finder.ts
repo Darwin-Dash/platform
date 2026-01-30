@@ -21,6 +21,7 @@ import * as wasm from '../../wasm.js';
 import { wallet as walletFunctions } from '../../wallet/functions.js';
 import { DAPI_CONFIG, IDENTITY_CONFIG } from '../config/operation-config.js';
 import { createLogger } from '../utils/identity-logger.js';
+import { resourceTracker } from '../utils/resource-tracker.js';
 import type { DerivedAddressInfo } from './wallet-coordinator.js';
 
 // Lazy-loaded DAPIClient to avoid wasm-dpp conflict
@@ -178,6 +179,9 @@ export class UTXOFinder {
       ...(dapiAddresses && { dapiAddresses }),
     });
 
+    // Track DAPIClient for cleanup
+    resourceTracker.track(dapiClient);
+
     // Step 2: Get current blockchain height
     let currentBlockHeight: number;
     try {
@@ -261,10 +265,14 @@ export class UTXOFinder {
       latestUTXO = await finder.findLatestSpendableUTXO();
     } catch (error) {
       throw new Error(`No spendable UTXO found with minimum ${minAmount} duffs: ${(error as Error).message}`);
+    } finally {
+      // Always stop the finder to release resources, even on error
+      try {
+        finder.stop();
+      } catch (stopError) {
+        logger.warn('Failed to stop TransactionFinder during cleanup:', stopError);
+      }
     }
-
-    // Stop the finder
-    finder.stop();
 
     const elapsed = Date.now() - startTime;
 
@@ -355,6 +363,9 @@ export class UTXOFinder {
       ...(dapiAddresses && { dapiAddresses }),
     });
 
+    // Track DAPIClient for cleanup
+    resourceTracker.track(dapiClient);
+
     // Get current height
     const blockchainStatus = await dapiClient.core.getBlockchainStatus();
     const currentBlockHeight = blockchainStatus.blocks ||
@@ -395,8 +406,17 @@ export class UTXOFinder {
       },
     });
 
-    const utxos = await finder.findUTXOs();
-    finder.stop();
+    let utxos: UTXO[];
+    try {
+      utxos = await finder.findUTXOs();
+    } finally {
+      // Always stop the finder to release resources, even on error
+      try {
+        finder.stop();
+      } catch (stopError) {
+        logger.warn('Failed to stop TransactionFinder during cleanup:', stopError);
+      }
+    }
 
     const elapsed = Date.now() - startTime;
 
