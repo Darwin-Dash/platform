@@ -38,6 +38,11 @@ import {
   tokenIdentityBalancesOperation,
   tokenTotalSupplyOperation,
   tokenStatusesOperation,
+  tokenContractInfoOperation,
+  tokenDirectPurchasePricesOperation,
+  tokenIdentityTokenInfosOperation,
+  tokenPriceByContractOperation,
+  tokenCalculateIdOperation,
 } from './tokens.js';
 
 // Contract operations
@@ -93,6 +98,11 @@ export const operations = {
   'token-identity-balances': tokenIdentityBalancesOperation,
   'token-total-supply': tokenTotalSupplyOperation,
   'token-statuses': tokenStatusesOperation,
+  'token-contract-info': tokenContractInfoOperation,
+  'token-direct-purchase-prices': tokenDirectPurchasePricesOperation,
+  'token-identity-token-infos': tokenIdentityTokenInfosOperation,
+  'token-price-by-contract': tokenPriceByContractOperation,
+  'token-calculate-id': tokenCalculateIdOperation,
 
   // Contract operations
   'contract-get': contractGetOperation,

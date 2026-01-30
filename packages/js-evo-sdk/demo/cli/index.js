@@ -203,6 +203,48 @@ tokens
     await tokensSupply(tokenId, program.opts());
   });
 
+tokens
+  .command('status <tokenIds...>')
+  .description('Get status of one or more tokens')
+  .action(async (tokenIds) => {
+    const { tokensStatus } = await import('./commands/tokens.js');
+    await tokensStatus(tokenIds, program.opts());
+  });
+
+tokens
+  .command('contract-info <contractId>')
+  .description('Get token contract information')
+  .action(async (contractId) => {
+    const { tokensContractInfo } = await import('./commands/tokens.js');
+    await tokensContractInfo(contractId, program.opts());
+  });
+
+tokens
+  .command('prices <tokenIds...>')
+  .description('Get direct purchase prices for tokens')
+  .action(async (tokenIds) => {
+    const { tokensPrices } = await import('./commands/tokens.js');
+    await tokensPrices(tokenIds, program.opts());
+  });
+
+tokens
+  .command('identity-info')
+  .description('Get token info for an identity')
+  .requiredOption('-i, --identity <identityId>', 'Identity ID')
+  .requiredOption('-t, --tokens <tokenIds>', 'Comma-separated token IDs')
+  .action(async (options) => {
+    const { tokensIdentityInfo } = await import('./commands/tokens.js');
+    await tokensIdentityInfo(options, program.opts());
+  });
+
+tokens
+  .command('calculate-id <contractId> <position>')
+  .description('Calculate token ID from contract ID and position')
+  .action(async (contractId, position) => {
+    const { tokensCalculateId } = await import('./commands/tokens.js');
+    await tokensCalculateId(contractId, position, program.opts());
+  });
+
 // ============================================================================
 // Credits Commands
 // ============================================================================

@@ -135,6 +135,7 @@ import { DocumentViewer } from './components/document-viewer.js';
 import { ContestedNamesViewer } from './components/contested-names-viewer.js';
 import { ContactsViewer } from './components/contacts-viewer.js';
 import { ContactRequestsManager } from './components/contact-requests.js';
+import { TokenViewer } from './components/token-viewer.js';
 import { notifications } from './components/notifications.js';
 import { WalletFundingFlow } from './components/wallet-funding-flow.js';
 import {
@@ -444,6 +445,15 @@ class IdentityManagerApp {
         }
       }
 
+      // Update token viewer with SDK for real token queries
+      if (this.components.tokenViewer) {
+        this.components.tokenViewer.setSDK(sdk);
+        const selectedIdentity = stateManager.getSelectedIdentity();
+        if (selectedIdentity) {
+          this.components.tokenViewer.setIdentityId(selectedIdentity.id);
+        }
+      }
+
       // Update DashPay components with SDK for real DashPay operations
       if (this.components.contactsViewer && this.mnemonic) {
         this.components.contactsViewer.setSDK(sdk, this.mnemonic);
@@ -693,6 +703,11 @@ class IdentityManagerApp {
         this.components.documentViewer.setSDK(sdk);
       }
 
+      // Update token viewer with SDK for real token queries
+      if (this.components.tokenViewer) {
+        this.components.tokenViewer.setSDK(sdk);
+      }
+
       // Update DashPay components with SDK for real DashPay operations
       if (this.components.contactsViewer) {
         this.components.contactsViewer.setSDK(sdk, mnemonic);
@@ -868,6 +883,13 @@ class IdentityManagerApp {
     const contestedNamesContainer = document.getElementById('contested-names-viewer');
     if (contestedNamesContainer) {
       this.components.contestedNamesViewer = new ContestedNamesViewer(contestedNamesContainer, this.platformOps);
+    }
+
+    // Initialize Token Viewer
+    const tokenViewerContainer = document.getElementById('token-viewer');
+    if (tokenViewerContainer) {
+      this.components.tokenViewer = new TokenViewer(tokenViewerContainer, this.platformOps, null);
+      this.components.tokenViewer.render();
     }
 
     // Initialize Contacts Viewer
@@ -2326,6 +2348,10 @@ class IdentityManagerApp {
             // Update document viewer with SDK for real document fetching
             if (this.components.documentViewer) {
               this.components.documentViewer.setSDK(this.sdk);
+            }
+            // Update token viewer with SDK for real token queries
+            if (this.components.tokenViewer) {
+              this.components.tokenViewer.setSDK(this.sdk);
             }
             // Update DashPay components with SDK for real DashPay operations
             if (this.components.contactsViewer && this.mnemonic) {

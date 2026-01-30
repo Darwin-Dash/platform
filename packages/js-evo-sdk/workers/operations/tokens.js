@@ -137,3 +137,158 @@ export async function tokenStatusesOperation(params, sdk) {
     statuses: statusesObj,
   };
 }
+
+/**
+ * Get token contract info
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.contractId - Contract ID to query
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @returns {Promise<object>} Contract info result
+ */
+export async function tokenContractInfoOperation(params, sdk) {
+  const { contractId } = params;
+
+  if (!contractId) {
+    throw new Error('Missing required parameter: contractId');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Getting contract info for: ${contractId}`);
+  }
+
+  const contractInfo = await sdk.tokens.contractInfo(contractId);
+
+  return {
+    contractId,
+    contractInfo: contractInfo || null,
+  };
+}
+
+/**
+ * Get direct purchase prices for tokens
+ *
+ * @param {object} params - Operation parameters
+ * @param {string[]} params.tokenIds - Array of token IDs
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @returns {Promise<object>} Prices result
+ */
+export async function tokenDirectPurchasePricesOperation(params, sdk) {
+  const { tokenIds } = params;
+
+  if (!tokenIds) {
+    throw new Error('Missing required parameter: tokenIds');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Getting direct purchase prices for ${tokenIds.length} tokens`);
+  }
+
+  const prices = await sdk.tokens.directPurchasePrices(tokenIds);
+
+  // Convert Map to plain object for serialization
+  const pricesObj = {};
+  if (prices instanceof Map) {
+    for (const [key, value] of prices) {
+      pricesObj[key] = value;
+    }
+  }
+
+  return {
+    prices: pricesObj,
+  };
+}
+
+/**
+ * Get identity token infos
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.identityId - Identity ID to query
+ * @param {string[]} params.tokenIds - Array of token IDs
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @returns {Promise<object>} Token infos result
+ */
+export async function tokenIdentityTokenInfosOperation(params, sdk) {
+  const { identityId, tokenIds } = params;
+
+  if (!identityId || !tokenIds) {
+    throw new Error('Missing required parameters: identityId, tokenIds');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Getting token infos for identity with ${tokenIds.length} tokens`);
+  }
+
+  const tokenInfos = await sdk.tokens.identityTokenInfos(identityId, tokenIds);
+
+  // Convert Map to plain object for serialization
+  const infosObj = {};
+  if (tokenInfos instanceof Map) {
+    for (const [key, value] of tokenInfos) {
+      infosObj[key] = value;
+    }
+  }
+
+  return {
+    identityId,
+    tokenInfos: infosObj,
+  };
+}
+
+/**
+ * Get token price by contract
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.contractId - Contract ID
+ * @param {number} params.tokenPosition - Token position within contract
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @returns {Promise<object>} Price info result
+ */
+export async function tokenPriceByContractOperation(params, sdk) {
+  const { contractId, tokenPosition } = params;
+
+  if (!contractId || tokenPosition === undefined) {
+    throw new Error('Missing required parameters: contractId, tokenPosition');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Getting price for contract ${contractId} position ${tokenPosition}`);
+  }
+
+  const priceInfo = await sdk.tokens.priceByContract(contractId, tokenPosition);
+
+  return {
+    contractId,
+    tokenPosition,
+    priceInfo: priceInfo || null,
+  };
+}
+
+/**
+ * Calculate token ID from contract ID and position
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.contractId - Contract ID
+ * @param {number} params.tokenPosition - Token position within contract
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @returns {Promise<object>} Calculated token ID
+ */
+export async function tokenCalculateIdOperation(params, sdk) {
+  const { contractId, tokenPosition } = params;
+
+  if (!contractId || tokenPosition === undefined) {
+    throw new Error('Missing required parameters: contractId, tokenPosition');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Calculating token ID for contract ${contractId} position ${tokenPosition}`);
+  }
+
+  const tokenId = await sdk.tokens.calculateId(contractId, tokenPosition);
+
+  return {
+    contractId,
+    tokenPosition,
+    tokenId,
+  };
+}

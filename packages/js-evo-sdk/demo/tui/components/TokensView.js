@@ -1,7 +1,7 @@
 /**
  * Tokens View Component
  *
- * Token balance and supply operations.
+ * Token balance, supply, status, and info operations.
  */
 
 import React, { useState } from 'react';
@@ -15,6 +15,10 @@ const h = React.createElement;
 const menuItems = [
   { label: 'Get Token Balances', value: 'balances' },
   { label: 'Get Token Supply', value: 'supply' },
+  { label: 'Get Token Status', value: 'status' },
+  { label: 'Get Contract Info', value: 'contract-info' },
+  { label: 'Get Purchase Prices', value: 'prices' },
+  { label: 'Calculate Token ID', value: 'calculate-id' },
   { label: 'Back to Main Menu', value: 'back' },
 ];
 
@@ -23,6 +27,8 @@ export default function TokensView({ onBack }) {
   const [step, setStep] = useState(0);
   const [identityId, setIdentityId] = useState('');
   const [tokenId, setTokenId] = useState('');
+  const [contractId, setContractId] = useState('');
+  const [tokenPosition, setTokenPosition] = useState('0');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -34,15 +40,21 @@ export default function TokensView({ onBack }) {
       } else if (step > 0) {
         setStep(step - 1);
       } else {
-        setMode('menu');
-        setResult(null);
-        setError(null);
-        setIdentityId('');
-        setTokenId('');
-        setStep(0);
+        resetState();
       }
     }
   });
+
+  const resetState = () => {
+    setMode('menu');
+    setResult(null);
+    setError(null);
+    setIdentityId('');
+    setTokenId('');
+    setContractId('');
+    setTokenPosition('0');
+    setStep(0);
+  };
 
   const handleSelect = (value) => {
     if (value === 'back') {
@@ -52,6 +64,8 @@ export default function TokensView({ onBack }) {
     setMode(value);
     setIdentityId('');
     setTokenId('');
+    setContractId('');
+    setTokenPosition('0');
     setStep(0);
     setResult(null);
     setError(null);
@@ -62,7 +76,24 @@ export default function TokensView({ onBack }) {
     setStep(1);
   };
 
+  const handleContractSubmit = () => {
+    if (!contractId.trim()) return;
+    if (mode === 'calculate-id') {
+      setStep(1);
+    } else {
+      executeQuery();
+    }
+  };
+
+  const handlePositionSubmit = () => {
+    executeQuery();
+  };
+
   const handleTokenSubmit = async () => {
+    executeQuery();
+  };
+
+  const executeQuery = async () => {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -71,20 +102,89 @@ export default function TokensView({ onBack }) {
       const sdk = await sdkConnection.getSDK();
 
       if (mode === 'balances') {
-        const balances = await sdk.tokens.getBalances(identityId.trim(), tokenId.trim() || null);
-        setResult({ type: 'balances', identityId: identityId.trim(), tokenId: tokenId.trim(), data: balances });
+        if (!tokenId.trim()) {
+          setError('Token ID is required for balance query');
+          setLoading(false);
+          return;
+        }
+        // balances(identityIds: array, tokenId: string) returns Map<Identifier, bigint>
+        const balances = await sdk.tokens.balances([identityId.trim()], tokenId.trim());
+        // Convert Map to array for display
+        const balanceArray = [];
+        if (balances instanceof Map) {
+          for (const [id, balance] of balances) {
+            balanceArray.push({ tokenId: tokenId.trim(), balance: balance.toString() });
+          }
+        }
+        setResult({ type: 'balances', identityId: identityId.trim(), tokenId: tokenId.trim(), data: balanceArray });
+
       } else if (mode === 'supply') {
         if (!tokenId.trim()) {
           setError('Token ID is required');
           setLoading(false);
           return;
         }
-        const supply = await sdk.tokens.getSupply(tokenId.trim());
-        setResult({ type: 'supply', tokenId: tokenId.trim(), data: supply });
+        // totalSupply(tokenId) returns TokenTotalSupply | undefined
+        const supply = await sdk.tokens.totalSupply(tokenId.trim());
+        setResult({ type: 'supply', tokenId: tokenId.trim(), data: supply?.amount || 0n });
+
+      } else if (mode === 'status') {
+        if (!tokenId.trim()) {
+          setError('Token ID is required');
+          setLoading(false);
+          return;
+        }
+        // statuses(tokenIds) returns Map<Identifier, TokenStatus>
+        const statuses = await sdk.tokens.statuses([tokenId.trim()]);
+        const statusObj = {};
+        if (statuses instanceof Map) {
+          for (const [id, status] of statuses) {
+            statusObj[id.toString ? id.toString() : id] = status;
+          }
+        }
+        setResult({ type: 'status', tokenId: tokenId.trim(), data: statusObj });
+
+      } else if (mode === 'contract-info') {
+        if (!contractId.trim()) {
+          setError('Contract ID is required');
+          setLoading(false);
+          return;
+        }
+        // contractInfo(contractId) returns TokenContractInfo | undefined
+        const info = await sdk.tokens.contractInfo(contractId.trim());
+        setResult({ type: 'contract-info', contractId: contractId.trim(), data: info });
+
+      } else if (mode === 'prices') {
+        if (!tokenId.trim()) {
+          setError('Token ID is required');
+          setLoading(false);
+          return;
+        }
+        // directPurchasePrices(tokenIds) returns Map<Identifier, TokenPriceInfo>
+        const prices = await sdk.tokens.directPurchasePrices([tokenId.trim()]);
+        const pricesObj = {};
+        if (prices instanceof Map) {
+          for (const [id, price] of prices) {
+            pricesObj[id.toString ? id.toString() : id] = price;
+          }
+        }
+        setResult({ type: 'prices', tokenId: tokenId.trim(), data: pricesObj });
+
+      } else if (mode === 'calculate-id') {
+        if (!contractId.trim()) {
+          setError('Contract ID is required');
+          setLoading(false);
+          return;
+        }
+        const pos = parseInt(tokenPosition, 10) || 0;
+        // calculateId(contractId, tokenPosition) returns string
+        const calculatedId = await sdk.tokens.calculateId(contractId.trim(), pos);
+        setResult({ type: 'calculate-id', contractId: contractId.trim(), tokenPosition: pos, data: calculatedId });
       }
-      setStep(2);
+
+      setStep(99); // Results step
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -111,7 +211,7 @@ export default function TokensView({ onBack }) {
         return h(Box, { flexDirection: 'column', paddingX: 2 },
           h(Text, { color: 'gray' }, `Identity: ${truncateId(identityId, 32)}`),
           h(Box, { marginTop: 1 },
-            h(Text, { color: 'cyan' }, 'Enter Token ID (optional, leave empty for all):')
+            h(Text, { color: 'cyan' }, 'Enter Token ID:')
           ),
           h(Box, { marginTop: 1 },
             h(Text, { color: 'gray' }, '> '),
@@ -119,14 +219,14 @@ export default function TokensView({ onBack }) {
               value: tokenId,
               onChange: setTokenId,
               onSubmit: handleTokenSubmit,
-              placeholder: 'Press Enter without input for all tokens'
+              placeholder: 'Enter token ID'
             })
           )
         );
       }
     }
 
-    if (mode === 'supply') {
+    if (mode === 'supply' || mode === 'status' || mode === 'prices') {
       return h(Box, { flexDirection: 'column', paddingX: 2 },
         h(Text, { color: 'cyan' }, 'Enter Token ID:'),
         h(Box, { marginTop: 1 },
@@ -135,10 +235,60 @@ export default function TokensView({ onBack }) {
             value: tokenId,
             onChange: setTokenId,
             onSubmit: handleTokenSubmit,
-            placeholder: 'e.g., token contract ID'
+            placeholder: 'e.g., Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv'
           })
         )
       );
+    }
+
+    if (mode === 'contract-info') {
+      return h(Box, { flexDirection: 'column', paddingX: 2 },
+        h(Text, { color: 'cyan' }, 'Enter Contract ID:'),
+        h(Box, { marginTop: 1 },
+          h(Text, { color: 'gray' }, '> '),
+          h(TextInput, {
+            value: contractId,
+            onChange: setContractId,
+            onSubmit: handleContractSubmit,
+            placeholder: 'e.g., ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A'
+          })
+        )
+      );
+    }
+
+    if (mode === 'calculate-id') {
+      if (step === 0) {
+        return h(Box, { flexDirection: 'column', paddingX: 2 },
+          h(Text, { color: 'cyan' }, 'Enter Contract ID:'),
+          h(Box, { marginTop: 1 },
+            h(Text, { color: 'gray' }, '> '),
+            h(TextInput, {
+              value: contractId,
+              onChange: setContractId,
+              onSubmit: handleContractSubmit,
+              placeholder: 'e.g., ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A'
+            })
+          )
+        );
+      }
+
+      if (step === 1) {
+        return h(Box, { flexDirection: 'column', paddingX: 2 },
+          h(Text, { color: 'gray' }, `Contract: ${truncateId(contractId, 32)}`),
+          h(Box, { marginTop: 1 },
+            h(Text, { color: 'cyan' }, 'Enter Token Position (default: 0):')
+          ),
+          h(Box, { marginTop: 1 },
+            h(Text, { color: 'gray' }, '> '),
+            h(TextInput, {
+              value: tokenPosition,
+              onChange: setTokenPosition,
+              onSubmit: handlePositionSubmit,
+              placeholder: '0'
+            })
+          )
+        );
+      }
     }
 
     return null;
@@ -192,6 +342,104 @@ export default function TokensView({ onBack }) {
       );
     }
 
+    if (result.type === 'status') {
+      const statuses = result.data || {};
+      const statusKeys = Object.keys(statuses);
+
+      if (statusKeys.length === 0) {
+        return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+          h(Text, { color: 'yellow' }, 'No token status found')
+        );
+      }
+
+      return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+        h(Text, { color: 'green', bold: true }, 'Token Status'),
+        h(Box, { marginTop: 1, flexDirection: 'column' },
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Token:  '),
+            h(Text, null, truncateId(result.tokenId, 32))
+          ),
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Status: '),
+            h(Text, { color: 'cyan' }, String(statuses[statusKeys[0]] || 'Unknown'))
+          )
+        )
+      );
+    }
+
+    if (result.type === 'contract-info') {
+      const info = result.data;
+
+      if (!info) {
+        return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+          h(Text, { color: 'yellow' }, 'Token contract not found')
+        );
+      }
+
+      return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+        h(Text, { color: 'green', bold: true }, 'Token Contract Info'),
+        h(Box, { marginTop: 1, flexDirection: 'column' },
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Contract: '),
+            h(Text, null, truncateId(result.contractId, 32))
+          ),
+          info.ownerId && h(Text, null,
+            h(Text, { color: 'gray' }, 'Owner:    '),
+            h(Text, null, truncateId(info.ownerId, 32))
+          ),
+          info.tokenCount && h(Text, null,
+            h(Text, { color: 'gray' }, 'Tokens:   '),
+            h(Text, { color: 'cyan' }, String(info.tokenCount))
+          )
+        )
+      );
+    }
+
+    if (result.type === 'prices') {
+      const prices = result.data || {};
+      const priceKeys = Object.keys(prices);
+
+      if (priceKeys.length === 0) {
+        return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+          h(Text, { color: 'yellow' }, 'No price information found')
+        );
+      }
+
+      return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+        h(Text, { color: 'green', bold: true }, 'Direct Purchase Price'),
+        h(Box, { marginTop: 1, flexDirection: 'column' },
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Token: '),
+            h(Text, null, truncateId(result.tokenId, 32))
+          ),
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Price: '),
+            h(Text, { color: 'yellow' }, String(prices[priceKeys[0]]?.price || 'N/A'))
+          )
+        )
+      );
+    }
+
+    if (result.type === 'calculate-id') {
+      return h(Box, { flexDirection: 'column', paddingX: 2, marginTop: 1 },
+        h(Text, { color: 'green', bold: true }, 'Calculated Token ID'),
+        h(Box, { marginTop: 1, flexDirection: 'column' },
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Contract: '),
+            h(Text, null, truncateId(result.contractId, 32))
+          ),
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Position: '),
+            h(Text, { color: 'cyan' }, String(result.tokenPosition))
+          ),
+          h(Text, null,
+            h(Text, { color: 'gray' }, 'Token ID: '),
+            h(Text, { color: 'yellow' }, result.data || 'Unknown')
+          )
+        )
+      );
+    }
+
     return null;
   };
 
@@ -218,7 +466,7 @@ export default function TokensView({ onBack }) {
       )
     );
   } else {
-    if (step < 2) {
+    if (step < 99) {
       const inputElement = renderInput();
       if (inputElement) {
         children.push(h(React.Fragment, { key: 'input' }, inputElement));
