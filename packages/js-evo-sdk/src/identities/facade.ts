@@ -28,7 +28,6 @@ import { UTXOFinder, type SpendableUTXOResult, type UTXOSearchProgress } from '.
 import { type DerivedAddressInfo } from './coordination/wallet-coordinator.js';
 import { type UTXO } from '@dashevo/transaction-finder';
 import { createLogger } from './utils/identity-logger.js';
-import { DAPI_CONFIG } from './config/operation-config.js';
 import { wasmOperationQueue } from '../utils/wasm-operation-queue.js';
 
 const logger = createLogger('IdentitiesFacade');
@@ -875,81 +874,12 @@ export class IdentitiesFacade {
 
     // Import required modules - NO wallet-lib dependency!
     // IMPORTANT: Use the shared compressed WASM module to avoid dual initialization conflicts
-    const DAPIClient = (await import('@dashevo/dapi-client')).default;
-    const { ensureInitialized, Identity } = await import('../wasm.js');
+    const { ensureInitialized } = await import('../wasm.js');
     const { wallet: walletFunctions } = await import('../wallet/functions.js');
     const dashcoreLib = (await import('@dashevo/dashcore-lib')).default;
 
-    // Initialize wasm-sdk for key derivation and Identity.fromBytes() decoding
+    // Initialize wasm-sdk for key derivation
     await ensureInitialized();
-
-    // Get DAPI addresses - prioritize env var, then healthy nodes file, then whitelist
-    let dapiAddresses: string[] | undefined;
-    if (typeof process !== 'undefined' && process?.env?.DAPI_ADDRESSES) {
-      dapiAddresses = process.env.DAPI_ADDRESSES.split(',').map((a: string) => a.trim());
-      logger.debug(`Using explicit DAPI addresses: ${dapiAddresses.join(', ')}`);
-    } else if (network === 'testnet') {
-      // Testnet: Try to load pre-built healthy nodes, fall back to whitelist
-      // Try healthy-nodes.json in both Node.js and browser
-      if (typeof window !== 'undefined' && typeof fetch === 'function') {
-        // Browser environment - use fetch
-        try {
-          const response = await fetch('./healthy-nodes.json');
-          if (response.ok) {
-            const data = await response.json();
-            if (data.nodes && data.nodes.length > 0) {
-              dapiAddresses = data.nodes;
-              logger.debug(`Using ${data.nodes.length} pre-built healthy nodes`);
-            }
-          }
-        } catch {
-          // File not found or fetch error - fall through to whitelist
-        }
-      } else if (typeof process !== 'undefined') {
-        // Node.js environment - use fs
-        try {
-          const fs = await import('fs');
-          const path = await import('path');
-          const url = await import('url');
-          const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-          // Look for healthy-nodes.json in demo folder (relative to dist/identities/)
-          const healthyNodesPath = path.join(__dirname, '../../demo/healthy-nodes.json');
-          if (fs.existsSync(healthyNodesPath)) {
-            const data = JSON.parse(fs.readFileSync(healthyNodesPath, 'utf-8'));
-            if (data.nodes && data.nodes.length > 0) {
-              dapiAddresses = data.nodes;
-              logger.debug(`Using ${data.nodes.length} pre-built healthy nodes from ${healthyNodesPath}`);
-            }
-          }
-        } catch {
-          // File not found or read error - fall through to whitelist
-        }
-      }
-
-      // Fallback to full whitelist if no healthy nodes loaded
-      if (!dapiAddresses) {
-        try {
-          const networkConfigs = await import('@dashevo/dapi-client/lib/networkConfigs.js')
-            .then((m: any) => m.default || m);
-          const whitelist = networkConfigs?.testnet?.dapiAddressesWhiteList;
-          if (whitelist && whitelist.length > 0) {
-            dapiAddresses = whitelist;
-            logger.debug(`Using ${whitelist.length} whitelist nodes for testnet`);
-          }
-        } catch (err) {
-          logger.debug(`Could not load network configs, using default testnet config`);
-        }
-      }
-    }
-
-    // Create DAPI client with proper configuration
-    const client = new DAPIClient({
-      network,
-      timeout: DAPI_CONFIG.TIMEOUT_MS,
-      retries: DAPI_CONFIG.MAX_RETRIES,
-      baseBanTime: DAPI_CONFIG.BAN_TIME_MS,
-      ...(dapiAddresses && { dapiAddresses }),
-    });
 
     // DIP13: m/9'/coin_type'/5'/0'/0'/identityIndex'/keyIndex'
     // coin_type: 1 for testnet, 5 for mainnet
@@ -991,46 +921,34 @@ export class IdentitiesFacade {
           });
 
           // Get public key and compute hash
-          const publicKeyHex = childKey.public_key;
+          const publicKeyHex = childKey.publicKey;
 
           // Use dashcore-lib to compute public key hash (RIPEMD160(SHA256(pubkey)))
           const PublicKey = dashcoreLib.PublicKey;
           const pubKey = new PublicKey(publicKeyHex);
           const publicKeyHashHex = pubKey.toAddress(network).hashBuffer.toString('hex');
 
-          // Query Platform directly via DAPI
-          try {
-            const hashBuffer = Buffer.from(publicKeyHashHex, 'hex');
-            const response = await client.platform.getIdentityByPublicKeyHash(hashBuffer, { prove: false });
+          // Query Platform via WASM SDK (now safe for concurrent use with RwLock fix)
+          const identity = await this.byPublicKeyHash(publicKeyHashHex);
 
-            if (response.identity && response.identity.length > 0) {
-              // Decode identity buffer using Identity.fromBytes()
-              const identity = Identity.fromBytes(response.identity);
-              const identityJson = identity.toJSON();
-              const identityId = identityJson.id;
+          if (identity) {
+            // Convert WASM object to plain JS object with proper types
+            const identityJson = identity.toJSON();
+            const identityId = identityJson.id;
 
-              // Store the full identity JSON (no need to re-fetch later)
-              foundIdentities.push({
-                index,
-                identityId,
-                publicKeyHash: publicKeyHashHex,
-                balance: identityJson.balance,
-                revision: identityJson.revision,
-                identityJson,
-              });
-              consecutiveNotFound = 0;
-              logger.debug(`  [${index}] ${identityId} (balance: ${identityJson.balance})`);
-            } else {
-              consecutiveNotFound++;
-            }
-          } catch (error: any) {
-            // Not found is expected for most indices
-            if (error.message && error.message.includes('not found')) {
-              consecutiveNotFound++;
-            } else {
-              logger.debug(`Discovery error for index ${index}: ${error.message}`);
-              consecutiveNotFound++;
-            }
+            // Store the full identity (no need to re-fetch later)
+            foundIdentities.push({
+              index,
+              identityId,
+              publicKeyHash: publicKeyHashHex,
+              balance: identityJson.balance,
+              revision: identityJson.revision,
+              identityJson,
+            });
+            consecutiveNotFound = 0;
+            logger.debug(`  [${index}] ${identityId} (balance: ${identityJson.balance})`);
+          } else {
+            consecutiveNotFound++;
           }
         } catch (error: any) {
           logger.debug(`Key derivation error for index ${index}: ${error.message}`);
