@@ -171,8 +171,14 @@ class IdentityManagerApp {
 
     // Auto-set mnemonic for testnet testing (when not in mock mode)
     // This allows the real SDK to be used without manual login
+    // Differentiate logging between new and returning sessions for clarity
+    const isReturningSession = localStorage.getItem('dash-logged-in') === 'true';
     this.mnemonic = TEST_MNEMONIC;
-    console.log('🔑 Auto-set test mnemonic for SDK operations');
+    if (isReturningSession) {
+      console.log('🔑 Restored test mnemonic for returning session');
+    } else {
+      console.log('🔑 Auto-set test mnemonic for new session');
+    }
 
     // DIAGNOSTIC: Clear localStorage to force REAL mode for testing
     // NOTE: Disabled to allow E2E tests to control mock mode via localStorage
@@ -261,6 +267,29 @@ class IdentityManagerApp {
         console.log('  → Showing login screen');
         this.showLoginScreen();
         console.log('✅ Login screen ready!');
+        return;
+      }
+
+      // Validate session - check if we have cached identities or state
+      // This detects stale sessions where user is "logged in" but has no identity data
+      const hasIdentityState = localStorage.getItem('dash-identity-state');
+      let hasCachedIdentities = false;
+
+      if (hasIdentityState) {
+        try {
+          const parsed = JSON.parse(hasIdentityState);
+          hasCachedIdentities = parsed.identities && parsed.identities.length > 0;
+        } catch (e) {
+          console.warn('  ⚠️ Failed to parse cached identity state');
+        }
+      }
+
+      if (!hasIdentityState || !hasCachedIdentities) {
+        console.warn('⚠️ Stale session detected - logged in but no cached identities');
+        // Clear stale login state and show login screen
+        localStorage.removeItem('dash-logged-in');
+        this.showLoginScreen();
+        console.log('✅ Login screen ready (stale session cleared)!');
         return;
       }
 

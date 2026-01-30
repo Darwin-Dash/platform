@@ -301,3 +301,106 @@ export async function takeScreenshot(page, name) {
     fullPage: true,
   });
 }
+
+/**
+ * Simulate a returning user with cached session
+ * Sets up localStorage with logged-in flag and mock cached identity state
+ * The identity state format matches what the app's StateManager uses
+ * @param {Page} page - Playwright page
+ * @param {Object} options - Configuration options
+ * @param {number} options.identityCount - Number of mock identities to cache (default: 3)
+ * @param {boolean} options.includeIndexes - Whether to include index property on identities (default: true)
+ */
+export async function setupReturningUser(page, options = {}) {
+  const { identityCount = 3, includeIndexes = true } = options;
+
+  // Navigate first to be able to access localStorage
+  await page.goto('/');
+
+  // Wait for the page to be ready (DOM loaded)
+  await page.waitForLoadState('domcontentloaded');
+
+  // Set localStorage - this happens AFTER the first page load
+  await page.evaluate((opts) => {
+    // Clear everything first
+    localStorage.clear();
+
+    // Set mock mode and logged-in flag
+    localStorage.setItem('useMockMode', 'true');
+    localStorage.setItem('dash-logged-in', 'true');
+
+    // Create mock cached identity state - format must match StateManager's persist() output
+    // StateManager stores identities as: Array.from(Map.entries()) => [[id, data], [id, data], ...]
+    const mockIdentities = Array.from({ length: opts.identityCount }, (_, i) => {
+      const id = `mock-returning-identity-${i}`;
+      const identity = {
+        id: id,
+        balance: 1000000 * (i + 1),
+        revision: 1,
+        publicKeysCount: 2,
+        label: `Returning Identity ${i + 1}`,
+        dpnsNames: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        keys: [],
+        lastUpdated: Date.now()
+      };
+      // Include index if requested (for testing index preservation)
+      if (opts.includeIndexes) {
+        identity.index = i;
+      }
+      return [id, identity];
+    });
+
+    const stateToStore = {
+      identities: mockIdentities,
+      transactions: [],
+      operations: [],
+      network: 'testnet',
+      ui: {
+        selectedIdentityId: mockIdentities[0]?.[0] || null,
+        activePanel: null,
+        isCreating: false,
+        isLoading: false,
+        loadingMessage: '',
+        modalOpen: false
+      }
+    };
+
+    localStorage.setItem('dash-identity-state', JSON.stringify(stateToStore));
+  }, { identityCount, includeIndexes });
+
+  // Verify localStorage was set correctly before reload
+  const verifyResult = await page.evaluate(() => ({
+    loggedIn: localStorage.getItem('dash-logged-in'),
+    mockMode: localStorage.getItem('useMockMode'),
+    identityState: localStorage.getItem('dash-identity-state')
+  }));
+
+  if (verifyResult.loggedIn !== 'true') {
+    throw new Error('setupReturningUser: Failed to set dash-logged-in');
+  }
+
+  // Reload the page so the app initializes fresh with the new localStorage values
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Simulate a stale session (logged in but no identity data)
+ * This tests the stale session detection logic
+ * @param {Page} page - Playwright page
+ */
+export async function setupStaleSession(page) {
+  await page.goto('/');
+
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('useMockMode', 'true');
+    localStorage.setItem('dash-logged-in', 'true');
+    // Notably missing: dash-identity-state
+  });
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+}
