@@ -14,8 +14,9 @@
  * - Clean separation of concerns
  * - Composable and extensible
  *
- * Read operations use direct WASM SDK calls via wasmOperationQueue to avoid
- * RwLock deadlocks. Wallet integration operations use NetworkClient for DAPI access.
+ * Read operations use direct WASM SDK calls. The WASM SDK uses ArcSwap for
+ * lock-free reads, making concurrent operations safe without serialization.
+ * Wallet integration operations use NetworkClient for DAPI access.
  */
 
 import * as wasm from '../wasm.js';
@@ -28,7 +29,6 @@ import { UTXOFinder, type SpendableUTXOResult, type UTXOSearchProgress } from '.
 import { type DerivedAddressInfo } from './coordination/wallet-coordinator.js';
 import { type UTXO } from '@dashevo/transaction-finder';
 import { createLogger } from './utils/identity-logger.js';
-import { wasmOperationQueue } from '../utils/wasm-operation-queue.js';
 
 const logger = createLogger('IdentitiesFacade');
 
@@ -102,10 +102,8 @@ export class IdentitiesFacade {
    * @returns Identity object from Platform
    */
   async fetch(identityId: string): Promise<wasm.IdentityWasm> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentity(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentity(identityId);
   }
 
   /**
@@ -132,10 +130,8 @@ export class IdentitiesFacade {
    * @returns Identity with proof information
    */
   async fetchWithProof(identityId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityWithProofInfo(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityWithProofInfo(identityId);
   }
 
   /**
@@ -144,10 +140,8 @@ export class IdentitiesFacade {
    * @returns Identity object without proof
    */
   async fetchUnproved(identityId: string): Promise<wasm.IdentityWasm> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityUnproved(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityUnproved(identityId);
   }
 
   /**
@@ -165,10 +159,8 @@ export class IdentitiesFacade {
   }): Promise<any> {
     const { identityId, keyRequestType, specificKeyIds, limit = 100, offset = 0 } = args;
     const keyIds = specificKeyIds ? Uint32Array.from(specificKeyIds) : null;
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityKeys(identityId, keyRequestType, keyIds, limit, offset);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityKeys(identityId, keyRequestType, keyIds, limit, offset);
   }
 
   /**
@@ -193,10 +185,8 @@ export class IdentitiesFacade {
     }
 
     const keyIds = specificKeyIds ? Uint32Array.from(specificKeyIds) : null;
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityKeysWithProofInfo(identityId, keyRequestType, keyIds, limit, offset);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityKeysWithProofInfo(identityId, keyRequestType, keyIds, limit, offset);
   }
 
   /**
@@ -205,10 +195,8 @@ export class IdentitiesFacade {
    * @returns Identity nonce
    */
   async nonce(identityId: string): Promise<bigint> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityNonce(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityNonce(identityId);
   }
 
   /**
@@ -217,10 +205,8 @@ export class IdentitiesFacade {
    * @returns Identity nonce with proof
    */
   async nonceWithProof(identityId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityNonceWithProofInfo(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityNonceWithProofInfo(identityId);
   }
 
   /**
@@ -230,10 +216,8 @@ export class IdentitiesFacade {
    * @returns Contract nonce for identity
    */
   async contractNonce(identityId: string, contractId: string): Promise<bigint> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityContractNonce(identityId, contractId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityContractNonce(identityId, contractId);
   }
 
   /**
@@ -243,10 +227,8 @@ export class IdentitiesFacade {
    * @returns Contract nonce with proof
    */
   async contractNonceWithProof(identityId: string, contractId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityContractNonceWithProofInfo(identityId, contractId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityContractNonceWithProofInfo(identityId, contractId);
   }
 
   /**
@@ -255,10 +237,8 @@ export class IdentitiesFacade {
    * @returns Identity balance in duffs
    */
   async balance(identityId: string): Promise<bigint> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityBalance(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalance(identityId);
   }
 
   /**
@@ -267,10 +247,8 @@ export class IdentitiesFacade {
    * @returns Balance with proof
    */
   async balanceWithProof(identityId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityBalanceWithProofInfo(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceWithProofInfo(identityId);
   }
 
   /**
@@ -279,10 +257,8 @@ export class IdentitiesFacade {
    * @returns Balances for all identities
    */
   async balances(identityIds: string[]): Promise<bigint[]> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentitiesBalances(identityIds);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesBalances(identityIds);
   }
 
   /**
@@ -291,10 +267,8 @@ export class IdentitiesFacade {
    * @returns Balances with proof
    */
   async balancesWithProof(identityIds: string[]): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentitiesBalancesWithProofInfo(identityIds);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesBalancesWithProofInfo(identityIds);
   }
 
   /**
@@ -303,10 +277,8 @@ export class IdentitiesFacade {
    * @returns Balance and revision
    */
   async balanceAndRevision(identityId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityBalanceAndRevision(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceAndRevision(identityId);
   }
 
   /**
@@ -315,10 +287,8 @@ export class IdentitiesFacade {
    * @returns Balance and revision with proof
    */
   async balanceAndRevisionWithProof(identityId: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityBalanceAndRevisionWithProofInfo(identityId);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityBalanceAndRevisionWithProofInfo(identityId);
   }
 
   /**
@@ -327,10 +297,8 @@ export class IdentitiesFacade {
    * @returns Identity
    */
   async byPublicKeyHash(publicKeyHash: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityByPublicKeyHash(publicKeyHash);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByPublicKeyHash(publicKeyHash);
   }
 
   /**
@@ -339,10 +307,8 @@ export class IdentitiesFacade {
    * @returns Identity with proof
    */
   async byPublicKeyHashWithProof(publicKeyHash: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityByPublicKeyHashWithProofInfo(publicKeyHash);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByPublicKeyHashWithProofInfo(publicKeyHash);
   }
 
   /**
@@ -356,10 +322,8 @@ export class IdentitiesFacade {
     options?: { startAfter?: string }
   ): Promise<any> {
     const cursor = options?.startAfter || null;
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityByNonUniquePublicKeyHash(publicKeyHash, cursor);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByNonUniquePublicKeyHash(publicKeyHash, cursor);
   }
 
   /**
@@ -368,10 +332,8 @@ export class IdentitiesFacade {
    * @returns Array of identities with proof
    */
   async byNonUniquePublicKeyHashWithProof(publicKeyHash: string): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityByNonUniquePublicKeyHashWithProofInfo(publicKeyHash, null);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityByNonUniquePublicKeyHashWithProofInfo(publicKeyHash, null);
   }
 
   /**
@@ -386,10 +348,8 @@ export class IdentitiesFacade {
   }): Promise<any> {
     const { identityIds, contractId, purposes } = args;
     const purposesArray = purposes ? Uint32Array.from(purposes) : null;
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentitiesContractKeys(identityIds, contractId, purposesArray);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesContractKeys(identityIds, contractId, purposesArray);
   }
 
   /**
@@ -404,10 +364,8 @@ export class IdentitiesFacade {
   }): Promise<any> {
     const { identityIds, contractId, purposes } = args;
     const purposesArray = purposes ? Uint32Array.from(purposes) : null;
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentitiesContractKeysWithProofInfo(identityIds, contractId, purposesArray);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentitiesContractKeysWithProofInfo(identityIds, contractId, purposesArray);
   }
 
   /**
@@ -417,10 +375,8 @@ export class IdentitiesFacade {
    * @returns Token balances
    */
   async tokenBalances(identityId: string, tokenIds: string[]): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityTokenBalances(identityId, tokenIds);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalances(identityId, tokenIds);
   }
 
   /**
@@ -430,10 +386,8 @@ export class IdentitiesFacade {
    * @returns Token balances with proof
    */
   async tokenBalancesWithProof(identityId: string, tokenIds: string[]): Promise<any> {
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.getIdentityTokenBalancesWithProofInfo(identityId, tokenIds);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.getIdentityTokenBalancesWithProofInfo(identityId, tokenIds);
   }
 
   // ============================================================================
@@ -454,10 +408,8 @@ export class IdentitiesFacade {
     const { assetLockProof, assetLockPrivateKeyWif, publicKeys } = args;
     const proofJson = JSON.stringify(assetLockProof);
     const keysJson = JSON.stringify(publicKeys);
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.identityCreate(proofJson, assetLockPrivateKeyWif, keysJson);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.identityCreate(proofJson, assetLockPrivateKeyWif, keysJson);
   }
 
   /**
@@ -639,10 +591,8 @@ export class IdentitiesFacade {
   }): Promise<any> {
     const { identityId, assetLockProof, assetLockPrivateKeyWif } = args;
     const proofJson = JSON.stringify(assetLockProof);
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.identityTopUp(identityId, proofJson, assetLockPrivateKeyWif);
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.identityTopUp(identityId, proofJson, assetLockPrivateKeyWif);
   }
 
   /**
@@ -754,15 +704,13 @@ export class IdentitiesFacade {
     const { identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif } = args;
     const { asJsonString } = await import('../util.js');
 
-    return wasmOperationQueue.enqueue(async () => {
-      const w = await this.sdk.getWasmSdkConnected();
-      return w.identityUpdate(
-        identityId,
-        addPublicKeys ? asJsonString(addPublicKeys)! : null,
-        disablePublicKeyIds ? Uint32Array.from(disablePublicKeyIds) : null,
-        privateKeyWif
-      );
-    });
+    const w = await this.sdk.getWasmSdkConnected();
+    return w.identityUpdate(
+      identityId,
+      addPublicKeys ? asJsonString(addPublicKeys)! : null,
+      disablePublicKeyIds ? Uint32Array.from(disablePublicKeyIds) : null,
+      privateKeyWif
+    );
   }
 
   // ============================================================================

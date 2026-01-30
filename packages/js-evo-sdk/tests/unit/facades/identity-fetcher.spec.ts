@@ -5,7 +5,7 @@
  * Uses mocked WASM SDK to avoid network dependencies.
  *
  * Note: These tests mirror the expected behavior of the IdentitiesFacade's read methods
- * which now use direct WASM SDK calls via wasmOperationQueue.
+ * which use direct WASM SDK calls. The WASM SDK uses ArcSwap for lock-free reads.
  */
 
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
