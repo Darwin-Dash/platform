@@ -454,6 +454,11 @@ class IdentityManagerApp {
         }
       }
 
+      // Update name resolver with SDK for DPNS network queries
+      if (this.components.nameResolver) {
+        this.components.nameResolver.setSDK(sdk);
+      }
+
       // Update DashPay components with SDK for real DashPay operations
       if (this.components.contactsViewer && this.mnemonic) {
         this.components.contactsViewer.setSDK(sdk, this.mnemonic);
@@ -706,6 +711,11 @@ class IdentityManagerApp {
       // Update token viewer with SDK for real token queries
       if (this.components.tokenViewer) {
         this.components.tokenViewer.setSDK(sdk);
+      }
+
+      // Update name resolver with SDK for DPNS network queries
+      if (this.components.nameResolver) {
+        this.components.nameResolver.setSDK(sdk);
       }
 
       // Update DashPay components with SDK for real DashPay operations
@@ -1141,21 +1151,39 @@ class IdentityManagerApp {
       if (this.sdk && (!identity.dpnsNames || identity.dpnsNames.length === 0)) {
         console.log(`[DPNS] Fetching domain documents for identity: ${identity.id}`);
         this.sdk.documents.query({
-          contractId: DPNS_CONTRACT_ID,
-          type: 'domain',
+          dataContractId: DPNS_CONTRACT_ID,
+          documentTypeName: 'domain',
           where: [['records.identity', '==', identity.id]],
           limit: 100
-        }).then(docs => {
-          console.log(`[DPNS] Raw document response:`, docs);
+        }).then(docsMap => {
+          console.log(`[DPNS] Raw document response:`, docsMap);
+          // Convert Map to array (SDK returns Map<Identifier, Document>)
+          const docsArray = docsMap instanceof Map ? Array.from(docsMap.values()).filter(Boolean) : (docsMap || []);
           // Sort documents by creation date (oldest first) - client-side since DPNS has no index for this
-          const sortedDocs = (docs || []).sort((a, b) => {
-            const aTime = a.createdAt || a.getCreatedAt?.() || a.$createdAt || 0;
-            const bTime = b.createdAt || b.getCreatedAt?.() || b.$createdAt || 0;
-            return aTime - bTime;  // Ascending - oldest first
+          const sortedDocs = docsArray.sort((a, b) => {
+            const aTime = a.createdAt || a.getCreatedAt?.() || a.$createdAt || 0n;
+            const bTime = b.createdAt || b.getCreatedAt?.() || b.$createdAt || 0n;
+            // Use comparison operators instead of subtraction for BigInt compatibility
+            if (aTime < bTime) return -1;
+            if (aTime > bTime) return 1;
+            return 0;
           });
           // Extract names from sorted documents
+          // WASM documents expose properties via toJSON(), not getProperties()
           const names = sortedDocs.map(doc => {
-            const label = doc.getProperties?.()?.label || doc.data?.label || doc.label;
+            const jsonData = typeof doc.toJSON === 'function' ? doc.toJSON() : null;
+            let label = jsonData?.label || jsonData?.normalizedLabel;
+            // Fallback to getProperties() or direct properties
+            if (!label) {
+              const props = doc.getProperties?.();
+              label = props instanceof Map
+                ? (props.get('label') || props.get('normalizedLabel'))
+                : (props?.label || props?.normalizedLabel);
+            }
+            // Final fallback to direct doc properties
+            if (!label) {
+              label = doc.data?.label || doc.label;
+            }
             return label ? `${label}.dash` : null;
           }).filter(Boolean);
           console.log(`[DPNS] Extracted ${names.length} names for ${identity.id}`);
@@ -1196,7 +1224,9 @@ class IdentityManagerApp {
       // Build keys list (simple, no table)
       const keysListHTML = identity.keys.map(key => {
         const purpose = formatKeyPurpose(key.purpose);
+        const securityLevel = formatSecurityLevel(key.securityLevel);
         const purposeClass = purpose.toLowerCase().includes('auth') ? 'key-purpose-auth' : 'key-purpose-transfer';
+        const securityClass = `key-security-level-${securityLevel.class.replace('level-', '')}`;
         const statusDot = key.status === 'active'
           ? '<span class="key-status-dot key-status-dot-active" aria-label="Active" role="img">●</span>'
           : '<span class="key-status-dot key-status-dot-disabled" aria-label="Disabled" role="img">●</span>';
@@ -1205,6 +1235,7 @@ class IdentityManagerApp {
           <div class="key-list-item">
             <span class="key-id">#${key.id}</span>
             <span class="key-purpose ${purposeClass}">${purpose}</span>
+            <span class="key-security-level ${securityClass}">${securityLevel.text}</span>
             <span class="key-status">${statusDot} ${key.status === 'active' ? 'Active' : 'Disabled'}</span>
           </div>
         `;
@@ -1781,8 +1812,8 @@ class IdentityManagerApp {
               async (attempt) => {
                 console.log(`[ContactRequest] Attempt ${attempt} - creating document...`);
                 return await this.sdk.documents.create({
-                  contractId: dashpayContractId,
-                  type: 'contactRequest',
+                  dataContractId: dashpayContractId,
+                  documentTypeName: 'contactRequest',
                   ownerId: identity.id,
                   data: {
                     toUserId: recipientId,
@@ -1853,15 +1884,17 @@ class IdentityManagerApp {
               await new Promise(r => setTimeout(r, 5000));
 
               try {
-                const outbound = await sdk.documents.query({
-                  contractId: DASHPAY_CONTRACT_ID,
-                  type: 'contactRequest',
+                const outboundMap = await sdk.documents.query({
+                  dataContractId: DASHPAY_CONTRACT_ID,
+                  documentTypeName: 'contactRequest',
                   where: [['$ownerId', '==', identityId]],
                   limit: 20
                 });
 
-                const found = outbound.documents?.some(doc =>
-                  doc.data?.toUserId === recipientId
+                // Convert Map to array (SDK returns Map<Identifier, Document>)
+                const outboundDocs = outboundMap instanceof Map ? Array.from(outboundMap.values()).filter(Boolean) : [];
+                const found = outboundDocs.some(doc =>
+                  doc.data?.toUserId === recipientId || doc.getProperties?.()?.toUserId === recipientId
                 );
 
                 if (found) {
@@ -2352,6 +2385,10 @@ class IdentityManagerApp {
             // Update token viewer with SDK for real token queries
             if (this.components.tokenViewer) {
               this.components.tokenViewer.setSDK(this.sdk);
+            }
+            // Update name resolver with SDK for DPNS network queries
+            if (this.components.nameResolver) {
+              this.components.nameResolver.setSDK(this.sdk);
             }
             // Update DashPay components with SDK for real DashPay operations
             if (this.components.contactsViewer && this.mnemonic) {

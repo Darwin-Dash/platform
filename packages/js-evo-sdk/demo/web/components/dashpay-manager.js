@@ -42,6 +42,37 @@ export class DashPayManager {
   }
 
   /**
+   * Transform WASM SDK document to the format expected by the component
+   * WASM documents expose properties via toJSON(), not getProperties()
+   */
+  transformWasmDocument(doc, documentType = 'contactRequest') {
+    if (!doc) return null;
+
+    // Get document ID
+    const id = doc.getId?.() ? doc.getId().base58() : (doc.id || doc.$id);
+    const ownerId = doc.getOwnerId?.() ? doc.getOwnerId().base58() : (doc.ownerId || doc.$ownerId);
+
+    // Handle BigInt timestamps
+    const rawCreatedAt = doc.getCreatedAt?.() || doc.createdAt || doc.$createdAt;
+    const rawUpdatedAt = doc.getUpdatedAt?.() || doc.updatedAt || doc.$updatedAt;
+    const createdAt = rawCreatedAt ? new Date(Number(rawCreatedAt)).toISOString() : new Date().toISOString();
+    const updatedAt = rawUpdatedAt ? new Date(Number(rawUpdatedAt)).toISOString() : createdAt;
+
+    // WASM documents expose properties via toJSON()
+    const data = (typeof doc.toJSON === 'function' ? doc.toJSON() : null) || doc.getProperties?.() || doc.data || {};
+
+    return {
+      id: id || `dashpay-${Date.now()}`,
+      ownerId,
+      contractId: 'dashpay',
+      documentType,
+      createdAt,
+      updatedAt,
+      data
+    };
+  }
+
+  /**
    * Load all DashPay data for a given identity
    */
   async loadDashPayData(identityId) {
@@ -84,14 +115,16 @@ export class DashPayManager {
       if (this.canUseRealSDK()) {
         try {
           console.log('[DashPay] Querying inbound contact requests via SDK for:', identityId);
-          const result = await this.sdk.documents.query({
-            contractId: DASHPAY_CONTRACT_ID,
-            type: 'contactRequest',
+          const resultMap = await this.sdk.documents.query({
+            dataContractId: DASHPAY_CONTRACT_ID,
+            documentTypeName: 'contactRequest',
             where: [['toUserId', '==', identityId]],
             limit: 50
           });
-          console.log('[DashPay] SDK query returned:', result);
-          return result.documents || [];
+          console.log('[DashPay] SDK query returned:', resultMap);
+          // Convert Map to array and transform WASM documents
+          const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
+          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactRequest'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK query failed, falling back to mock:', sdkError);
         }
@@ -121,14 +154,16 @@ export class DashPayManager {
       if (this.canUseRealSDK()) {
         try {
           console.log('[DashPay] Querying outbound contact requests via SDK for:', identityId);
-          const result = await this.sdk.documents.query({
-            contractId: DASHPAY_CONTRACT_ID,
-            type: 'contactRequest',
+          const resultMap = await this.sdk.documents.query({
+            dataContractId: DASHPAY_CONTRACT_ID,
+            documentTypeName: 'contactRequest',
             where: [['$ownerId', '==', identityId]],
             limit: 50
           });
-          console.log('[DashPay] SDK query returned:', result);
-          return result.documents || [];
+          console.log('[DashPay] SDK query returned:', resultMap);
+          // Convert Map to array and transform WASM documents
+          const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
+          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactRequest'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK query failed, falling back to mock:', sdkError);
         }
@@ -157,14 +192,16 @@ export class DashPayManager {
       if (this.canUseRealSDK()) {
         try {
           console.log('[DashPay] Querying profile via SDK for:', identityId);
-          const result = await this.sdk.documents.query({
-            contractId: DASHPAY_CONTRACT_ID,
-            type: 'profile',
+          const resultMap = await this.sdk.documents.query({
+            dataContractId: DASHPAY_CONTRACT_ID,
+            documentTypeName: 'profile',
             where: [['$ownerId', '==', identityId]],
             limit: 1
           });
-          console.log('[DashPay] SDK profile query returned:', result);
-          const documents = result.documents || [];
+          console.log('[DashPay] SDK profile query returned:', resultMap);
+          // Convert Map to array and transform WASM documents
+          const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
+          const documents = docsArray.map(doc => this.transformWasmDocument(doc, 'profile'));
           return documents.length > 0 ? documents[0] : null;
         } catch (sdkError) {
           console.warn('[DashPay] SDK profile query failed, falling back to mock:', sdkError);
@@ -194,14 +231,16 @@ export class DashPayManager {
       if (this.canUseRealSDK()) {
         try {
           console.log('[DashPay] Querying accepted contacts via SDK for:', identityId);
-          const result = await this.sdk.documents.query({
-            contractId: DASHPAY_CONTRACT_ID,
-            type: 'contactInfo',
+          const resultMap = await this.sdk.documents.query({
+            dataContractId: DASHPAY_CONTRACT_ID,
+            documentTypeName: 'contactInfo',
             where: [['$ownerId', '==', identityId]],
             limit: 100
           });
-          console.log('[DashPay] SDK contacts query returned:', result);
-          return result.documents || [];
+          console.log('[DashPay] SDK contacts query returned:', resultMap);
+          // Convert Map to array and transform WASM documents
+          const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
+          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactInfo'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK contacts query failed, falling back to mock:', sdkError);
         }
@@ -332,8 +371,8 @@ export class DashPayManager {
           async (attempt) => {
             console.log(`[DashPay] Accept: Attempt ${attempt} - creating contactInfo...`);
             return await this.sdk.documents.create({
-              contractId: DASHPAY_CONTRACT_ID,
-              type: 'contactInfo',
+              dataContractId: DASHPAY_CONTRACT_ID,
+              documentTypeName: 'contactInfo',
               ownerId: identityId,
               data: {
                 encToUserId: encToUserIdBytes,

@@ -14,11 +14,20 @@ export class NameResolver {
   constructor(containerElement, mockPlatformOps) {
     this.container = containerElement;
     this.platformOps = mockPlatformOps;
+    this.sdk = null; // Will be set via setSDK()
     this.isOpen = false;
     this.currentMode = 'forward'; // 'forward' or 'reverse'
 
     this.render();
     this.bindEvents();
+  }
+
+  /**
+   * Set the SDK instance for network queries
+   * @param {Object} sdk - EvoSDK instance
+   */
+  setSDK(sdk) {
+    this.sdk = sdk;
   }
 
   render() {
@@ -362,33 +371,67 @@ export class NameResolver {
       return;
     }
 
+    const resultsArea = this.container.querySelector('#resolver-results');
+    const resultsContent = resultsArea?.querySelector('.results-content');
+
+    if (!resultsContent) return;
+
     try {
-      // Look up identity
+      // Look up identity in local cache first
       const identities = stateManager.getAllIdentities();
       const identity = identities.find(id => id.id === identityId);
+      let names = identity?.dpnsNames || [];
+      let identityLabel = identity?.label || null;
 
-      const resultsArea = this.container.querySelector('#resolver-results');
-      const resultsContent = resultsArea?.querySelector('.results-content');
+      // If SDK is available and no cached names, query DPNS network
+      if (this.sdk && names.length === 0) {
+        console.log('[NameResolver] Querying DPNS network for identity:', identityId);
+        resultsContent.innerHTML = `
+          <div class="result-item result-loading">
+            <div class="result-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="spinner">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" opacity="0.25"/>
+                <path d="M12 2a10 10 0 0110 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="result-details">
+              <div class="result-title">Querying DPNS Network...</div>
+            </div>
+          </div>
+        `;
+        resultsArea.hidden = false;
 
-      if (!resultsContent) return;
+        try {
+          const fetchedNames = await this.sdk.dpns.usernames({ identityId });
+          names = (fetchedNames || []).map(n => n.endsWith('.dash') ? n : `${n}.dash`);
+          console.log(`[NameResolver] DPNS returned ${names.length} names for ${identityId}`);
 
-      if (identity) {
-        // Identity found - show all names
-        const names = identity.dpnsNames || [];
-        const namesList = names.length > 0
-          ? names.map(name => `
-              <div class="name-item">
-                <span class="name-value">${name}</span>
-                <button class="copy-btn" data-copy="${name}" title="Copy name">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
-                  </svg>
-                </button>
-              </div>
-            `).join('')
-          : '<p class="empty-message">No names registered</p>';
+          // Update cached data if identity exists in state
+          if (identity && names.length > 0) {
+            identity.dpnsNames = names;
+          }
+        } catch (dpnsError) {
+          console.warn('[NameResolver] DPNS query failed:', dpnsError.message);
+          // Continue with empty names - will show appropriate message
+        }
+      }
 
+      const namesList = names.length > 0
+        ? names.map(name => `
+            <div class="name-item">
+              <span class="name-value">${name}</span>
+              <button class="copy-btn" data-copy="${name}" title="Copy name">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                </svg>
+              </button>
+            </div>
+          `).join('')
+        : '<p class="empty-message">No names registered</p>';
+
+      // Show result - identity found or just DPNS results
+      if (identity || names.length > 0) {
         resultsContent.innerHTML = `
           <div class="result-item result-success">
             <div class="result-icon">
@@ -398,10 +441,10 @@ export class NameResolver {
               </svg>
             </div>
             <div class="result-details">
-              <div class="result-title">Identity Found</div>
+              <div class="result-title">${identity ? 'Identity Found' : 'DPNS Lookup Complete'}</div>
               <div class="result-identity-short">
                 <code class="monospace">${formatIdentityId(identityId)}</code>
-                ${identity.label ? `<span class="result-label-tag">${identity.label}</span>` : ''}
+                ${identityLabel ? `<span class="result-label-tag">${identityLabel}</span>` : ''}
               </div>
               <div class="result-label">Registered Names (${names.length}):</div>
               <div class="names-list">
@@ -411,7 +454,10 @@ export class NameResolver {
           </div>
         `;
       } else {
-        // Identity not found in local data
+        // Identity not found and no names from DPNS
+        const noSdkMessage = !this.sdk
+          ? 'Connect to a network to query DPNS.'
+          : 'No DPNS names found for this identity.';
         resultsContent.innerHTML = `
           <div class="result-item result-error">
             <div class="result-icon">
@@ -425,7 +471,7 @@ export class NameResolver {
               <div class="result-identity-short">
                 <code class="monospace">${formatIdentityId(identityId)}</code>
               </div>
-              <p class="result-message">This identity is not in your local data. In real mode, this would query the Platform.</p>
+              <p class="result-message">${noSdkMessage}</p>
             </div>
           </div>
         `;

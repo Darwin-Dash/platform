@@ -118,12 +118,14 @@ export class DocumentViewer {
 
     // Query DashPay profile documents
     try {
-      const profileResult = await this.sdk.documents.query({
-        contractId: DASHPAY_CONTRACT_ID,
-        type: 'profile',
+      const profileResultMap = await this.sdk.documents.query({
+        dataContractId: DASHPAY_CONTRACT_ID,
+        documentTypeName: 'profile',
         where: [['$ownerId', '==', identityId]],
         limit: 100
       });
+      // Convert Map to array (SDK returns Map<Identifier, Document>)
+      const profileResult = profileResultMap instanceof Map ? Array.from(profileResultMap.values()).filter(Boolean) : (profileResultMap || []);
       if (profileResult && profileResult.length > 0) {
         documents.push(...profileResult.map(doc => this.transformSDKDocument(doc, 'dashpay', 'profile')));
       }
@@ -133,12 +135,14 @@ export class DocumentViewer {
 
     // Query DashPay contact requests
     try {
-      const contactRequestResult = await this.sdk.documents.query({
-        contractId: DASHPAY_CONTRACT_ID,
-        type: 'contactRequest',
+      const contactRequestResultMap = await this.sdk.documents.query({
+        dataContractId: DASHPAY_CONTRACT_ID,
+        documentTypeName: 'contactRequest',
         where: [['$ownerId', '==', identityId]],
         limit: 100
       });
+      // Convert Map to array (SDK returns Map<Identifier, Document>)
+      const contactRequestResult = contactRequestResultMap instanceof Map ? Array.from(contactRequestResultMap.values()).filter(Boolean) : (contactRequestResultMap || []);
       if (contactRequestResult && contactRequestResult.length > 0) {
         documents.push(...contactRequestResult.map(doc => this.transformSDKDocument(doc, 'dashpay', 'contactRequest')));
       }
@@ -148,18 +152,23 @@ export class DocumentViewer {
 
     // Query DPNS domain documents
     try {
-      const domainResult = await this.sdk.documents.query({
-        contractId: DPNS_CONTRACT_ID,
-        type: 'domain',
+      const domainResultMap = await this.sdk.documents.query({
+        dataContractId: DPNS_CONTRACT_ID,
+        documentTypeName: 'domain',
         where: [['records.identity', '==', identityId]],
         limit: 100
       });
+      // Convert Map to array (SDK returns Map<Identifier, Document>)
+      const domainResult = domainResultMap instanceof Map ? Array.from(domainResultMap.values()).filter(Boolean) : (domainResultMap || []);
       if (domainResult && domainResult.length > 0) {
         // Sort by creation date (oldest first) - client-side since DPNS has no index for this
         const sortedDocs = domainResult.sort((a, b) => {
-          const aTime = a.createdAt || a.getCreatedAt?.() || a.$createdAt || 0;
-          const bTime = b.createdAt || b.getCreatedAt?.() || b.$createdAt || 0;
-          return aTime - bTime;  // Ascending - oldest first
+          const aTime = a.createdAt || a.getCreatedAt?.() || a.$createdAt || 0n;
+          const bTime = b.createdAt || b.getCreatedAt?.() || b.$createdAt || 0n;
+          // Use comparison operators instead of subtraction for BigInt compatibility
+          if (aTime < bTime) return -1;
+          if (aTime > bTime) return 1;
+          return 0;
         });
         documents.push(...sortedDocs.map(doc => this.transformSDKDocument(doc, 'dpns', 'domain')));
       }
@@ -178,9 +187,13 @@ export class DocumentViewer {
     // SDK documents may be WASM objects or plain objects depending on how they're returned
     const id = doc.getId?.() ? doc.getId().base58() : (doc.id || doc.$id);
     const ownerId = doc.getOwnerId?.() ? doc.getOwnerId().base58() : (doc.ownerId || doc.$ownerId);
-    const createdAt = doc.getCreatedAt?.() ? new Date(doc.getCreatedAt()).toISOString() : (doc.createdAt || doc.$createdAt || new Date().toISOString());
-    const updatedAt = doc.getUpdatedAt?.() ? new Date(doc.getUpdatedAt()).toISOString() : (doc.updatedAt || doc.$updatedAt || createdAt);
-    const data = doc.getProperties?.() || doc.data || doc;
+    // Handle BigInt timestamps from WASM SDK
+    const rawCreatedAt = doc.getCreatedAt?.() || doc.createdAt || doc.$createdAt;
+    const rawUpdatedAt = doc.getUpdatedAt?.() || doc.updatedAt || doc.$updatedAt;
+    const createdAt = rawCreatedAt ? new Date(Number(rawCreatedAt)).toISOString() : new Date().toISOString();
+    const updatedAt = rawUpdatedAt ? new Date(Number(rawUpdatedAt)).toISOString() : createdAt;
+    // WASM documents expose properties via toJSON(), not getProperties()
+    const data = (typeof doc.toJSON === 'function' ? doc.toJSON() : null) || doc.getProperties?.() || doc.data || doc;
 
     return {
       id: id || `${contractId}-${Date.now()}`,
@@ -589,7 +602,11 @@ export class DocumentViewer {
 
     // Sort documents within each group by creation date (newest first)
     groups.forEach((docs, contractId) => {
-      docs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      docs.sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      });
     });
 
     return groups;
