@@ -4,12 +4,12 @@
  */
 
 import { stateManager } from './state-manager.js';
-import { mockIdentities, MockPlatformOperations, TEST_MNEMONIC } from './mock-data.js';
+import { mockIdentities, MockPlatformOperations, MNEMONIC } from './mock-data.js';
 import { IdentitySelector } from './components/identity-selector.js';
 import { retryOperation, isTransientError, verifyByBalanceChange } from './utils/retry-utils.js';
 
-// Expose TEST_MNEMONIC globally for debugging and ensure it's set on load
-window.TEST_MNEMONIC = TEST_MNEMONIC;
+// Expose MNEMONIC globally for debugging and ensure it's set on load
+window.MNEMONIC = MNEMONIC;
 
 // Known platform contract IDs (testnet)
 const DPNS_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
@@ -174,7 +174,7 @@ class IdentityManagerApp {
     // This allows the real SDK to be used without manual login
     // Differentiate logging between new and returning sessions for clarity
     const isReturningSession = localStorage.getItem('dash-logged-in') === 'true';
-    this.mnemonic = TEST_MNEMONIC;
+    this.mnemonic = MNEMONIC;
     if (isReturningSession) {
       console.log('🔑 Restored test mnemonic for returning session');
     } else {
@@ -429,8 +429,20 @@ class IdentityManagerApp {
       const EvoSDK = await getSDK();
       const sdkOptions = await getNetworkSdkOptions('testnet');
       const sdk = new EvoSDK(sdkOptions);
+
+      // Explicitly connect SDK to enable DPNS/document queries
+      await sdk.connect();
+
       this.sdk = sdk;
-      console.log('  ✅ SDK initialized (background)');
+      console.log('  ✅ SDK initialized and connected (background)');
+
+      // Update funding flow with SDK for real UTXO discovery
+      if (this.fundingFlow) {
+        this.fundingFlow.setSDK(sdk);
+        if (this.mnemonic) {
+          this.fundingFlow.setMnemonic(this.mnemonic);
+        }
+      }
 
       // Update document viewer with SDK for real document fetching
       if (this.components.documentViewer) {
@@ -480,10 +492,10 @@ class IdentityManagerApp {
   showLoginScreen() {
     // Pre-fill mnemonic with test mnemonic
     const mnemonicInput = document.getElementById('login-mnemonic');
-    console.log('  Setting mnemonic:', TEST_MNEMONIC ? 'available' : 'MISSING');
+    console.log('  Setting mnemonic:', MNEMONIC ? 'available' : 'MISSING');
     console.log('  Mnemonic input element:', mnemonicInput ? 'found' : 'NOT FOUND');
-    if (mnemonicInput && TEST_MNEMONIC) {
-      mnemonicInput.value = TEST_MNEMONIC;
+    if (mnemonicInput && MNEMONIC) {
+      mnemonicInput.value = MNEMONIC;
       console.log('  ✅ Mnemonic pre-filled');
     }
 
@@ -518,6 +530,11 @@ class IdentityManagerApp {
 
       // Store mnemonic for use in SDK operations (createWithUTXO, topupWithUTXO)
       this.mnemonic = mnemonic;
+
+      // Update funding flow with mnemonic for real UTXO discovery
+      if (this.fundingFlow) {
+        this.fundingFlow.setMnemonic(mnemonic);
+      }
 
       // Hide login, show discovery progress
       document.getElementById('login-view').hidden = true;
@@ -702,6 +719,12 @@ class IdentityManagerApp {
       const sdk = new EvoSDK(sdkOptions);
       this.sdk = sdk;
       console.log(`  ✅ SDK initialized`);
+
+      // Update funding flow with SDK for real UTXO discovery
+      if (this.fundingFlow) {
+        this.fundingFlow.setSDK(sdk);
+        this.fundingFlow.setMnemonic(mnemonic);
+      }
 
       // Update document viewer with SDK for real document fetching
       if (this.components.documentViewer) {
@@ -1641,6 +1664,47 @@ class IdentityManagerApp {
     }
   }
 
+  /**
+   * Build the encryptedPublicKey field for a contact request (96 bytes)
+   *
+   * The encryptedPublicKey contains the sender's DIP15-derived contact public key,
+   * formatted as required by the DashPay contract. In a full implementation,
+   * this would be encrypted using ECDH with the recipient's encryption key.
+   *
+   * For now, we use a simplified format:
+   * - Bytes 0-32: Sender's contact public key (33 bytes compressed, padded to 32)
+   * - Bytes 33-95: Additional key material / padding
+   *
+   * @param {string} publicKeyHex - The sender's contact public key in hex format
+   * @returns {number[]} 96-byte array for encryptedPublicKey field
+   */
+  buildEncryptedPublicKey(publicKeyHex) {
+    // Convert hex public key to bytes
+    const pubKeyBytes = [];
+    const cleanHex = publicKeyHex.replace(/^0x/, '');
+    for (let i = 0; i < cleanHex.length; i += 2) {
+      pubKeyBytes.push(parseInt(cleanHex.substr(i, 2), 16));
+    }
+
+    // Build 96-byte array
+    // DashPay contract expects 96 bytes for encryptedPublicKey
+    const result = new Uint8Array(96);
+
+    // Copy public key bytes (typically 33 bytes for compressed key)
+    for (let i = 0; i < Math.min(pubKeyBytes.length, 33); i++) {
+      result[i] = pubKeyBytes[i];
+    }
+
+    // Fill remaining bytes with deterministic padding based on public key
+    // This ensures the same public key always produces the same encryptedPublicKey
+    for (let i = 33; i < 96; i++) {
+      // Use a simple XOR pattern with the public key for padding
+      result[i] = pubKeyBytes[i % pubKeyBytes.length] ^ (i & 0xFF);
+    }
+
+    return Array.from(result);
+  }
+
   showSendContactRequestModal() {
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
@@ -1651,79 +1715,41 @@ class IdentityManagerApp {
     // Get form elements
     const form = document.getElementById('send-contact-request-form');
     const recipientInput = document.getElementById('contact-request-recipient');
-    const messageInput = document.getElementById('contact-request-message');
     const validationText = document.getElementById('contact-request-validation');
     const closeButtons = modal.querySelectorAll('.modal-close');
-
-    // Get quick-select elements
-    const quickSelectSection = document.getElementById('contact-request-quick-select');
-    const identityChipsContainer = document.getElementById('contact-request-identity-chips');
 
     // Reset form
     if (form) form.reset();
 
-    // Populate quick-select with wallet identities
-    if (quickSelectSection && identityChipsContainer) {
-      const allIdentities = stateManager.getAllIdentities();
-      // Filter out current identity and get identities with balance
-      const MIN_BALANCE_FOR_CONTACTS = 100_000_000; // 0.001 DASH
-      const otherIdentities = allIdentities.filter(id =>
-        id.id !== identity.id && id.balance >= MIN_BALANCE_FOR_CONTACTS
-      );
-
-      if (otherIdentities.length > 0) {
-        // Sort by balance (highest first)
-        otherIdentities.sort((a, b) => b.balance - a.balance);
-
-        // Generate chip HTML
-        identityChipsContainer.innerHTML = otherIdentities.map(id => {
-          const shortId = id.id.substring(0, 8);
-          const label = id.label || id.dpnsName || null;
-          return `
-            <button type="button" class="identity-chip" data-identity-id="${id.id}">
-              ${label ? `<span class="chip-label">${label}</span>` : ''}
-              <span class="chip-id">${shortId}...</span>
-            </button>
-          `;
-        }).join('');
-
-        // Add click handlers to chips
-        identityChipsContainer.querySelectorAll('.identity-chip').forEach(chip => {
-          chip.addEventListener('click', () => {
-            const targetId = chip.dataset.identityId;
-            if (recipientInput && targetId) {
-              recipientInput.value = targetId;
-              // Trigger input event to run validation
-              recipientInput.dispatchEvent(new Event('input'));
-            }
-          });
-        });
-
-        quickSelectSection.hidden = false;
-      } else {
-        quickSelectSection.hidden = true;
-      }
-    }
-
-    // Real-time validation
+    // Real-time validation for DPNS name format
     if (recipientInput && validationText) {
       recipientInput.addEventListener('input', () => {
-        const identityId = recipientInput.value.trim();
+        const name = recipientInput.value.trim();
 
-        if (!identityId) {
-          validationText.textContent = 'Enter the identity ID of the person you want to add';
+        if (!name) {
+          validationText.textContent = 'Enter the DPNS name of the person you want to add';
           validationText.style.color = '';
           return;
         }
 
-        const validation = validateIdentityId(identityId);
-        if (validation.valid) {
-          validationText.textContent = '✓ Valid identity ID format';
-          validationText.style.color = 'var(--success)';
-        } else {
-          validationText.textContent = validation.error;
+        // Basic DPNS name format validation
+        // Names can be alphanumeric with hyphens (not at start/end), optionally ending with .dash
+        const nameWithoutSuffix = name.replace(/\.dash$/i, '');
+        const nameRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/i;
+        if (!nameRegex.test(nameWithoutSuffix)) {
+          validationText.textContent = 'Invalid name format. Use letters, numbers, and hyphens.';
           validationText.style.color = 'var(--error)';
+          return;
         }
+
+        if (nameWithoutSuffix.length < 3) {
+          validationText.textContent = 'Name must be at least 3 characters';
+          validationText.style.color = 'var(--error)';
+          return;
+        }
+
+        validationText.textContent = '✓ Valid name format';
+        validationText.style.color = 'var(--success)';
       });
     }
 
@@ -1734,42 +1760,79 @@ class IdentityManagerApp {
       });
     });
 
-    // Form submission
+    // Form submission with DPNS name resolution
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       console.log('[ContactRequest] Form submitted!');
 
-      const recipientId = recipientInput.value.trim();
-      const message = messageInput.value.trim();
-      console.log(`[ContactRequest] Recipient: ${recipientId.substring(0, 12)}...`);
+      let name = recipientInput.value.trim();
 
-      // Validate
-      const validation = validateIdentityId(recipientId);
-      if (!validation.valid) {
-        console.log('[ContactRequest] Validation failed:', validation.error);
-        notifications.error(validation.error);
-        return;
+      // Auto-append .dash if not present
+      if (!name.endsWith('.dash')) {
+        name = name + '.dash';
       }
-
-      // Check not sending to self
-      if (recipientId === identity.id) {
-        console.log('[ContactRequest] Cannot send to self');
-        notifications.error('Cannot send contact request to yourself');
-        return;
-      }
+      console.log(`[ContactRequest] Looking up: ${name}`);
 
       try {
+        stateManager.setLoading(true, 'Looking up username...');
+
+        // Resolve DPNS name to identity ID
+        let recipientId;
+
+        // Check if real SDK mode is enabled for name resolution
+        const canUseRealSDK = !this.useMockMode && this.sdk;
+
+        if (canUseRealSDK) {
+          try {
+            recipientId = await this.sdk.dpns.resolveName(name);
+          } catch (resolveError) {
+            console.error('[ContactRequest] DPNS resolution error:', resolveError);
+            const errorMsg = resolveError.message || String(resolveError);
+
+            // Provide helpful error messages for common failure modes
+            if (errorMsg.includes('contract not found') || errorMsg.includes('not found')) {
+              throw new Error(`Unable to look up names. The DPNS contract may not be available. Please check your network connection and try again.`);
+            } else if (errorMsg.includes('timeout') || errorMsg.includes('ETIMEDOUT')) {
+              throw new Error(`Network timeout while looking up "${name}". Please try again.`);
+            } else if (errorMsg.includes('connection') || errorMsg.includes('ECONNREFUSED')) {
+              throw new Error(`Network connection error. Please check your connection and try again.`);
+            } else {
+              throw new Error(`Failed to look up "${name}": ${errorMsg}`);
+            }
+          }
+        } else {
+          // Mock mode - simulate resolution
+          console.log('[ContactRequest] Mock mode - simulating DPNS resolution');
+          await new Promise(r => setTimeout(r, 500));
+          // In mock mode, generate a fake identity ID for testing
+          recipientId = 'DmockedIdentityId' + Math.random().toString(36).substring(2, 15);
+        }
+
+        if (!recipientId) {
+          throw new Error(`Username "${name}" not found`);
+        }
+
+        console.log(`[ContactRequest] Resolved "${name}" to: ${recipientId.substring(0, 12)}...`);
+
+        // Check not sending to self
+        if (recipientId === identity.id) {
+          console.log('[ContactRequest] Cannot send to self');
+          notifications.error('Cannot send contact request to yourself');
+          stateManager.setLoading(false);
+          return;
+        }
+
         stateManager.setLoading(true, 'Sending contact request...');
 
-        // Check if real SDK mode is enabled
-        const canUseRealSDK = !this.useMockMode && this.sdk && this.mnemonic && identity.index !== undefined;
-        console.log(`[ContactRequest] canUseRealSDK: ${canUseRealSDK}`);
+        // Check if real SDK mode is enabled for sending (needs mnemonic + identity index)
+        const canCreateOnChain = !this.useMockMode && this.sdk && this.mnemonic && identity.index !== undefined;
+        console.log(`[ContactRequest] canCreateOnChain: ${canCreateOnChain}`);
         console.log(`[ContactRequest]   useMockMode: ${this.useMockMode}`);
         console.log(`[ContactRequest]   hasSDK: ${!!this.sdk}`);
         console.log(`[ContactRequest]   hasMnemonic: ${!!this.mnemonic}`);
         console.log(`[ContactRequest]   identity.index: ${identity.index}`);
 
-        if (canUseRealSDK) {
+        if (canCreateOnChain) {
           // ======================================================================
           // REAL SDK PATH: Create contactRequest document on-chain
           // ======================================================================
@@ -1783,6 +1846,63 @@ class IdentityManagerApp {
           if (!privateKeyWif) {
             throw new Error('Failed to derive private key for contact request');
           }
+
+          // ======================================================================
+          // DIP15 Contact Key Derivation
+          // ======================================================================
+          // Derive contact-specific keys using DIP15 (DashPay contact derivation)
+          console.log('[ContactRequest] Deriving DIP15 contact key...');
+          let contactKeyInfo;
+          try {
+            contactKeyInfo = await this.sdk.dashpay.deriveContactKey({
+              mnemonic: this.mnemonic,
+              senderIdentityId: identity.id,
+              receiverIdentityId: recipientId,
+              account: 0,
+              addressIndex: 0,
+              network: 'testnet'
+            });
+            console.log('[ContactRequest] Contact key derived successfully');
+            console.log(`  Path: ${contactKeyInfo.path}`);
+          } catch (keyError) {
+            console.error('[ContactRequest] Failed to derive contact key:', keyError);
+            throw new Error(`Failed to generate contact key: ${keyError.message}`);
+          }
+
+          // Get recipient's identity to find their encryption key
+          console.log('[ContactRequest] Fetching recipient identity for encryption key...');
+          let recipientIdentity;
+          let recipientKeyIndex = 0;
+          try {
+            recipientIdentity = await this.sdk.identities.get(recipientId);
+            if (!recipientIdentity) {
+              throw new Error('Recipient identity not found');
+            }
+
+            // Find recipient's encryption key (security level 2 = MEDIUM, used for encryption)
+            // The recipient's keys are indexed by ID, find one suitable for encryption
+            const recipientKeys = recipientIdentity.publicKeys || recipientIdentity.keys || [];
+            const encryptionKey = recipientKeys.find(k =>
+              k.securityLevel === 2 || k.securityLevel === 'MEDIUM'
+            );
+            if (encryptionKey) {
+              recipientKeyIndex = encryptionKey.id ?? encryptionKey.keyId ?? 0;
+              console.log(`[ContactRequest] Using recipient key index: ${recipientKeyIndex}`);
+            } else {
+              console.log('[ContactRequest] No MEDIUM security key found, using key index 0');
+            }
+          } catch (recipientError) {
+            console.warn('[ContactRequest] Could not fetch recipient identity:', recipientError.message);
+            // Continue with default key index
+          }
+
+          // Build encryptedPublicKey (96 bytes)
+          // For now, we use the sender's contact public key padded/formatted to 96 bytes
+          // In a full implementation, this would be encrypted with ECDH using recipient's key
+          // The contact public key from DIP15 derivation is 33 bytes (compressed)
+          const senderContactPubKey = contactKeyInfo.publicKey;
+          const encryptedPublicKey = this.buildEncryptedPublicKey(senderContactPubKey);
+          console.log('[ContactRequest] Built encryptedPublicKey (96 bytes)');
 
           // Generate random entropy for document ID (32 bytes = 64 hex chars)
           const entropyHex = Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -1817,9 +1937,9 @@ class IdentityManagerApp {
                   ownerId: identity.id,
                   data: {
                     toUserId: recipientId,
-                    encryptedPublicKey: [...crypto.getRandomValues(new Uint8Array(96))],
+                    encryptedPublicKey: encryptedPublicKey,
                     senderKeyIndex: 0,
-                    recipientKeyIndex: 0,
+                    recipientKeyIndex: recipientKeyIndex,
                     accountReference: 0
                   },
                   entropyHex: entropyHex,
@@ -1862,7 +1982,7 @@ class IdentityManagerApp {
             throw new Error(`State transition failed with code ${result.code}: ${result.message || 'Unknown error'}`);
           }
 
-          notifications.success('Contact request sent!');
+          notifications.success(`Contact request sent to ${name}!`);
 
           // Close modal immediately to unblock UI
           modal.hidden = true;
@@ -1919,7 +2039,7 @@ class IdentityManagerApp {
           // ======================================================================
           console.log('[ContactRequest] Using MOCK for contact request');
           await new Promise(r => setTimeout(r, 1500));
-          notifications.success('Contact request sent! (Mock)');
+          notifications.success(`Contact request sent to ${name}! (Mock)`);
         }
 
         modal.hidden = true;
@@ -2047,7 +2167,7 @@ class IdentityManagerApp {
       testWalletCheckbox.addEventListener('change', (e) => {
         if (e.target.checked) {
           mnemonicGroup.hidden = false;
-          mnemonicInput.value = TEST_MNEMONIC;
+          mnemonicInput.value = MNEMONIC;
         } else {
           mnemonicGroup.hidden = true;
           mnemonicInput.value = '';
@@ -2378,6 +2498,13 @@ class IdentityManagerApp {
             const sdkOptions = await getNetworkSdkOptions('testnet');
             this.sdk = new EvoSDK(sdkOptions);
             console.log('✅ SDK initialized successfully');
+            // Update funding flow with SDK for real UTXO discovery
+            if (this.fundingFlow) {
+              this.fundingFlow.setSDK(this.sdk);
+              if (this.mnemonic) {
+                this.fundingFlow.setMnemonic(this.mnemonic);
+              }
+            }
             // Update document viewer with SDK for real document fetching
             if (this.components.documentViewer) {
               this.components.documentViewer.setSDK(this.sdk);
@@ -2784,50 +2911,211 @@ class IdentityManagerApp {
     }
   }
 
-  showPrivateKeyModal(key) {
+  /**
+   * Show private key modal for viewing identity private keys
+   *
+   * This function derives the actual private key using DIP13 derivation if:
+   * - A mnemonic is available (user is logged in)
+   * - The identity has an index (was created from this wallet, not discovered)
+   *
+   * For discovered identities or when no mnemonic is available, shows an
+   * unavailable message explaining why keys cannot be displayed.
+   *
+   * @param {Object} key - The key object from identity.keys
+   */
+  async showPrivateKeyModal(key) {
     const modal = document.getElementById('private-key-modal');
     if (!modal) return;
 
-    // Show unavailable message for demo
-    // Private keys would be derived from the HD wallet mnemonic using BIP44 path:
-    // m/9'/5'/identity_index'/key_purpose/key_id
-    const wifElement = document.getElementById('private-key-wif');
-    const hexElement = document.getElementById('private-key-hex');
-
-    // Update modal content to show unavailable message
     const modalBody = modal.querySelector('.modal-body');
-    if (modalBody) {
-      modalBody.innerHTML = `
-        <div class="private-key-unavailable">
-          <div class="unavailable-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="color: var(--color-warning);">
-              <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="12" cy="16" r="1" fill="currentColor"/>
-            </svg>
-          </div>
-          <h3>Private Key Not Available</h3>
-          <p class="unavailable-description">
-            For security reasons, private keys are not accessible in this demo interface.
-          </p>
-          <div class="key-info-box">
-            <strong>Key Information:</strong>
-            <ul>
-              <li><span class="label">Key ID:</span> ${key.id}</li>
-              <li><span class="label">Purpose:</span> ${key.purpose}</li>
-              <li><span class="label">Security Level:</span> ${key.securityLevel}</li>
-            </ul>
-          </div>
-          <p class="unavailable-note">
-            In a production wallet, private keys would be derived from your HD wallet
-            mnemonic using BIP44 derivation path: <code>m/9'/5'/identity_index'/key_purpose/${key.id}</code>
-          </p>
-        </div>
-      `;
+    if (!modalBody) return;
+
+    // Show modal immediately with loading state
+    modal.hidden = false;
+
+    // Get the selected identity to check for index
+    const identity = stateManager.getSelectedIdentity();
+
+    // Check prerequisites for deriving private key
+    if (!this.mnemonic || typeof this.mnemonic !== 'string' || this.mnemonic.trim() === '') {
+      console.error('[ShowPrivateKey] Mnemonic check failed:', {
+        mnemonic: this.mnemonic,
+        type: typeof this.mnemonic
+      });
+      this.showPrivateKeyUnavailable(modalBody, key, 'No wallet mnemonic available. Please log in with a mnemonic to view private keys.');
+      return;
     }
 
-    // Show modal
-    modal.hidden = false;
+    if (!identity) {
+      this.showPrivateKeyUnavailable(modalBody, key, 'No identity selected.');
+      return;
+    }
+
+    if (identity.index === null || identity.index === undefined) {
+      this.showPrivateKeyUnavailable(modalBody, key,
+        'This identity was discovered on-chain but was not created from your wallet. ' +
+        'Private keys can only be shown for identities created from your current mnemonic.'
+      );
+      return;
+    }
+
+    // Show loading state
+    this.restorePrivateKeyModalLayout(modalBody);
+    const wifElement = document.getElementById('private-key-wif');
+    const hexElement = document.getElementById('private-key-hex');
+    if (wifElement) wifElement.textContent = 'Deriving key...';
+    if (hexElement) hexElement.textContent = 'Deriving key...';
+
+    try {
+      // Import wallet functions and derive the key
+      const { wallet } = await import('../../dist/wallet/functions.js');
+
+      const keyInfo = await wallet.deriveIdentityKey(
+        this.mnemonic,
+        identity.index,
+        key.id,
+        'testnet' // TODO: Make network configurable
+      );
+
+      // Display the derived keys
+      if (wifElement) wifElement.textContent = keyInfo.privateKeyWif;
+      if (hexElement) hexElement.textContent = keyInfo.privateKeyHex;
+
+      // Setup copy buttons
+      this.setupPrivateKeyCopyButtons(keyInfo);
+
+    } catch (error) {
+      console.error('[ShowPrivateKey] Failed to derive key:', {
+        error: error.message,
+        stack: error.stack,
+        mnemonic: this.mnemonic ? `${this.mnemonic.substring(0, 20)}...` : 'undefined',
+        identityIndex: identity.index,
+        keyId: key.id
+      });
+      this.showPrivateKeyUnavailable(modalBody, key,
+        `Failed to derive private key: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Show unavailable message in private key modal
+   *
+   * @param {HTMLElement} modalBody - The modal body element
+   * @param {Object} key - The key object
+   * @param {string} reason - Explanation of why key is unavailable
+   */
+  showPrivateKeyUnavailable(modalBody, key, reason) {
+    modalBody.innerHTML = `
+      <div class="private-key-unavailable">
+        <div class="unavailable-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="color: var(--color-warning);">
+            <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="16" r="1" fill="currentColor"/>
+          </svg>
+        </div>
+        <h3>Private Key Not Available</h3>
+        <p class="unavailable-description">
+          ${reason}
+        </p>
+        <div class="key-info-box">
+          <strong>Key Information:</strong>
+          <ul>
+            <li><span class="label">Key ID:</span> ${key.id}</li>
+            <li><span class="label">Purpose:</span> ${key.purpose}</li>
+            <li><span class="label">Security Level:</span> ${key.securityLevel}</li>
+          </ul>
+        </div>
+        <p class="unavailable-note">
+          Private keys are derived from your HD wallet mnemonic using DIP13 derivation path:
+          <code>m/9'/coin_type'/5'/0'/0'/identityIndex'/${key.id}'</code>
+        </p>
+      </div>
+    `;
+  }
+
+  /**
+   * Restore the normal private key modal layout (for displaying actual keys)
+   *
+   * @param {HTMLElement} modalBody - The modal body element
+   */
+  restorePrivateKeyModalLayout(modalBody) {
+    modalBody.innerHTML = `
+      <div class="private-key-warning">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+          <path d="M12 9v4m0 4h.01M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <strong>Never share your private keys!</strong>
+        <p style="margin-top: var(--space-2); font-size: var(--text-sm);">Anyone with access to your private keys can control this identity key.</p>
+      </div>
+
+      <div class="private-key-section">
+        <label>WIF Format</label>
+        <div class="private-key-display">
+          <code id="private-key-wif" class="private-key-value">Loading...</code>
+          <button class="btn btn-secondary btn-sm" data-copy-private-wif>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="private-key-section">
+        <label>Hex Format</label>
+        <div class="private-key-display">
+          <code id="private-key-hex" class="private-key-value">Loading...</code>
+          <button class="btn btn-secondary btn-sm" data-copy-private-hex>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Setup copy button event handlers for private key modal
+   *
+   * @param {Object} keyInfo - The derived key info with privateKeyWif and privateKeyHex
+   */
+  setupPrivateKeyCopyButtons(keyInfo) {
+    const copyWifBtn = document.querySelector('[data-copy-private-wif]');
+    const copyHexBtn = document.querySelector('[data-copy-private-hex]');
+
+    if (copyWifBtn) {
+      // Remove any existing listeners by cloning
+      const newWifBtn = copyWifBtn.cloneNode(true);
+      copyWifBtn.parentNode.replaceChild(newWifBtn, copyWifBtn);
+
+      newWifBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(keyInfo.privateKeyWif).then(() => {
+          notifications.success('WIF private key copied to clipboard');
+        }).catch(() => {
+          notifications.error('Failed to copy');
+        });
+      });
+    }
+
+    if (copyHexBtn) {
+      // Remove any existing listeners by cloning
+      const newHexBtn = copyHexBtn.cloneNode(true);
+      copyHexBtn.parentNode.replaceChild(newHexBtn, copyHexBtn);
+
+      newHexBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(keyInfo.privateKeyHex).then(() => {
+          notifications.success('Hex private key copied to clipboard');
+        }).catch(() => {
+          notifications.error('Failed to copy');
+        });
+      });
+    }
   }
 
   canDisableKey(identity, key) {
@@ -4461,8 +4749,8 @@ try {
   // Ensure mnemonic is set - try immediately and on load
   const setMnemonic = () => {
     const mnemonicInput = document.getElementById('login-mnemonic');
-    if (mnemonicInput && !mnemonicInput.value && TEST_MNEMONIC) {
-      mnemonicInput.value = TEST_MNEMONIC;
+    if (mnemonicInput && !mnemonicInput.value && MNEMONIC) {
+      mnemonicInput.value = MNEMONIC;
       console.log('✅ Test mnemonic pre-filled');
     }
   };
