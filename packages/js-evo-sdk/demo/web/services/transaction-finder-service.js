@@ -6,7 +6,14 @@
  *
  * Two discovery paths supported:
  * - Path A (Historic): findUTXOs() scans blockchain for existing UTXOs
+ *   - Real mode: Uses SDK's findSpendableUTXO() via UTXOFinder
  * - Path B (On-demand): monitorAddress() watches for incoming transactions in real-time
+ *   - Real mode: Uses TransactionFinder in REALTIME mode with InstantLock/ChainLock polling
+ *
+ * Confirmation Strategy (Real Mode):
+ * Asset lock transactions can be confirmed via InstantLock OR ChainLock - whichever comes first:
+ * - InstantLock (fast path, ~2 seconds): LLMQ-based instant confirmation
+ * - ChainLock (fallback, ~30-60 seconds): Block-based confirmation with LLMQ signature
  *
  * Events emitted:
  * - scan-progress: Progress during historic UTXO scanning
@@ -22,9 +29,29 @@ class TransactionFinderService extends EventEmitter {
     super();
     this.network = options.network || 'testnet';
     this.useMockMode = options.useMockMode ?? true; // Default to mock mode for demo
+    this.sdk = options.sdk || null; // EvoSDK instance for real mode
+    this.mnemonic = options.mnemonic || null; // Mnemonic for address derivation
     this.monitoring = false;
     this.monitoredAddress = null;
     this._monitoringTimers = [];
+    this._realModeMonitor = null; // TransactionFinder instance for real-time monitoring
+    this._pollingInterval = null; // Polling interval for InstantLock/ChainLock
+  }
+
+  /**
+   * Update SDK instance (called when SDK becomes available)
+   * @param {object} sdk - EvoSDK instance
+   */
+  setSDK(sdk) {
+    this.sdk = sdk;
+  }
+
+  /**
+   * Update mnemonic (called when user logs in)
+   * @param {string} mnemonic - BIP39 mnemonic phrase
+   */
+  setMnemonic(mnemonic) {
+    this.mnemonic = mnemonic;
   }
 
   /**
@@ -50,9 +77,9 @@ class TransactionFinderService extends EventEmitter {
       // Mock mode: Simulate transaction detection and confirmation flow
       await this._simulateMockOnDemandFlow(address, options);
     } else {
-      // Real mode: Would connect to DAPI for transaction monitoring
-      // This would use bloom filters and transaction streaming
-      console.log('Real network monitoring not yet implemented');
+      // Real mode: Use TransactionFinder in REALTIME mode for transaction monitoring
+      // Polls for InstantLock OR ChainLock (whichever comes first)
+      await this._startRealModeMonitoring(address, options);
     }
 
     // Return cleanup function
@@ -110,12 +137,16 @@ class TransactionFinderService extends EventEmitter {
     const clTimer = setTimeout(() => {
       if (!this.monitoring) return;
 
+      // Match the ChainLockEvent interface from @dashevo/transaction-finder:
+      // - txid, timestamp, blockHeight, chainLockedHeight, latency
+      // NOTE: Does NOT include blockHash or signature (those are in BlockInclusionEvent)
+      const blockHeight = 920000 + Math.floor(Math.random() * 100);
       const chainLockData = {
         txid: mockTxId,
         timestamp: Date.now(),
-        blockHeight: 920000 + Math.floor(Math.random() * 100),
-        blockHash: this._generateMockBlockHash(),
-        signature: this._generateMockSignature(),
+        blockHeight: blockHeight,
+        chainLockedHeight: blockHeight, // ChainLock height same as block height in mock
+        latency: Date.now() - txDetectedAt - txDelay, // Time since TX was detected
       };
 
       console.log('funding-status: chainlock received at block', chainLockData.blockHeight);
@@ -125,17 +156,138 @@ class TransactionFinderService extends EventEmitter {
   }
 
   /**
+   * Start real-mode monitoring using TransactionFinder (REALTIME mode)
+   * Polls for InstantLock OR ChainLock (whichever comes first)
+   * @private
+   */
+  async _startRealModeMonitoring(address, options) {
+    if (!this.sdk) {
+      console.error('Real mode monitoring requires SDK instance. Call setSDK() first.');
+      return;
+    }
+
+    console.log('funding-status: starting real-mode monitoring for', address);
+
+    try {
+      // Dynamically import TransactionFinder to avoid static WASM conflicts
+      const { TransactionFinder, FinderMode } = await import('@dashevo/transaction-finder');
+      const DAPIClient = (await import('@dashevo/dapi-client')).default;
+
+      // Create DAPI client for monitoring
+      const dapiClient = new DAPIClient({
+        network: this.network,
+        timeout: 30000,
+        retries: 3,
+      });
+
+      // Create TransactionFinder in REALTIME mode
+      this._realModeMonitor = new TransactionFinder({
+        mode: FinderMode.REALTIME,
+        network: this.network,
+        addresses: [address],
+        dapiClient: dapiClient,
+        autoPruneOnConfirmation: true,
+      });
+
+      console.log('funding-status: TransactionFinder initialized in REALTIME mode');
+
+      const pollStart = Date.now();
+
+      // Start monitoring with proper callbacks - this is the correct way to use REALTIME mode
+      this.monitoringCleanup = await this._realModeMonitor.monitorAddresses([address], {
+        onTransaction: (tx) => {
+          const latency = Date.now() - pollStart;
+          console.log('funding-status: transaction detected via monitorAddresses', tx.txid, `(${(latency / 1000).toFixed(1)}s)`);
+
+          this.emit('transaction-detected', {
+            txid: tx.txid,
+            address: address,
+            outputs: tx.outputs || [{ satoshis: tx.satoshis || 0, address }],
+            timestamp: Date.now(),
+          });
+        },
+
+        onInstantLock: (lock) => {
+          const latency = Date.now() - pollStart;
+          console.log('funding-status: InstantLock detected!', lock.txid, `(${(latency / 1000).toFixed(1)}s)`);
+
+          this.emit('instantlock-received', {
+            txid: lock.txid,
+            timestamp: Date.now(),
+            latency: latency,
+            signature: lock.instantLockHex?.substring(0, 64) || lock.signature || '',
+          });
+        },
+
+        onChainLock: (lock) => {
+          // ChainLockEvent from TransactionFinder contains:
+          // - txid, timestamp, blockHeight, chainLockedHeight, latency
+          // NOTE: Does NOT contain blockHash or signature (those are in BlockInclusionEvent)
+          console.log('funding-status: ChainLock detected!', `blockHeight=${lock.blockHeight}`, `chainLockedHeight=${lock.chainLockedHeight}`, `(${(lock.latency / 1000).toFixed(1)}s)`);
+
+          this.emit('chainlock-received', {
+            txid: lock.txid,
+            timestamp: lock.timestamp,
+            blockHeight: lock.blockHeight,
+            chainLockedHeight: lock.chainLockedHeight,
+            latency: lock.latency,
+          });
+        },
+
+        onError: (error) => {
+          console.error('funding-status: monitoring error', error);
+        },
+      });
+
+      console.log('funding-status: monitorAddresses started');
+    } catch (error) {
+      console.error('funding-status: failed to start real-mode monitoring', error);
+    }
+  }
+
+  /**
+   * Stop the polling interval
+   * @private
+   */
+  _stopPolling() {
+    if (this._pollingInterval) {
+      clearInterval(this._pollingInterval);
+      this._pollingInterval = null;
+    }
+    // Call cleanup function from monitorAddresses
+    if (this.monitoringCleanup) {
+      try {
+        this.monitoringCleanup();
+      } catch (e) {
+        console.warn('funding-status: error calling monitoring cleanup', e);
+      }
+      this.monitoringCleanup = null;
+    }
+    if (this._realModeMonitor) {
+      try {
+        this._realModeMonitor.stop?.();
+      } catch (e) {
+        console.warn('funding-status: error stopping monitor', e);
+      }
+      this._realModeMonitor = null;
+    }
+  }
+
+  /**
    * Stop monitoring
    */
   stop() {
     this.monitoring = false;
     this.monitoredAddress = null;
 
-    // Clear all pending timers
+    // Clear all pending timers (mock mode)
     for (const timer of this._monitoringTimers) {
       clearTimeout(timer);
     }
     this._monitoringTimers = [];
+
+    // Stop real mode monitoring
+    this._stopPolling();
 
     console.log('funding-status: monitoring stopped');
   }
@@ -161,8 +313,82 @@ class TransactionFinderService extends EventEmitter {
     if (this.useMockMode) {
       return await this._simulateMockHistoricScan(addressList, timeframe);
     } else {
-      // Real mode: Would query DAPI for UTXOs
-      console.log('Real network UTXO discovery not yet implemented');
+      // Real mode: Use SDK's findSpendableUTXO via UTXOFinder
+      return await this._findRealUTXOs(addressList, timeframe);
+    }
+  }
+
+  /**
+   * Find UTXOs using real SDK (historic mode)
+   * Uses SDK's findSpendableUTXO which leverages TransactionFinder in HISTORIC mode
+   * @private
+   */
+  async _findRealUTXOs(addresses, timeframe) {
+    if (!this.sdk || !this.mnemonic) {
+      console.error('Real UTXO discovery requires SDK and mnemonic. Call setSDK() and setMnemonic() first.');
+      return [];
+    }
+
+    console.log('funding-status: using real SDK for UTXO discovery');
+
+    try {
+      // Calculate start height based on timeframe
+      // Dash has ~2.5 minute blocks, so:
+      // - hour: ~24 blocks
+      // - day: ~576 blocks
+      // - week: ~4032 blocks
+      const blocksToScan = {
+        hour: 60,
+        day: 576,
+        week: 4032,
+      };
+      const blocksBack = blocksToScan[timeframe] || 60;
+
+      // Get current block height from SDK to calculate start height
+      let startHeight = 1;
+      try {
+        // Try to get current height and calculate start
+        const epochsInfo = await this.sdk.epoch.epochsInfo({ startEpoch: 0, count: 1 });
+        const currentHeight = epochsInfo.metadata?.coreChainLockedHeight ||
+                             epochsInfo.getCoreChainLockedHeight?.() ||
+                             1000000; // Fallback for testnet
+        startHeight = Math.max(1, currentHeight - blocksBack);
+        console.log('funding-status: scanning from height', startHeight, 'to current');
+      } catch (e) {
+        console.warn('funding-status: could not get current height, using conservative start');
+        startHeight = 900000; // Conservative testnet start
+      }
+
+      // Use SDK's findSpendableUTXO
+      const result = await this.sdk.identities.findSpendableUTXO({
+        mnemonic: this.mnemonic,
+        startHeight: startHeight,
+        minAmount: 100000, // 0.001 DASH minimum
+        onProgress: (event) => {
+          this.emit('scan-progress', {
+            progress: event.progress,
+            syncedBlocks: event.blocksScanned,
+            totalBlocks: event.totalBlocks,
+          });
+        },
+      });
+
+      console.log('funding-status: found UTXO with', result.balance, 'duffs');
+
+      // Return in the expected format
+      return [{
+        txid: result.utxo.txid,
+        vout: result.utxo.vout,
+        address: result.address,
+        satoshis: result.balance,
+        script: result.utxo.script || '',
+        confirmations: 6,
+        height: result.blockHeight,
+        isChainLocked: result.isChainLocked,
+      }];
+    } catch (error) {
+      console.error('funding-status: real UTXO discovery failed', error);
+      // Return empty array - no funds found
       return [];
     }
   }
@@ -286,6 +512,8 @@ let serviceInstance = null;
  * @param {object} options - Service options
  * @param {boolean} options.useMockMode - Use mock mode (default: true for demo)
  * @param {string} options.network - Network to use (default: 'testnet')
+ * @param {object} options.sdk - EvoSDK instance for real mode
+ * @param {string} options.mnemonic - Mnemonic for address derivation (real mode)
  * @param {boolean} options.forceNew - Force create a new instance
  * @returns {TransactionFinderService}
  */
@@ -299,6 +527,12 @@ export function getTransactionFinderService(options = {}) {
     }
     if (options.network) {
       serviceInstance.network = options.network;
+    }
+    if (options.sdk) {
+      serviceInstance.setSDK(options.sdk);
+    }
+    if (options.mnemonic) {
+      serviceInstance.setMnemonic(options.mnemonic);
     }
   }
   return serviceInstance;
