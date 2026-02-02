@@ -5158,6 +5158,7 @@ dependencies = [
 name = "rs-dapi-client"
 version = "3.0.0-rc.1"
 dependencies = [
+ "arc-swap",
  "backon",
  "chrono",
  "dapi-grpc",
