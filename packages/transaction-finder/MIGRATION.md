@@ -259,7 +259,7 @@ if (result.method === 'instantlock') {
 
 ### Configuration Changes
 
-1. **Mode required**: Must specify `mode: FinderMode.HISTORIC | REALTIME | HYBRID`
+1. **Mode required**: Must specify `mode: FinderMode.HISTORIC | REALTIME`
 2. **Addresses location**: Moved to top-level config
 3. **DAPI client**: Accepts standard DAPIClient from @dashevo/dapi-client
 
@@ -275,32 +275,10 @@ import { InstantSendChainLockMonitor } from '@dashevo/instantsend-chainlock-moni
 ```typescript
 import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
 // Or use specific finders for advanced use cases
-import { HistoricFinder, RealtimeFinder, HybridFinder } from '@dashevo/transaction-finder';
+import { HistoricFinder, RealtimeFinder } from '@dashevo/transaction-finder';
 ```
 
 ## New Capabilities
-
-### Hybrid Mode (NEW!)
-
-Combines both packages' functionality:
-
-```typescript
-const finder = new TransactionFinder({
-  mode: FinderMode.HYBRID,
-  network: 'testnet',
-  addresses: ['yX3CJJ42...'],
-  dapiClient: myDapiClient,
-  historic: { fromHeight: 1 },
-  realtime: { autoPruneOnConfirmation: true },
-});
-
-// One call does it all: sync history + monitor new transactions
-const { utxos, stopMonitoring } = await finder.syncAndMonitor({
-  onTransaction: (tx) => console.log('New TX:', tx.txid),
-  onInstantLock: (lock) => console.log('InstantLocked!'),
-  onChainLock: (cl) => console.log('ChainLocked!'),
-});
-```
 
 ### Type Safety
 
@@ -335,7 +313,6 @@ npm install @dashevo/transaction-finder @dashevo/dashcore-lib
 Check your `mode` configuration matches the methods you're calling:
 - Historic methods: `findUTXOs()`, `findLatestSpendableUTXO()`
 - Realtime methods: `monitorAddresses()`, `waitForConfirmation()`
-- Hybrid methods: All of the above + `syncAndMonitor()`
 
 ### Type errors with configuration
 
@@ -360,7 +337,6 @@ const finder = new TransactionFinder({
 We recommend migrating as soon as possible to benefit from:
 - Unified API
 - Better type safety
-- Hybrid mode capability
 - Improved error handling
 - Active maintenance
 

@@ -2,29 +2,34 @@
  * @dashevo/transaction-finder
  * Unified transaction finding library for Dash Platform
  *
- * Supports three modes:
+ * Supports two modes:
  * - Historic: Blockchain scanning for UTXO discovery
  * - Realtime: InstantSend/ChainLock monitoring
- * - Hybrid: Combined historic scanning + realtime monitoring
  *
  * @example
  * ```typescript
  * import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
  *
- * // Main unified facade (recommended)
- * const finder = new TransactionFinder({
- *   mode: FinderMode.HYBRID,
+ * // Historic mode - find UTXOs from blockchain history
+ * const historicFinder = new TransactionFinder({
+ *   mode: FinderMode.HISTORIC,
  *   network: 'testnet',
  *   addresses: ['yX3CJJ42...'],
  *   dapiClient: myDapiClient,
- *   historic: { fromHeight: 1 },
- *   realtime: { autoPruneOnConfirmation: true },
+ *   fromHeight: 1,
  * });
+ * const utxos = await historicFinder.findUTXOs();
  *
- * const { utxos, stopMonitoring } = await finder.syncAndMonitor({
+ * // Realtime mode - monitor for new transactions
+ * const realtimeFinder = new TransactionFinder({
+ *   mode: FinderMode.REALTIME,
+ *   network: 'testnet',
+ *   addresses: ['yX3CJJ42...'],
+ *   dapiClient: myDapiClient,
+ * });
+ * await realtimeFinder.monitorAddresses(['yX3CJJ42...'], {
  *   onTransaction: (tx) => console.log('Transaction:', tx.txid),
  *   onInstantLock: (lock) => console.log('InstantLocked!'),
- *   onChainLock: (cl) => console.log('ChainLocked!'),
  * });
  * ```
  */
@@ -38,7 +43,6 @@ export * from './types/index.js';
 // Export individual finders for advanced use cases
 export { HistoricFinder } from './finders/HistoricFinder.js';
 export { RealtimeFinder } from './finders/RealtimeFinder.js';
-export { HybridFinder } from './finders/HybridFinder.js';
 // ==================== Monitoring Components ====================
 // Export monitoring components for advanced use cases
 export { TransactionTracker } from './monitoring/TransactionTracker.js';

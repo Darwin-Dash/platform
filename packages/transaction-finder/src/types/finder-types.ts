@@ -6,12 +6,10 @@
  * Operating mode for the transaction finder
  * - HISTORIC: Blockchain scanning for past transactions (UTXO discovery)
  * - REALTIME: Real-time InstantSend/ChainLock monitoring
- * - HYBRID: Combined historic scanning + realtime monitoring
  */
 export enum FinderMode {
   HISTORIC = 'historic',
   REALTIME = 'realtime',
-  HYBRID = 'hybrid',
 }
 
 /**
@@ -106,22 +104,9 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
 }
 
 /**
- * Configuration specific to hybrid mode
- */
-export interface HybridFinderConfig extends BaseFinderConfig {
-  mode: FinderMode.HYBRID;
-
-  /** Historic scan configuration */
-  historic: Omit<HistoricFinderConfig, 'mode' | 'network' | 'addresses' | 'dapiClient' | 'dapiAddresses' | 'seeds'>;
-
-  /** Realtime monitoring configuration */
-  realtime: Omit<RealtimeFinderConfig, 'mode' | 'network' | 'addresses' | 'dapiClient' | 'dapiAddresses' | 'seeds'>;
-}
-
-/**
  * Unified configuration type that supports all modes
  */
-export type TransactionFinderConfig = HistoricFinderConfig | RealtimeFinderConfig | HybridFinderConfig;
+export type TransactionFinderConfig = HistoricFinderConfig | RealtimeFinderConfig;
 
 /**
  * Progress event emitted during historic transaction sync

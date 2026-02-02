@@ -21,6 +21,8 @@ export interface RealtimeFinderCallbacks {
     onChainLock?: (cl: ChainLockEvent) => void;
     /** Called when block inclusion is detected */
     onBlockInclusion?: (block: BlockInclusionEvent) => void;
+    /** Called when stream reconnects after error */
+    onReconnect?: (attempt: number) => void;
 }
 export declare class RealtimeFinder extends EventEmitter {
     private config;
@@ -31,6 +33,13 @@ export declare class RealtimeFinder extends EventEmitter {
     private logger;
     private monitoredAddresses;
     private currentCallbacks;
+    private reconnectAttempts;
+    private reconnecting;
+    private lastBlockHeight;
+    private maxReconnectAttempts;
+    private reconnectDelay;
+    private streamReadyPromise;
+    private resolveStreamReady;
     constructor(config: RealtimeFinderConfig);
     /**
      * Monitor specific addresses for incoming transactions
@@ -39,6 +48,15 @@ export declare class RealtimeFinder extends EventEmitter {
      * @returns Cleanup function to stop monitoring
      */
     monitorAddresses(addresses: string | string[], callbacks: RealtimeFinderCallbacks): Promise<() => void>;
+    /**
+     * Reconnect the DAPI stream after an error
+     *
+     * Uses exponential backoff and resumes from the last known block height
+     * to avoid missing transactions during brief disconnections.
+     *
+     * @private
+     */
+    private reconnectStream;
     /**
      * Process stream messages
      * @private
@@ -88,6 +106,9 @@ export declare class RealtimeFinder extends EventEmitter {
         active: boolean;
         trackedTransactions: number;
         chainLockHeight: number;
+        lastBlockHeight: number;
+        reconnectAttempts: number;
+        reconnecting: boolean;
     };
     /**
      * Get the configured network

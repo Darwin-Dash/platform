@@ -4,7 +4,6 @@
  * Factory pattern that creates the appropriate finder based on mode:
  * - HISTORIC: HistoricFinder for blockchain scanning
  * - REALTIME: RealtimeFinder for InstantSend/ChainLock monitoring
- * - HYBRID: HybridFinder for combined historic + realtime
  *
  * This is the main entry point for the @dashevo/transaction-finder package.
  *
@@ -27,22 +26,9 @@
  *   addresses: ['yX3CJJ42...'],
  *   dapiClient: myDapiClient,
  * });
- * await realtimeFinder.monitorAddresses({
+ * await realtimeFinder.monitorAddresses(['yX3CJJ42...'], {
  *   onTransaction: (tx) => console.log('New transaction:', tx.txid),
  *   onInstantLock: (lock) => console.log('InstantLocked!'),
- * });
- *
- * // Hybrid mode - sync history then monitor
- * const hybridFinder = new TransactionFinder({
- *   mode: FinderMode.HYBRID,
- *   network: 'testnet',
- *   addresses: ['yX3CJJ42...'],
- *   historic: { fromHeight: 1 },
- *   realtime: { autoPruneOnConfirmation: true },
- *   dapiClient: myDapiClient,
- * });
- * const { utxos, stopMonitoring } = await hybridFinder.syncAndMonitor({
- *   onTransaction: (tx) => console.log('New transaction:', tx.txid),
  * });
  * ```
  */
@@ -67,70 +53,61 @@ export declare class TransactionFinder extends EventEmitter {
      */
     getNetwork(): string;
     /**
-     * Find all UTXOs for configured addresses (Historic/Hybrid mode only)
+     * Find all UTXOs for configured addresses (Historic mode only)
      * @returns Array of UTXOs discovered
-     * @throws Error if not in Historic or Hybrid mode
+     * @throws Error if not in Historic mode
      */
     findUTXOs(): Promise<UTXO[]>;
     /**
-     * Find latest spendable UTXO (Historic/Hybrid mode only)
+     * Find latest spendable UTXO (Historic mode only)
      * @returns Latest spendable UTXO
-     * @throws Error if not in Historic or Hybrid mode
+     * @throws Error if not in Historic mode
      */
     findLatestSpendableUTXO(): Promise<UTXO>;
     /**
-     * Monitor addresses for incoming transactions (Realtime/Hybrid mode only)
+     * Monitor addresses for incoming transactions (Realtime mode only)
+     * @param addresses Address or array of addresses to monitor
      * @param callbacks Event callbacks for transactions, locks, etc.
-     * @returns Cleanup function to stop monitoring (Realtime mode) or addresses parameter (Hybrid mode compatibility)
-     * @throws Error if not in Realtime or Hybrid mode
+     * @returns Cleanup function to stop monitoring
+     * @throws Error if not in Realtime mode
      */
-    monitorAddresses(addressesOrCallbacks: string | string[] | RealtimeFinderCallbacks, callbacks?: RealtimeFinderCallbacks): Promise<(() => void) | void>;
+    monitorAddresses(addresses: string | string[], callbacks?: RealtimeFinderCallbacks): Promise<() => void>;
     /**
-     * Wait for a specific transaction to be confirmed (Realtime/Hybrid mode only)
+     * Wait for a specific transaction to be confirmed (Realtime mode only)
      * @param txid Transaction ID to wait for
      * @param options Confirmation requirements and timeout
      * @returns Confirmation result
-     * @throws Error if not in Realtime or Hybrid mode
+     * @throws Error if not in Realtime mode
      */
     waitForConfirmation(txid: string, options?: ConfirmationOptions): Promise<ConfirmationResult>;
     /**
-     * Get tracked transaction state (Realtime/Hybrid mode only)
+     * Get tracked transaction state (Realtime mode only)
      * @param txid Transaction ID
      * @returns Transaction state or undefined
-     * @throws Error if not in Realtime or Hybrid mode
+     * @throws Error if not in Realtime mode
      */
     getTransaction(txid: string): import("./types/transaction-types.js").TrackedTransaction | undefined;
     /**
-     * Clear a specific transaction from tracking (Realtime/Hybrid mode only)
+     * Clear a specific transaction from tracking (Realtime mode only)
      * @param txid Transaction ID to clear
-     * @throws Error if not in Realtime or Hybrid mode
+     * @throws Error if not in Realtime mode
      */
     clearTransaction(txid: string): void;
     /**
-     * Clear all confirmed transactions (Realtime/Hybrid mode only)
-     * @throws Error if not in Realtime or Hybrid mode
+     * Clear all confirmed transactions (Realtime mode only)
+     * @throws Error if not in Realtime mode
      */
     clearAllConfirmed(): void;
     /**
-     * Pre-register a transaction ID before broadcast (Realtime/Hybrid mode only)
+     * Pre-register a transaction ID before broadcast (Realtime mode only)
      *
      * Call this BEFORE broadcasting a transaction to ensure InstantLocks
      * are captured even if they arrive before waitForConfirmation() is called.
      *
      * @param txid Transaction ID to pre-register
-     * @throws Error if not in Realtime or Hybrid mode
+     * @throws Error if not in Realtime mode
      */
     preRegisterTransaction(txid: string): void;
-    /**
-     * Sync history and start monitoring (Hybrid mode only)
-     * @param callbacks Event callbacks for realtime monitoring phase
-     * @returns Object containing discovered UTXOs and cleanup function
-     * @throws Error if not in Hybrid mode
-     */
-    syncAndMonitor(callbacks?: RealtimeFinderCallbacks): Promise<{
-        utxos: UTXO[];
-        stopMonitoring: () => void;
-    }>;
     /**
      * Get current status
      * Returns mode-specific status information
@@ -138,7 +115,7 @@ export declare class TransactionFinder extends EventEmitter {
     getStatus(): any;
     /**
      * Stop all operations
-     * Applicable to Realtime and Hybrid modes
+     * Applicable to Realtime mode only
      */
     stop(): void;
 }

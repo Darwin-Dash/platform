@@ -21,6 +21,13 @@ const { Transaction, MerkleBlock, InstantLock } = dashcore;
 export class RealtimeFinder extends EventEmitter {
     constructor(config) {
         super();
+        // Stream resilience state
+        this.reconnectAttempts = 0;
+        this.reconnecting = false;
+        this.lastBlockHeight = 0;
+        // Stream readiness synchronization
+        this.streamReadyPromise = null;
+        this.resolveStreamReady = null;
         this.config = config;
         this.tracker = new TransactionTracker(config.autoPruneOnConfirmation ?? false, config.maxTrackedTransactions ?? 1000);
         this.chainLockMonitor = null;
@@ -29,6 +36,9 @@ export class RealtimeFinder extends EventEmitter {
         this.logger = createLogger('RealtimeFinder');
         this.monitoredAddresses = [];
         this.currentCallbacks = null;
+        // Initialize reconnection configuration
+        this.maxReconnectAttempts = config.maxReconnectAttempts ?? 10;
+        this.reconnectDelay = config.reconnectDelay ?? 3000;
     }
     /**
      * Monitor specific addresses for incoming transactions
@@ -90,6 +100,12 @@ export class RealtimeFinder extends EventEmitter {
         }
         // Convert to async iterable
         const asyncStream = StreamWrapper.makeAsyncIterable(rawStream);
+        // Create stream readiness promise - this ensures the for-await loop has started
+        // before monitorAddresses() returns, preventing race conditions where transactions
+        // are broadcast before the stream is actively consuming messages
+        this.streamReadyPromise = new Promise((resolve) => {
+            this.resolveStreamReady = resolve;
+        });
         // Process stream in background with error handling
         this.processStream(asyncStream, addressArray, callbacks, currentHeight)
             .catch((error) => {
@@ -100,8 +116,114 @@ export class RealtimeFinder extends EventEmitter {
             }
             // Suppress abort errors during intentional shutdown
         });
+        // Wait for the stream to be actively consuming before returning
+        // This prevents race conditions where transactions are broadcast before
+        // the for-await loop has started in processStream()
+        await this.streamReadyPromise;
+        this.logger.debug('Stream is now actively consuming messages');
         // Return cleanup function
         return () => this.stop();
+    }
+    /**
+     * Reconnect the DAPI stream after an error
+     *
+     * Uses exponential backoff and resumes from the last known block height
+     * to avoid missing transactions during brief disconnections.
+     *
+     * @private
+     */
+    async reconnectStream() {
+        if (this.reconnecting || !this.isActive) {
+            return;
+        }
+        this.reconnecting = true;
+        this.reconnectAttempts++;
+        // Check if max attempts exceeded
+        if (this.reconnectAttempts > this.maxReconnectAttempts) {
+            this.logger.error(`Max reconnect attempts (${this.maxReconnectAttempts}) reached, giving up`);
+            this.emit('maxReconnectAttemptsReached', {
+                attempts: this.reconnectAttempts,
+                lastBlockHeight: this.lastBlockHeight,
+            });
+            this.reconnecting = false;
+            return;
+        }
+        // Calculate exponential backoff delay
+        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        this.logger.info(`🔄 Reconnecting stream (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
+        // Wait before reconnecting
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        // Don't reconnect if stopped during wait
+        if (!this.isActive) {
+            this.reconnecting = false;
+            return;
+        }
+        try {
+            // Cancel existing stream if any
+            if (this.stream && typeof this.stream.cancel === 'function') {
+                try {
+                    this.stream.cancel();
+                }
+                catch {
+                    // Ignore cleanup errors
+                }
+                this.stream = null;
+            }
+            const core = this.config.dapiClient.core;
+            if (!core) {
+                throw new Error('DAPI client does not have core namespace');
+            }
+            // Determine resume height: use last known height, or fetch current
+            let resumeHeight = this.lastBlockHeight;
+            if (resumeHeight === 0) {
+                resumeHeight = await core.getBestBlockHeight();
+                this.logger.debug(`No lastBlockHeight, starting from current: ${resumeHeight}`);
+            }
+            else {
+                this.logger.debug(`Resuming from lastBlockHeight: ${resumeHeight}`);
+            }
+            // Recreate bloom filter
+            const bloomFilter = BloomFilterBuilder.build(this.monitoredAddresses, this.config.network);
+            // Subscribe to new stream starting from resume height
+            let rawStream = core.subscribeToTransactionsWithProofs(bloomFilter, {
+                fromBlockHeight: resumeHeight,
+                count: 0, // Continuous monitoring
+            });
+            // Handle async stream
+            if (rawStream && typeof rawStream.then === 'function') {
+                rawStream = await rawStream;
+            }
+            this.stream = rawStream;
+            // Emit reconnect event
+            this.emit('reconnect', {
+                attempt: this.reconnectAttempts,
+                resumeHeight,
+            });
+            // Notify via callback if provided
+            if (this.currentCallbacks?.onReconnect) {
+                this.currentCallbacks.onReconnect(this.reconnectAttempts);
+            }
+            this.logger.info(`✅ Stream reconnected successfully at height ${resumeHeight}`);
+            // Convert to async iterable and process
+            const asyncStream = StreamWrapper.makeAsyncIterable(rawStream);
+            // Reset reconnecting flag before starting processing
+            this.reconnecting = false;
+            // Process the new stream
+            await this.processStream(asyncStream, this.monitoredAddresses, this.currentCallbacks || {}, resumeHeight);
+        }
+        catch (error) {
+            this.logger.error('Reconnection failed:', error.message);
+            this.reconnecting = false;
+            // Try again if we haven't exceeded max attempts
+            if (this.isActive && this.reconnectAttempts < this.maxReconnectAttempts) {
+                this.reconnectStream().catch((err) => {
+                    this.logger.error('Reconnection retry failed:', err);
+                });
+            }
+            else {
+                this.emit('error', error);
+            }
+        }
     }
     /**
      * Process stream messages
@@ -109,8 +231,25 @@ export class RealtimeFinder extends EventEmitter {
      */
     async processStream(stream, addresses, callbacks, startHeight) {
         let currentBlockHeight = startHeight;
+        // Signal that the stream is ready BEFORE entering the for-await loop
+        // This uses a wrapper that signals readiness on the first iterator call
+        const signalReadyAndIterate = async function* (source, signalReady) {
+            const iterator = source[Symbol.asyncIterator]();
+            // Signal ready immediately when we start iterating
+            if (signalReady) {
+                signalReady();
+            }
+            while (true) {
+                const result = await iterator.next();
+                if (result.done)
+                    break;
+                yield result.value;
+            }
+        };
         try {
-            for await (const message of stream) {
+            for await (const message of signalReadyAndIterate(stream, this.resolveStreamReady)) {
+                // Clear the resolver after first use to avoid memory leaks
+                this.resolveStreamReady = null;
                 if (!this.isActive) {
                     break;
                 }
@@ -158,6 +297,8 @@ export class RealtimeFinder extends EventEmitter {
                         const merkleBlock = new MerkleBlock(Buffer.from(rawMerkle));
                         const blockHash = merkleBlock.header.hash;
                         currentBlockHeight++; // Increment for each new block
+                        // Track last block height for reconnection resumption
+                        this.lastBlockHeight = currentBlockHeight;
                         // Extract transaction hashes
                         const txids = merkleBlock.hashes.map((h) => {
                             const buf = Buffer.from(String(h), 'hex');
@@ -225,10 +366,29 @@ export class RealtimeFinder extends EventEmitter {
             }
         }
         catch (error) {
-            // Only log errors if still active - aborts during shutdown are expected
+            // Only handle errors if still active - aborts during shutdown are expected
             if (this.isActive) {
-                this.logger.error('Stream processing error:', error.message);
-                this.emit('error', error);
+                const errorMessage = error.message || String(error);
+                // Check if this is a gRPC stream error that warrants reconnection
+                const isStreamError = errorMessage.includes('RST_STREAM') ||
+                    errorMessage.includes('UNAVAILABLE') ||
+                    errorMessage.includes('CANCELLED') ||
+                    errorMessage.includes('stream') ||
+                    errorMessage.includes('connection');
+                if (isStreamError) {
+                    this.logger.warn(`⚠️ Stream error detected: ${errorMessage}`);
+                    this.logger.info('Attempting automatic reconnection...');
+                    // Trigger reconnection instead of just emitting error
+                    this.reconnectStream().catch((reconnectError) => {
+                        this.logger.error('Reconnection failed:', reconnectError);
+                        this.emit('error', reconnectError);
+                    });
+                }
+                else {
+                    // Non-stream errors are emitted normally
+                    this.logger.error('Stream processing error:', errorMessage);
+                    this.emit('error', error);
+                }
             }
             // Suppress abort errors during intentional shutdown
         }
@@ -340,6 +500,9 @@ export class RealtimeFinder extends EventEmitter {
      */
     stop() {
         this.isActive = false;
+        // Reset reconnection state
+        this.reconnecting = false;
+        this.reconnectAttempts = 0;
         if (this.chainLockMonitor) {
             this.chainLockMonitor.stop();
             this.chainLockMonitor = null;
@@ -392,6 +555,9 @@ export class RealtimeFinder extends EventEmitter {
             active: this.isActive,
             trackedTransactions: this.tracker.getAllTransactions().length,
             chainLockHeight: this.chainLockMonitor?.getCurrentHeight() || 0,
+            lastBlockHeight: this.lastBlockHeight,
+            reconnectAttempts: this.reconnectAttempts,
+            reconnecting: this.reconnecting,
         };
     }
     /**

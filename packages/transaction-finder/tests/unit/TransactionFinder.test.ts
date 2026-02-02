@@ -59,20 +59,6 @@ describe('TransactionFinder', () => {
       expect(finder.getNetwork()).toBe('testnet');
     });
 
-    it('should create HybridFinder when mode is HYBRID', () => {
-      const finder = new TransactionFinder({
-        mode: FinderMode.HYBRID,
-        network: 'testnet',
-        addresses: [TESTNET_ADDRESSES.address1],
-        dapiClient: createMockDapiClient(),
-        historic: { fromHeight: 1 },
-        realtime: {},
-      });
-
-      expect(finder.getMode()).toBe(FinderMode.HYBRID);
-      expect(finder.getNetwork()).toBe('testnet');
-    });
-
     it('should throw error for invalid mode', () => {
       expect(() => {
         new TransactionFinder({
@@ -100,21 +86,15 @@ describe('TransactionFinder', () => {
 
     it('should throw error when calling realtime-only methods', () => {
       expect(() => finder.getTransaction('txid')).toThrow(
-        /only available in REALTIME or HYBRID mode/
+        /only available in REALTIME mode/
       );
 
       expect(() => finder.clearTransaction('txid')).toThrow(
-        /only available in REALTIME or HYBRID mode/
+        /only available in REALTIME mode/
       );
 
       expect(() => finder.clearAllConfirmed()).toThrow(
-        /only available in REALTIME or HYBRID mode/
-      );
-    });
-
-    it('should throw error when calling hybrid-only methods', async () => {
-      await expect(async () => await finder.syncAndMonitor()).rejects.toThrow(
-        /only available in HYBRID mode/
+        /only available in REALTIME mode/
       );
     });
   });
@@ -133,47 +113,12 @@ describe('TransactionFinder', () => {
 
     it('should throw error when calling historic-only methods', async () => {
       await expect(async () => await finder.findUTXOs()).rejects.toThrow(
-        /only available in HISTORIC or HYBRID mode/
+        /only available in HISTORIC mode/
       );
 
       await expect(async () => await finder.findLatestSpendableUTXO()).rejects.toThrow(
-        /only available in HISTORIC or HYBRID mode/
+        /only available in HISTORIC mode/
       );
-    });
-
-    it('should throw error when calling hybrid-only methods', async () => {
-      await expect(async () => await finder.syncAndMonitor()).rejects.toThrow(
-        /only available in HYBRID mode/
-      );
-    });
-  });
-
-  describe('Method Routing - Hybrid Mode', () => {
-    let finder: TransactionFinder;
-
-    beforeEach(() => {
-      finder = new TransactionFinder({
-        mode: FinderMode.HYBRID,
-        network: 'testnet',
-        addresses: [TESTNET_ADDRESSES.address1],
-        dapiClient: createMockDapiClient(),
-        historic: { fromHeight: 1 },
-        realtime: {},
-      });
-    });
-
-    it('should have access to all methods in hybrid mode', () => {
-      // Should not throw for any mode-specific method
-      expect(() => finder.getMode()).not.toThrow();
-      expect(() => finder.getNetwork()).not.toThrow();
-
-      // These will be tested with proper integration tests
-      // Just verifying methods exist
-      expect(typeof finder.findUTXOs).toBe('function');
-      expect(typeof finder.findLatestSpendableUTXO).toBe('function');
-      expect(typeof finder.monitorAddresses).toBe('function');
-      expect(typeof finder.waitForConfirmation).toBe('function');
-      expect(typeof finder.syncAndMonitor).toBe('function');
     });
   });
 

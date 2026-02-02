@@ -44,7 +44,7 @@ Get the current operating mode.
 getMode(): FinderMode
 ```
 
-**Returns:** `FinderMode.HISTORIC | FinderMode.REALTIME | FinderMode.HYBRID`
+**Returns:** `FinderMode.HISTORIC | FinderMode.REALTIME`
 
 #### getNetwork()
 
@@ -67,11 +67,10 @@ getStatus(): any
 **Returns:**
 - Historic mode: `{ mode: 'historic' }`
 - Realtime mode: `{ active: boolean, trackedTransactions: number, chainLockHeight: number }`
-- Hybrid mode: `{ monitoring: boolean, realtimeStatus: {...} }`
 
 #### stop()
 
-Stop all operations (Realtime/Hybrid modes only).
+Stop all operations (Realtime mode only).
 
 ```typescript
 stop(): void
@@ -79,7 +78,7 @@ stop(): void
 
 ### Historic Mode Methods
 
-Available when `mode: FinderMode.HISTORIC` or `FinderMode.HYBRID`.
+Available when `mode: FinderMode.HISTORIC`.
 
 #### findUTXOs()
 
@@ -123,7 +122,7 @@ console.log('Latest UTXO:', utxo.satoshis, 'sats at height', utxo.blockHeight);
 
 ### Realtime Mode Methods
 
-Available when `mode: FinderMode.REALTIME` or `FinderMode.HYBRID`.
+Available when `mode: FinderMode.REALTIME`.
 
 #### monitorAddresses()
 
@@ -244,45 +243,6 @@ setInterval(() => {
 }, 60000);
 ```
 
-### Hybrid Mode Methods
-
-Available only when `mode: FinderMode.HYBRID`.
-
-#### syncAndMonitor()
-
-Perform complete hybrid operation: sync history, then start monitoring.
-
-```typescript
-async syncAndMonitor(
-  callbacks?: RealtimeFinderCallbacks
-): Promise<{
-  utxos: UTXO[];
-  stopMonitoring: () => void;
-}>
-```
-
-**Parameters:**
-- `callbacks` - Event callbacks for realtime monitoring phase
-
-**Returns:** Object with:
-- `utxos` - Array of UTXOs from historic scan
-- `stopMonitoring` - Function to stop realtime monitoring
-
-**Example:**
-```typescript
-const { utxos, stopMonitoring } = await finder.syncAndMonitor({
-  onTransaction: (tx) => console.log('New TX:', tx.txid),
-  onInstantLock: (lock) => console.log('InstantLocked!'),
-  onChainLock: (cl) => console.log('ChainLocked!'),
-});
-
-console.log('Found', utxos.length, 'UTXOs from history');
-// Monitoring continues in background...
-
-// Later: stop
-stopMonitoring();
-```
-
 ## Configuration Types
 
 ### TransactionFinderConfig
@@ -292,8 +252,7 @@ Union type of all mode-specific configs:
 ```typescript
 type TransactionFinderConfig =
   | HistoricFinderConfig
-  | RealtimeFinderConfig
-  | HybridFinderConfig;
+  | RealtimeFinderConfig;
 ```
 
 ### HistoricFinderConfig
@@ -333,34 +292,6 @@ interface RealtimeFinderConfig {
   maxPollInterval?: number;
   minPollInterval?: number;
   adaptivePolling?: boolean;
-}
-```
-
-### HybridFinderConfig
-
-```typescript
-interface HybridFinderConfig {
-  mode: FinderMode.HYBRID;
-  network: 'mainnet' | 'testnet' | 'regtest';
-  addresses: string[];
-  dapiClient: DAPIClientLike;
-  timeout?: number;
-  retries?: number;
-  bloomFalsePositiveRate?: number;
-  logLevel?: 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
-  historic: {
-    fromHeight: number;
-    toHeight?: number;
-    requiredAmount?: number;
-    onProgress?: (progress: SyncProgress) => void;
-  };
-  realtime: {
-    autoPruneOnConfirmation?: boolean;
-    maxTrackedTransactions?: number;
-    basePollInterval?: number;
-    maxPollInterval?: number;
-    adaptivePolling?: boolean;
-  };
 }
 ```
 
@@ -524,23 +455,6 @@ const finder = new RealtimeFinder({
 await finder.monitorAddresses(['yX3CJJ42...'], {
   onInstantLock: (lock) => console.log('Locked!'),
 });
-```
-
-### HybridFinder
-
-```typescript
-import { HybridFinder } from '@dashevo/transaction-finder';
-
-const finder = new HybridFinder({
-  mode: FinderMode.HYBRID,
-  network: 'testnet',
-  addresses: ['yX3CJJ42...'],
-  dapiClient: myDapiClient,
-  historic: { fromHeight: 1 },
-  realtime: {},
-});
-
-const { utxos, stopMonitoring } = await finder.syncAndMonitor();
 ```
 
 ## Utility Classes

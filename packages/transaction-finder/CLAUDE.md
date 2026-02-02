@@ -36,8 +36,7 @@ tests/
 │   │   ├── StreamWrapper.test.ts          [Stream async iteration]
 │   │   └── TransactionSyncer.test.ts      [Historic sync logic]
 │   ├── finders/
-│   │   ├── RealtimeFinder.test.ts         [Realtime monitoring]
-│   │   └── HybridFinder.test.ts           [Hybrid mode]
+│   │   └── RealtimeFinder.test.ts         [Realtime monitoring]
 │   ├── monitoring/
 │   │   └── TransactionTracker.test.ts     [TX state tracking]
 │   ├── utils/
@@ -48,7 +47,6 @@ tests/
 │   ├── finders/
 │   │   ├── HistoricFinder.integration.test.ts
 │   │   ├── RealtimeFinder.integration.test.ts
-│   │   ├── HybridFinder.integration.test.ts
 │   │   └── TransactionFinder.integration.test.ts
 │   ├── testnet-utxo.spec.ts               [Real testnet UTXO finding]
 │   ├── testnet-realtime.spec.ts           [Real testnet IS/CL monitoring - manual]
@@ -123,7 +121,7 @@ export NETWORK=testnet
 
 ## Test Patterns
 
-### Pattern 1: Find UTXOs from History
+### Pattern 1: Find UTXOs from History (HISTORIC mode)
 ```typescript
 const finder = new TransactionFinder({
   mode: FinderMode.HISTORIC,
@@ -138,7 +136,7 @@ const utxos = await finder.findUTXOs();
 const latestUTXO = await finder.findLatestSpendableUTXO();
 ```
 
-### Pattern 2: Monitor for New Transactions
+### Pattern 2: Monitor for New Transactions (REALTIME mode)
 ```typescript
 const finder = new TransactionFinder({
   mode: FinderMode.REALTIME,
@@ -157,7 +155,7 @@ const cleanup = await finder.monitorAddresses(['yX3CJJ42...'], {
 cleanup();
 ```
 
-### Pattern 3: Wait for Confirmation
+### Pattern 3: Wait for Confirmation (REALTIME mode)
 ```typescript
 const result = await finder.waitForConfirmation(txid, {
   requireChainLock: false,

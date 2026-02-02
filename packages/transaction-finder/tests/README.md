@@ -11,14 +11,12 @@ tests/
 │   │   ├── TransactionSyncer.test.ts       (9 scenarios)
 │   │   └── TransactionTracker.test.ts      (7 scenarios)
 │   └── finders/                   # Finder implementation tests
-│       ├── RealtimeFinder.test.ts          (7 scenarios)
-│       └── HybridFinder.test.ts            (7 scenarios)
+│       └── RealtimeFinder.test.ts          (7 scenarios)
 │
 ├── integration/                   # Integration tests with controllable mocks
 │   └── finders/
 │       ├── HistoricFinder.integration.test.ts   (10 tests)
-│       ├── RealtimeFinder.integration.test.ts   (10 tests)
-│       └── HybridFinder.integration.test.ts     (11 tests)
+│       └── RealtimeFinder.integration.test.ts   (10 tests)
 │
 └── helpers/                      # Test utilities and infrastructure
     ├── ControllableMockDAPIClient.ts      # Pre-configured stream mock
@@ -137,7 +135,7 @@ const chainLock = MockDataBuilder.createChainLock(blockHeight);
 
 ## Test Coverage
 
-### Unit Tests (30 scenarios)
+### Unit Tests (23 scenarios)
 
 #### TransactionSyncer (9 scenarios)
 Tests the core historic blockchain synchronization engine:
@@ -263,45 +261,7 @@ Tests real-time transaction monitoring:
    - Manages transaction state
    - Provides status queries
 
-#### HybridFinder (7 scenarios)
-Tests combined historic sync + realtime monitoring:
-
-1. ✅ **Mode coordination**
-   - Orchestrates historic scan
-   - Transitions to monitoring
-   - Manages phase transitions
-
-2. ✅ **Event forwarding**
-   - Forwards historic events
-   - Forwards realtime events
-   - Maintains event order
-
-3. ✅ **Delegation patterns**
-   - Delegates findUTXOs to HistoricFinder
-   - Delegates monitorAddresses to RealtimeFinder
-   - Routes calls to appropriate finder
-
-4. ✅ **Resource management**
-   - Manages both finders
-   - Coordinates cleanup
-   - Prevents resource leaks
-
-5. ✅ **Error handling**
-   - Handles historic failures
-   - Manages monitoring errors
-   - Provides unified error interface
-
-6. ✅ **State queries**
-   - Aggregates status from both finders
-   - Provides unified transaction view
-   - Reports combined progress
-
-7. ✅ **Configuration validation**
-   - Validates hybrid mode config
-   - Ensures compatible settings
-   - Provides sensible defaults
-
-### Integration Tests (31 tests)
+### Integration Tests (20 tests)
 
 #### HistoricFinder Integration (10 tests)
 
@@ -344,31 +304,6 @@ Tests combined historic sync + realtime monitoring:
 
 **Complete Workflow:**
 10. ✅ Should handle complete transaction confirmation flow
-
-#### HybridFinder Integration (11 tests)
-
-**Complete Hybrid Workflow:**
-1. ✅ Should perform historic scan followed by realtime monitoring
-2. ✅ Should emit phase events during hybrid operation
-3. ✅ Should forward historic finder events
-
-**Historic-Only Operations:**
-4. ✅ Should perform historic scan without starting monitoring
-5. ✅ Should find latest spendable UTXO without monitoring
-
-**Realtime-Only Operations:**
-6. ✅ Should start monitoring without historic scan
-
-**Delegation to Child Finders:**
-7. ✅ Should delegate waitForConfirmation to RealtimeFinder
-8. ✅ Should delegate getTransaction to RealtimeFinder
-9. ✅ Should delegate clearTransaction to RealtimeFinder
-
-**Error Handling:**
-10. ✅ Should handle historic scan error before monitoring starts
-
-**Resource Management:**
-11. ✅ Should properly clean up both historic and realtime resources
 
 ## Test Patterns
 
@@ -585,12 +520,10 @@ expect(transactionEvents.length).toBeGreaterThan(0);
 - **TransactionSyncer tests:** < 50ms total
 - **TransactionTracker tests:** < 30ms total
 - **RealtimeFinder tests:** < 40ms total
-- **HybridFinder tests:** < 60ms total
 
 ### Integration Test Performance
 - **HistoricFinder tests:** ~120ms total
 - **RealtimeFinder tests:** ~2.7s total (includes 300ms waits)
-- **HybridFinder tests:** ~2.2s total
 
 ### Total Suite Execution
 - **All unit tests:** < 200ms
@@ -708,7 +641,7 @@ describe('ComponentName', () => {
 
 This comprehensive test suite provides:
 
-✅ **61+ tests** covering all critical paths
+✅ **43+ tests** covering all critical paths
 ✅ **100% passing** integration and unit tests
 ✅ **Deterministic behavior** via pre-configured streams
 ✅ **Fast execution** (< 7s for complete suite)
@@ -716,4 +649,4 @@ This comprehensive test suite provides:
 ✅ **Well-documented** patterns and examples
 ✅ **Production-ready** validation of all finder modes
 
-The test infrastructure ensures transaction-finder reliability across all supported workflows: historic sync, realtime monitoring, and hybrid operations.
+The test infrastructure ensures transaction-finder reliability across all supported workflows: historic sync and realtime monitoring.
