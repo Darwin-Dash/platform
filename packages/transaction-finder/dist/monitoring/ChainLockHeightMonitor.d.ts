@@ -17,6 +17,7 @@ export declare class ChainLockHeightMonitor extends EventEmitter {
     private dapiClient;
     private tracker;
     private lastChainLockedHeight;
+    private highWaterMark;
     private isRunning;
     private pollInterval;
     private basePollIntervalMs;

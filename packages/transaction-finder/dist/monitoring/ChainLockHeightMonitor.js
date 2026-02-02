@@ -26,6 +26,7 @@ export class ChainLockHeightMonitor extends EventEmitter {
         this.dapiClient = dapiClient;
         this.tracker = tracker;
         this.lastChainLockedHeight = 0;
+        this.highWaterMark = 0;
         this.isRunning = false;
         this.pollInterval = null;
         this.basePollIntervalMs = basePollIntervalMs;
@@ -86,19 +87,36 @@ export class ChainLockHeightMonitor extends EventEmitter {
             const coreChainLockedHeight = metadata.getCoreChainLockedHeight();
             // Reset failure counter on success
             this.consecutiveFailures = 0;
-            this.logger.debug(`📊 ChainLock poll: ${coreChainLockedHeight} (last: ${this.lastChainLockedHeight})`);
-            if (coreChainLockedHeight > this.lastChainLockedHeight) {
-                this.logger.info(`🔗 New ChainLock: ${coreChainLockedHeight}`);
-                this.logger.debug(`   blockHeightMap.size: ${this.tracker.getBlockHeightMapSize()}`);
-                // Record ChainLock for all transactions up to this height
-                const timestamp = Date.now();
-                const confirmedTxids = this.tracker.recordChainLock(coreChainLockedHeight, timestamp);
-                this.logger.debug(`   Confirmed: ${confirmedTxids.length} txs`);
+            // CRITICAL: Monotonic high-water mark to handle stale DAPI nodes.
+            // DAPI rotates between multiple nodes, some of which may be behind in sync.
+            // This prevents ChainLock height from "jumping backwards" when we hit a stale node.
+            // Example: Node A reports 1413589, Node B (stale) reports 1410263 - we keep 1413589.
+            if (coreChainLockedHeight > this.highWaterMark) {
+                this.highWaterMark = coreChainLockedHeight;
+            }
+            else if (coreChainLockedHeight < this.highWaterMark) {
+                this.logger.debug(`📊 ChainLock poll: ${coreChainLockedHeight} (stale node, using high-water mark: ${this.highWaterMark})`);
+            }
+            this.logger.debug(`📊 ChainLock poll: ${coreChainLockedHeight} (high-water mark: ${this.highWaterMark})`);
+            // Log when ChainLock height advances
+            if (this.highWaterMark > this.lastChainLockedHeight) {
+                this.logger.info(`🔗 New ChainLock height: ${this.highWaterMark}`);
+                this.lastChainLockedHeight = this.highWaterMark;
+            }
+            // IMPORTANT: Always check for transactions that can be confirmed at current height.
+            // This handles txs that were added to blocks AFTER we first observed this ChainLock height.
+            // The tracker handles deduplication - it only marks a tx as chainlocked if !tx.chainLockTime.
+            // Use highWaterMark instead of raw coreChainLockedHeight to avoid missing confirmations
+            // when we hit a stale DAPI node.
+            const timestamp = Date.now();
+            const confirmedTxids = this.tracker.recordChainLock(this.highWaterMark, timestamp);
+            if (confirmedTxids.length > 0) {
+                this.logger.info(`🔗 ChainLock confirmed ${confirmedTxids.length} transaction(s) at height ${this.highWaterMark}`);
+                this.logger.debug(`   Confirmed txids: ${confirmedTxids.join(', ')}`);
                 // Notify callback
-                if (confirmedTxids.length > 0 && this.onChainLock) {
-                    this.onChainLock(confirmedTxids, coreChainLockedHeight);
+                if (this.onChainLock) {
+                    this.onChainLock(confirmedTxids, this.highWaterMark);
                 }
-                this.lastChainLockedHeight = coreChainLockedHeight;
             }
             // Adaptive polling: reduce interval on success
             this.adjustPollInterval();

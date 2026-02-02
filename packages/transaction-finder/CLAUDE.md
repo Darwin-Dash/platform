@@ -280,5 +280,115 @@ const confirmation = await finder.waitForConfirmation(assetLockTxid, {
 - **All SDK operations (asset lock, identity) broadcast via DAPI**
 - The `instantLockHex` from confirmation is required for identity proof creation
 
+## ChainLock Architecture (CRITICAL KNOWLEDGE)
+
+This section documents the ChainLock confirmation system and a critical bug fix that prevents missed confirmations due to stale DAPI nodes.
+
+### 1. How ChainLocks Work
+
+ChainLocks provide instant transaction finality on Dash by having Long-Living Masternode Quorums (LLMQs) sign blocks.
+
+**The monitoring flow:**
+1. `ChainLockHeightMonitor.poll()` calls DAPI `getEpochsInfo()`
+2. Response includes `coreChainLockedHeight` - highest block confirmed by LLMQ
+3. Monitor polls every 5 seconds (configurable)
+4. `TransactionTracker.recordChainLock()` confirms all transactions at or below this height
+
+### 2. The Stale Node Problem (THE BUG WE FIXED)
+
+**Problem:** DAPI rotates between multiple Platform nodes. Some nodes may be behind in sync by thousands of blocks.
+
+**Symptom:** ChainLock height "jumps backwards" when hitting a stale node, potentially missing confirmations for transactions that were already ChainLocked.
+
+**Real-world example observed during testing:**
+```
+Poll 1: height = 1413589 (from synced node)
+Poll 2: height = 1410263 (from stale node - 3326 blocks behind!)
+Poll 3: height = 1413589 (from synced node again)
+```
+
+**Impact:** A transaction in block 1411000 would:
+- Be confirmed at Poll 1 ✓
+- Appear "unconfirmed" at Poll 2 ✗ (height dropped below its block!)
+- This caused race conditions and missed confirmations
+
+### 3. The High-Water Mark Solution
+
+**Fix:** Implement a monotonic `highWaterMark` property that NEVER decreases.
+
+```typescript
+// In ChainLockHeightMonitor.poll()
+if (coreChainLockedHeight > this.highWaterMark) {
+  this.highWaterMark = coreChainLockedHeight;
+} else if (coreChainLockedHeight < this.highWaterMark) {
+  this.logger.debug(
+    `Stale node detected: ${coreChainLockedHeight} (using high-water mark: ${this.highWaterMark})`
+  );
+}
+
+// All confirmation logic uses highWaterMark, not raw response
+this.tracker.recordChainLock(this.highWaterMark, timestamp);
+```
+
+**Result:**
+```
+Poll 1: height = 1413589, highWaterMark = 1413589 ✓
+Poll 2: height = 1410263, highWaterMark = 1413589 ✓ (kept!)
+Poll 3: height = 1413589, highWaterMark = 1413589 ✓
+```
+
+### 4. Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ChainLock Confirmation Flow                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Platform DAPI (rotates between nodes)                          │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐                         │
+│  │ Node A  │  │ Node B  │  │ Node C  │                         │
+│  │ (synced)│  │ (stale) │  │ (synced)│                         │
+│  │ h=1413k │  │ h=1410k │  │ h=1413k │                         │
+│  └────┬────┘  └────┬────┘  └────┬────┘                         │
+│       │            │            │                               │
+│       └────────────┼────────────┘                               │
+│                    ▼                                            │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │            ChainLockHeightMonitor.poll()                 │   │
+│  │  ┌─────────────────────────────────────────────────┐    │   │
+│  │  │ if (height > highWaterMark) highWaterMark = h   │    │   │
+│  │  │ else: log "stale node", keep highWaterMark      │    │   │
+│  │  └─────────────────────────────────────────────────┘    │   │
+│  │                         │                                │   │
+│  │                         ▼                                │   │
+│  │  tracker.recordChainLock(highWaterMark, timestamp)       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                            │                                    │
+│                            ▼                                    │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │               TransactionTracker                         │   │
+│  │  Confirms all txs where: blockHeight <= highWaterMark    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 5. Test Coverage
+
+The high-water mark implementation is thoroughly tested:
+
+**Unit tests** (`tests/unit/finders/RealtimeFinder.test.ts`):
+- 42 tests covering transaction tracking, InstantSend, ChainLock flows
+
+**Integration tests** (`tests/integration/chainlock-only.integration.test.ts`):
+- 10 tests specifically for ChainLock confirmation behavior
+- Verifies monotonic height behavior with stale node simulation
+
+### 6. Key Files
+
+- `src/monitoring/ChainLockHeightMonitor.ts` - The monitor with high-water mark fix
+- `src/monitoring/TransactionTracker.ts` - Records ChainLock confirmations
+- `src/finders/RealtimeFinder.ts` - Uses monitor for realtime confirmation tracking
+
 ---
-*Last Updated: 2025-01-08*
+*Last Updated: 2026-02-02*
