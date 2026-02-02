@@ -22,7 +22,6 @@ use dpp::data_contract::TokenConfiguration;
 use dpp::system_data_contracts::{load_system_data_contract, SystemDataContract};
 use dpp::version::PlatformVersion;
 
-use lru::LruCache;
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -30,7 +29,7 @@ use std::error::Error as StdError;
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::ToSocketAddrs;
 use std::num::NonZeroUsize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
 use tracing::{debug, info};
@@ -38,16 +37,20 @@ use url::Url;
 
 /// A trusted HTTP-based context provider that fetches quorum information
 /// from trusted HTTP endpoints instead of requiring Core RPC access.
+///
+/// All caches use ArcSwap for lock-free reads, which is critical for WASM
+/// environments where traditional Mutex can cause "already locked" errors
+/// during concurrent async operations.
 pub struct TrustedHttpContextProvider {
     network: Network,
     client: Client,
     base_url: String,
 
-    /// Cache for current quorums
-    current_quorums_cache: Arc<Mutex<LruCache<QuorumHash, QuorumData>>>,
+    /// Cache for current quorums (lock-free via ArcSwap)
+    current_quorums_cache: Arc<ArcSwap<HashMap<QuorumHash, QuorumData>>>,
 
-    /// Cache for previous quorums
-    previous_quorums_cache: Arc<Mutex<LruCache<QuorumHash, QuorumData>>>,
+    /// Cache for previous quorums (lock-free via ArcSwap)
+    previous_quorums_cache: Arc<ArcSwap<HashMap<QuorumHash, QuorumData>>>,
 
     /// Last fetched current quorums data
     last_current_quorums: Arc<ArcSwap<Option<QuorumsResponse>>>,
@@ -58,11 +61,11 @@ pub struct TrustedHttpContextProvider {
     /// Optional fallback provider for data contracts and token configurations
     fallback_provider: Option<Box<dyn ContextProvider>>,
 
-    /// Known contracts cache - contracts that are pre-loaded and can be served immediately
-    known_contracts: Arc<Mutex<HashMap<Identifier, Arc<DataContract>>>>,
+    /// Known contracts cache - contracts that are pre-loaded and can be served immediately (lock-free via ArcSwap)
+    known_contracts: Arc<ArcSwap<HashMap<Identifier, Arc<DataContract>>>>,
 
-    /// Known token configurations cache - token configs that are pre-loaded for proof verification
-    known_token_configurations: Arc<Mutex<HashMap<Identifier, TokenConfiguration>>>,
+    /// Known token configurations cache - token configs that are pre-loaded for proof verification (lock-free via ArcSwap)
+    known_token_configurations: Arc<ArcSwap<HashMap<Identifier, TokenConfiguration>>>,
 
     /// Whether to refetch quorums if not found in cache
     refetch_if_not_found: bool,
@@ -160,17 +163,23 @@ impl TrustedHttpContextProvider {
             .user_agent("DashSDK/1.0")
             .build()?;
 
+        // Note: cache_size is no longer used since we switched from LruCache to HashMap.
+        // This is a tradeoff: we lose LRU eviction but gain lock-free access which is
+        // critical for WASM environments. The quorum caches are typically small enough
+        // that unbounded growth is not a concern in practice.
+        let _ = cache_size; // Acknowledge unused parameter
+
         Ok(Self {
             network,
             client,
             base_url,
-            current_quorums_cache: Arc::new(Mutex::new(LruCache::new(cache_size))),
-            previous_quorums_cache: Arc::new(Mutex::new(LruCache::new(cache_size))),
+            current_quorums_cache: Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
+            previous_quorums_cache: Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
             last_current_quorums: Arc::new(ArcSwap::new(Arc::new(None))),
             last_previous_quorums: Arc::new(ArcSwap::new(Arc::new(None))),
             fallback_provider: None,
-            known_contracts: Arc::new(Mutex::new(HashMap::new())),
-            known_token_configurations: Arc::new(Mutex::new(HashMap::new())),
+            known_contracts: Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
+            known_token_configurations: Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
             refetch_if_not_found: true,
         })
     }
@@ -183,12 +192,14 @@ impl TrustedHttpContextProvider {
 
     /// Set known contracts that will be served immediately without fallback
     pub fn with_known_contracts(self, contracts: Vec<DataContract>) -> Self {
-        let mut known = self.known_contracts.lock().unwrap();
-        for contract in contracts {
-            let id = contract.id();
-            known.insert(id, Arc::new(contract));
-        }
-        drop(known);
+        self.known_contracts.rcu(|old| {
+            let mut new_map = (**old).clone();
+            for contract in &contracts {
+                let id = contract.id();
+                new_map.insert(id, Arc::new(contract.clone()));
+            }
+            new_map
+        });
         self
     }
 
@@ -201,45 +212,61 @@ impl TrustedHttpContextProvider {
     /// Add a data contract to the known contracts cache
     pub fn add_known_contract(&self, contract: DataContract) {
         let id = contract.id();
-        let mut known = self.known_contracts.lock().unwrap();
-        known.insert(id, Arc::new(contract));
+        self.known_contracts.rcu(|old| {
+            let mut new_map = (**old).clone();
+            new_map.insert(id, Arc::new(contract.clone()));
+            new_map
+        });
     }
 
     /// Get a data contract from the known contracts cache
     /// Returns None if the contract is not in the cache
     pub fn get_known_contract(&self, id: &Identifier) -> Option<Arc<DataContract>> {
-        let known = self.known_contracts.lock().unwrap();
-        known.get(id).cloned()
+        self.known_contracts.load().get(id).cloned()
     }
 
     /// Remove a data contract from the known contracts cache
     /// Returns true if the contract was present and removed, false otherwise
     pub fn remove_known_contract(&self, id: &Identifier) -> bool {
-        let mut known = self.known_contracts.lock().unwrap();
-        known.remove(id).is_some()
+        let mut was_present = false;
+        self.known_contracts.rcu(|old| {
+            let mut new_map = (**old).clone();
+            was_present = new_map.remove(id).is_some();
+            new_map
+        });
+        was_present
     }
 
     /// Add multiple data contracts to the known contracts cache
     pub fn add_known_contracts(&self, contracts: Vec<DataContract>) {
-        let mut known = self.known_contracts.lock().unwrap();
-        for contract in contracts {
-            let id = contract.id();
-            known.insert(id, Arc::new(contract));
-        }
+        self.known_contracts.rcu(|old| {
+            let mut new_map = (**old).clone();
+            for contract in &contracts {
+                let id = contract.id();
+                new_map.insert(id, Arc::new(contract.clone()));
+            }
+            new_map
+        });
     }
 
     /// Add a token configuration to the known token configurations cache
     pub fn add_known_token_configuration(&self, token_id: Identifier, config: TokenConfiguration) {
-        let mut known = self.known_token_configurations.lock().unwrap();
-        known.insert(token_id, config);
+        self.known_token_configurations.rcu(|old| {
+            let mut new_map = (**old).clone();
+            new_map.insert(token_id, config.clone());
+            new_map
+        });
     }
 
     /// Add multiple token configurations to the known token configurations cache
     pub fn add_known_token_configurations(&self, configs: Vec<(Identifier, TokenConfiguration)>) {
-        let mut known = self.known_token_configurations.lock().unwrap();
-        for (token_id, config) in configs {
-            known.insert(token_id, config);
-        }
+        self.known_token_configurations.rcu(|old| {
+            let mut new_map = (**old).clone();
+            for (token_id, config) in &configs {
+                new_map.insert(*token_id, config.clone());
+            }
+            new_map
+        });
     }
 
     /// Update the quorum caches by fetching current and previous quorums
@@ -262,18 +289,8 @@ impl TrustedHttpContextProvider {
 
     /// Get the total number of quorums in both caches
     pub fn get_cached_quorum_count(&self) -> usize {
-        let current_count = self
-            .current_quorums_cache
-            .lock()
-            .map(|cache| cache.len())
-            .unwrap_or(0);
-
-        let previous_count = self
-            .previous_quorums_cache
-            .lock()
-            .map(|cache| cache.len())
-            .unwrap_or(0);
-
+        let current_count = self.current_quorums_cache.load().len();
+        let previous_count = self.previous_quorums_cache.load().len();
         current_count + previous_count
     }
 
@@ -393,15 +410,16 @@ impl TrustedHttpContextProvider {
         self.last_current_quorums
             .store(Arc::new(Some(quorums.clone())));
 
-        // Cache individual quorums
-        if let Ok(mut cache) = self.current_quorums_cache.lock() {
+        // Cache individual quorums using RCU pattern for lock-free updates
+        self.current_quorums_cache.rcu(|old| {
+            let mut new_map = (**old).clone();
             for quorum in &quorums.data {
                 match hex::decode(&quorum.quorum_hash)
                     .ok()
                     .and_then(|bytes| bytes.try_into().ok())
                 {
                     Some(hash) => {
-                        cache.put(hash, quorum.clone());
+                        new_map.insert(hash, quorum.clone());
                     }
                     None => {
                         debug!(
@@ -411,7 +429,8 @@ impl TrustedHttpContextProvider {
                     }
                 }
             }
-        }
+            new_map
+        });
 
         Ok(quorums)
     }
@@ -445,15 +464,16 @@ impl TrustedHttpContextProvider {
         self.last_previous_quorums
             .store(Arc::new(Some(quorums.clone())));
 
-        // Cache individual quorums
-        if let Ok(mut cache) = self.previous_quorums_cache.lock() {
+        // Cache individual quorums using RCU pattern for lock-free updates
+        self.previous_quorums_cache.rcu(|old| {
+            let mut new_map = (**old).clone();
             for quorum in &quorums.data.quorums {
                 match hex::decode(&quorum.quorum_hash)
                     .ok()
                     .and_then(|bytes| bytes.try_into().ok())
                 {
                     Some(hash) => {
-                        cache.put(hash, quorum.clone());
+                        new_map.insert(hash, quorum.clone());
                     }
                     None => {
                         debug!(
@@ -463,7 +483,8 @@ impl TrustedHttpContextProvider {
                     }
                 }
             }
-        }
+            new_map
+        });
 
         Ok(quorums)
     }
@@ -474,20 +495,16 @@ impl TrustedHttpContextProvider {
         quorum_type: u32,
         quorum_hash: QuorumHash,
     ) -> Result<QuorumData, TrustedContextProviderError> {
-        // Check current cache first
-        if let Ok(mut cache) = self.current_quorums_cache.lock() {
-            if let Some(quorum) = cache.get(&quorum_hash) {
-                debug!("Found quorum in current cache");
-                return Ok(quorum.clone());
-            }
+        // Check current cache first (lock-free read)
+        if let Some(quorum) = self.current_quorums_cache.load().get(&quorum_hash) {
+            debug!("Found quorum in current cache");
+            return Ok(quorum.clone());
         }
 
-        // Check previous cache
-        if let Ok(mut cache) = self.previous_quorums_cache.lock() {
-            if let Some(quorum) = cache.get(&quorum_hash) {
-                debug!("Found quorum in previous cache");
-                return Ok(quorum.clone());
-            }
+        // Check previous cache (lock-free read)
+        if let Some(quorum) = self.previous_quorums_cache.load().get(&quorum_hash) {
+            debug!("Found quorum in previous cache");
+            return Ok(quorum.clone());
         }
 
         // Check if we should refetch
@@ -558,56 +575,52 @@ impl ContextProvider for TrustedHttpContextProvider {
             hex::encode(quorum_hash)
         );
 
-        // Check current cache first
-        if let Ok(mut cache) = self.current_quorums_cache.lock() {
-            if let Some(quorum) = cache.get(&quorum_hash) {
-                debug!("Found quorum in current cache");
+        // Check current cache first (lock-free read)
+        if let Some(quorum) = self.current_quorums_cache.load().get(&quorum_hash) {
+            debug!("Found quorum in current cache");
 
-                // Parse the public key from the 'key' field
-                let pubkey_hex = quorum.key.trim_start_matches("0x");
-                let pubkey_bytes = hex::decode(pubkey_hex).map_err(|e| {
-                    ContextProviderError::Generic(format!("Invalid hex in public key: {}", e))
-                })?;
+            // Parse the public key from the 'key' field
+            let pubkey_hex = quorum.key.trim_start_matches("0x");
+            let pubkey_bytes = hex::decode(pubkey_hex).map_err(|e| {
+                ContextProviderError::Generic(format!("Invalid hex in public key: {}", e))
+            })?;
 
-                if pubkey_bytes.len() != 48 {
-                    return Err(ContextProviderError::Generic(format!(
-                        "Invalid public key length: {} bytes, expected 48",
-                        pubkey_bytes.len()
-                    )));
-                }
-
-                return pubkey_bytes.try_into().map_err(|_| {
-                    ContextProviderError::Generic(
-                        "Failed to convert public key to array".to_string(),
-                    )
-                });
+            if pubkey_bytes.len() != 48 {
+                return Err(ContextProviderError::Generic(format!(
+                    "Invalid public key length: {} bytes, expected 48",
+                    pubkey_bytes.len()
+                )));
             }
+
+            return pubkey_bytes.try_into().map_err(|_| {
+                ContextProviderError::Generic(
+                    "Failed to convert public key to array".to_string(),
+                )
+            });
         }
 
-        // Check previous cache
-        if let Ok(mut cache) = self.previous_quorums_cache.lock() {
-            if let Some(quorum) = cache.get(&quorum_hash) {
-                debug!("Found quorum in previous cache");
+        // Check previous cache (lock-free read)
+        if let Some(quorum) = self.previous_quorums_cache.load().get(&quorum_hash) {
+            debug!("Found quorum in previous cache");
 
-                // Parse the public key from the 'key' field
-                let pubkey_hex = quorum.key.trim_start_matches("0x");
-                let pubkey_bytes = hex::decode(pubkey_hex).map_err(|e| {
-                    ContextProviderError::Generic(format!("Invalid hex in public key: {}", e))
-                })?;
+            // Parse the public key from the 'key' field
+            let pubkey_hex = quorum.key.trim_start_matches("0x");
+            let pubkey_bytes = hex::decode(pubkey_hex).map_err(|e| {
+                ContextProviderError::Generic(format!("Invalid hex in public key: {}", e))
+            })?;
 
-                if pubkey_bytes.len() != 48 {
-                    return Err(ContextProviderError::Generic(format!(
-                        "Invalid public key length: {} bytes, expected 48",
-                        pubkey_bytes.len()
-                    )));
-                }
-
-                return pubkey_bytes.try_into().map_err(|_| {
-                    ContextProviderError::Generic(
-                        "Failed to convert public key to array".to_string(),
-                    )
-                });
+            if pubkey_bytes.len() != 48 {
+                return Err(ContextProviderError::Generic(format!(
+                    "Invalid public key length: {} bytes, expected 48",
+                    pubkey_bytes.len()
+                )));
             }
+
+            return pubkey_bytes.try_into().map_err(|_| {
+                ContextProviderError::Generic(
+                    "Failed to convert public key to array".to_string(),
+                )
+            });
         }
 
         // If not in cache and refetch is disabled, return error
@@ -666,12 +679,10 @@ impl ContextProvider for TrustedHttpContextProvider {
         id: &Identifier,
         platform_version: &PlatformVersion,
     ) -> Result<Option<Arc<DataContract>>, ContextProviderError> {
-        // First check known contracts cache
-        let known = self.known_contracts.lock().unwrap();
-        if let Some(contract) = known.get(id) {
+        // First check known contracts cache (lock-free read)
+        if let Some(contract) = self.known_contracts.load().get(id) {
             return Ok(Some(contract.clone()));
         }
-        drop(known);
 
         // Check if this is a system data contract and the corresponding feature is enabled
         #[cfg(any(
@@ -783,12 +794,10 @@ impl ContextProvider for TrustedHttpContextProvider {
         &self,
         token_id: &Identifier,
     ) -> Result<Option<TokenConfiguration>, ContextProviderError> {
-        // First check known token configurations cache
-        let known = self.known_token_configurations.lock().unwrap();
-        if let Some(config) = known.get(token_id) {
+        // First check known token configurations cache (lock-free read)
+        if let Some(config) = self.known_token_configurations.load().get(token_id) {
             return Ok(Some(config.clone()));
         }
-        drop(known);
 
         // Delegate to fallback provider if available
         if let Some(ref provider) = self.fallback_provider {

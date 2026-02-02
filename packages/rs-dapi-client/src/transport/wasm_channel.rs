@@ -1,6 +1,11 @@
 //! Listing of gRPC requests used in DAPI.
+//!
+//! This module provides WASM-compatible gRPC transport for browser environments.
+//! It includes request serialization to prevent "already locked to a reader" errors
+//! that can occur when concurrent gRPC calls are made through wasm-streams.
 
 use std::future::Future;
+use std::sync::Arc;
 use std::time::Duration;
 
 use super::TransportError;
@@ -11,10 +16,25 @@ use dapi_grpc::platform::v0::platform_client::PlatformClient;
 use dapi_grpc::tonic::{self as tonic, Status};
 use futures::channel::oneshot;
 use futures::future::BoxFuture;
+use futures::lock::Mutex;
 use futures::{FutureExt, TryFutureExt};
 use http::Response;
+use once_cell::sync::Lazy;
 use tonic_web_wasm_client::Client;
 use wasm_bindgen_futures::spawn_local;
+
+/// Global mutex to serialize WASM gRPC requests.
+///
+/// This prevents wasm-streams "already locked to a reader" errors that occur
+/// when multiple concurrent gRPC calls try to access the same ReadableStream.
+/// By serializing requests at the transport layer, we ensure only one request
+/// is processed at a time, avoiding stream conflicts.
+///
+/// Note: This is a tradeoff between concurrency and correctness. While this
+/// limits parallel requests, it prevents the deadlock/hang issues that occur
+/// without serialization. For most use cases, the sequential overhead is
+/// acceptable compared to request failures.
+static WASM_REQUEST_SERIALIZER: Lazy<Arc<Mutex<()>>> = Lazy::new(|| Arc::new(Mutex::new(())));
 
 /// Platform Client using gRPC transport.
 pub type PlatformGrpcClient = PlatformClient<WasmClient>;
@@ -50,8 +70,14 @@ impl tonic::client::GrpcService<tonic::body::Body> for WasmClient {
 
     fn call(&mut self, request: http::Request<tonic::body::Body>) -> Self::Future {
         let mut client = self.client.clone();
+        let serializer = WASM_REQUEST_SERIALIZER.clone();
 
         let fut = async move {
+            // Acquire serializer lock to prevent concurrent stream access.
+            // This ensures only one gRPC request is in-flight at a time,
+            // preventing wasm-streams "already locked to a reader" errors.
+            let _guard = serializer.lock().await;
+
             match client.call(request).await {
                 Ok(resp) => {
                     let (parts, body) = resp.into_parts();
@@ -60,6 +86,7 @@ impl tonic::client::GrpcService<tonic::body::Body> for WasmClient {
                 }
                 Err(e) => Err(wasm_client_error_to_status(e)),
             }
+            // _guard is dropped here, releasing the lock after the request completes
         };
 
         // For WASM, we need to use into_send to make the future Send
