@@ -26,6 +26,7 @@ import DAPIClient from '@dashevo/dapi-client';
 import { DashRpcClient, TransactionBroadcaster } from '@dashevo/dash-rpc-client';
 import { TransactionFinder, FinderMode } from '../../src/index.js';
 import { config } from 'dotenv';
+import { getDAPIClientOptions } from '../helpers/dapi-config.js';
 import type {
   TransactionEvent,
   InstantLockEvent,
@@ -148,12 +149,8 @@ describe('Automated Realtime Monitoring', () => {
     }
     console.log('');
 
-    // Initialize DAPI client
-    dapiClient = new DAPIClient({
-      network: NETWORK as 'testnet' | 'mainnet',
-      timeout: 60000,
-      retries: 5,
-    });
+    // Initialize DAPI client with healthy nodes
+    dapiClient = new DAPIClient(getDAPIClientOptions(NETWORK as 'testnet' | 'mainnet'));
 
     // Initialize finder
     finder = new TransactionFinder({
@@ -228,11 +225,21 @@ describe('Automated Realtime Monitoring', () => {
     let broadcastTxid: string;
     try {
       timestamps.txBroadcast = Date.now();
-      const result = await broadcaster.sendToAddress(testAddress);
+      // Use confirmed UTXOs only (minConf=1) to avoid unconfirmed chains
+      // from prior test runs that miners may deprioritize
+      const result = await broadcaster.sendToAddress(testAddress, 1);
       broadcastTxid = result.txid;
 
       console.log(`✅ Transaction broadcast: ${broadcastTxid}`);
       console.log(`   Consolidated amount: ${result.amount} DASH`);
+
+      // Pre-register the txid so tracker watches for it in merkle blocks
+      finder.preRegisterTransaction(broadcastTxid);
+
+      // Allow time for P2P propagation from local dashd to remote DAPI nodes
+      console.log('   Waiting 3s for P2P propagation...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       console.log(`   Waiting for confirmations...`);
       console.log('');
     } catch (error) {
@@ -293,11 +300,7 @@ describe('Automated Realtime Monitoring', () => {
     }
 
     const status = finder.getStatus();
-    console.log('Monitor Status:', {
-      active: status.active,
-      trackedTransactions: status.trackedTransactions,
-      chainLockHeight: status.chainLockHeight,
-    });
+    console.log('Monitor Status:', status);
     console.log('═'.repeat(70));
 
     // Find OUR transaction in the events (there may be other testnet transactions)

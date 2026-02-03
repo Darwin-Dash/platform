@@ -25,9 +25,9 @@ export class TransactionBroadcaster {
    * @param address - Address to consolidate (sends all funds back to itself)
    * @returns Transaction result with txid and amount sent
    */
-  async sendToAddress(address: string): Promise<BroadcastResult> {
+  async sendToAddress(address: string, minConf: number = 0): Promise<BroadcastResult> {
     // Get all UTXOs for this address
-    const utxos = await this.client.listUnspent(0, 9999999, [address]);
+    const utxos = await this.client.listUnspent(minConf, 9999999, [address]);
 
     if (!utxos || utxos.length === 0) {
       throw new Error(`No UTXOs available for address ${address}`);
