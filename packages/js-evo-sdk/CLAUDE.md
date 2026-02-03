@@ -115,6 +115,145 @@ await expect(someFunction()).rejects.toThrow('error message');
 - Amount validation happens before WASM stub - use valid amounts when testing other error paths
 - `getIdentityIds()` creates its own DAPIClient internally - needs integration testing, not unit testing
 
+## Critical SDK Knowledge
+
+### Asset Lock Confirmation Strategy
+
+Asset lock transactions (for identity creation/topup) can be confirmed via **InstantLock OR ChainLock** - whichever comes first:
+
+- **InstantLock** (fast path, ~2 seconds): LLMQ-based instant confirmation
+- **ChainLock** (fallback, ~30-60 seconds): Block-based confirmation with LLMQ signature
+
+The code polls for both and uses whichever confirms first. This is NOT a two-step process requiring both - **either proof type is sufficient** for creating identity/topup transactions.
+
+See `src/identities/coordination/asset-lock-proof-manager.ts` for implementation.
+
+### Transaction Detection Modes
+
+The SDK uses `@dashevo/transaction-finder` with two modes:
+
+- **Historic Mode** (`FinderMode.HISTORIC`): Scans blockchain for existing UTXOs
+  - Used by `sdk.identities.findSpendableUTXO()`
+  - For "Already sent" funding flow
+  - Implemented in `src/identities/coordination/utxo-finder.ts`
+
+- **On-Demand Mode** (`FinderMode.REALTIME`): Monitors for incoming transactions
+  - Used by `AssetLockProofManager.waitForConfirmation()`
+  - For "Sending now" funding flow
+  - Emits events when InstantLock or ChainLock detected
+  - Implemented in `src/identities/coordination/wallet-coordinator.ts`
+
+### Demo App Real Mode
+
+The demo app's `TransactionFinderService` (`demo/web/services/transaction-finder-service.js`) supports both mock and real modes:
+
+- **Mock mode**: Simulates transaction detection for testing
+- **Real mode**: Uses SDK's `findSpendableUTXO()` and REALTIME TransactionFinder
+
+Real mode requires:
+- SDK instance (`service.setSDK(sdk)`)
+- Mnemonic (`service.setMnemonic(mnemonic)`)
+
+### WASM Module Corruption: NEVER Import `@dashevo/dapi-client` Statically
+
+**`@dashevo/dapi-client` loads `wasm-dpp` at import time. If `wasm-dpp` and `wasm-sdk` are both loaded in the same JS runtime, `wasm-sdk` state is corrupted and all proved WASM operations (getIdentity, getIdentityBalance, etc.) will hang indefinitely.**
+
+Symptoms:
+- `getIdentity()` hangs forever for real identities but works for non-existent ones
+- `getIdentityBalance()` hangs forever
+- Any proved fetch operation never returns
+
+Rules:
+1. **NEVER** use `import DAPIClient from '@dashevo/dapi-client'` (static runtime import)
+2. **ALWAYS** use `import type DAPIClientType from '@dashevo/dapi-client'` for type annotations
+3. **ALWAYS** use `const { default: DAPIClient } = await import('@dashevo/dapi-client')` when you actually need an instance
+4. **DEFER** the dynamic import as late as possible — ideally only in the code path that needs it, not in `beforeAll` or module scope
+5. This applies to ALL files: source code, tests, scripts
+
+The source files (`wallet-coordinator.ts`, `utxo-finder.ts`, `identity-creator.ts`, `identity-updater.ts`) already follow this pattern. Test files must too.
+
+See `docs/WASM_SDK_TESTNET_RWLOCK_ISSUE.md` for full investigation details.
+
+### WASM Concurrency: All Lock Sources Are Fixed
+
+Three fixes cover all WASM lock sources:
+1. **`WASM_REQUEST_SERIALIZER`** (`rs-dapi-client/src/transport/wasm_channel.rs`) — serializes all gRPC calls to prevent wasm-streams "already locked to a reader" errors. Our addition (not upstream). Do not remove.
+2. **Cache `RwLock` → `Mutex`** (`rs-sdk/src/mock/provider.rs`) — prevents LRU cache deadlocks in single-threaded WASM async.
+3. **ArcSwap lock-free caches** (`rs-dapi-client` address list) — eliminates lock contention on reads.
+
+Other `RwLock` usage in the codebase is safe for WASM:
+- `CURRENT_PLATFORM_VERSION` (`rs-dpp/src/version/mod.rs`) — all call sites are synchronous, no lock held across `.await`.
+- `DriveCache` (`rs-drive/src/cache/mod.rs`) — uses `parking_lot::RwLock` but only compiles under the "server" feature, not the "verify" feature used by WASM.
+
+The worker process (`workers/wasm-operations.js`) provides additional isolation by running WASM in a child process with sequential sub-batch processing and `resetWasmSdk()` between batches.
+
+If "already locked to a reader" errors reappear, check:
+1. The WASM binary has been rebuilt (`cd packages/wasm-sdk && ./build.sh`)
+2. `max_decoding_message_size` is set for large gRPC responses (exists on `feat-wasm-sdk-rwlock-fix` branch)
+
+### Asset Lock Transactions: Change MUST Go to Source Address
+
+When creating asset lock transactions (identity creation or top-up), change **must always** be routed back to the source address — the address that owns the input UTXO. This is the default (`useSourceAsChangeAddress = true`) in both `identity-creator.ts` and `identity-updater.ts`.
+
+**Do not change this default.** Routing change to a different address (e.g., an internal HD wallet change address) would make the funds invisible to `findSpendableUTXO()` and TransactionFinder, which only scan known external addresses.
+
+## RPC Client for Testing
+
+For E2E tests that need to send real transactions (e.g., funding wallet addresses), use the `@dashevo/dash-rpc-client` package:
+
+```typescript
+import { DashRpcClient } from '@dashevo/dash-rpc-client';
+
+const rpcClient = new DashRpcClient({
+  network: 'testnet',
+  url: process.env.TESTNET_RPC_ENDPOINT,
+  user: process.env.TESTNET_RPC_USERNAME,
+  pass: process.env.TESTNET_RPC_PASSWORD,
+  wallet: process.env.TESTNET_WALLET,  // Pre-funded wallet
+});
+
+// Send DASH to derived address (for funding)
+const txid = await rpcClient.sendToAddress(address, 0.001);
+
+// List UTXOs
+const utxos = await rpcClient.listUnspent(0, 9999999, [address]);
+
+// Get new address
+const newAddress = await rpcClient.getNewAddress();
+```
+
+**CRITICAL: RPC is for FUNDING only, not SDK operations.**
+SDK operations (identity creation, topup, etc.) ALWAYS use DAPI. The RPC client is only used to fund addresses during E2E tests when a pre-funded wallet is available.
+
+### Environment Variables for RPC
+
+RPC credentials are stored in `.env` in this package:
+
+```bash
+# Required for real blockchain E2E tests
+TESTNET_RPC_ENDPOINT=http://localhost:19998
+TESTNET_RPC_USERNAME=dash
+TESTNET_RPC_PASSWORD=dash
+TESTNET_WALLET=platformcli  # Pre-funded wallet with testnet DASH
+```
+
+### Running Real Blockchain Tests
+
+With RPC configured, run real transaction tests:
+
+```bash
+# On-demand transaction detection (realtime mode)
+yarn test:e2e demo/tests/e2e/real-mode-funding.spec.js --project=chromium --grep "detects real InstantLock transaction"
+
+# Historic UTXO scan
+yarn test:e2e demo/tests/e2e/real-mode-funding.spec.js --project=chromium --grep "finds existing UTXO in historic scan"
+```
+
+These tests:
+- Connect to local dashd via RPC at localhost:19998
+- Send real DASH on testnet from the platformcli wallet
+- Verify InstantLock/ChainLock detection works end-to-end
+
 ## Related Files
 
 - `package.json` - Dependencies and scripts
