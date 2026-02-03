@@ -176,10 +176,11 @@ See `docs/WASM_SDK_TESTNET_RWLOCK_ISSUE.md` for full investigation details.
 
 ### WASM Concurrency: All Lock Sources Are Fixed
 
-Three fixes cover all WASM lock sources:
-1. **`WASM_REQUEST_SERIALIZER`** (`rs-dapi-client/src/transport/wasm_channel.rs`) — serializes all gRPC calls to prevent wasm-streams "already locked to a reader" errors. Our addition (not upstream). Do not remove.
-2. **Cache `RwLock` → `Mutex`** (`rs-sdk/src/mock/provider.rs`) — prevents LRU cache deadlocks in single-threaded WASM async.
-3. **ArcSwap lock-free caches** (`rs-dapi-client` address list) — eliminates lock contention on reads.
+Two fixes resolved all WASM lock issues:
+1. **Cache `RwLock` → `Mutex`** (`rs-sdk/src/mock/provider.rs`) — prevents LRU cache deadlocks in single-threaded WASM async.
+2. **ArcSwap lock-free caches** (`rs-dapi-client` address list) — eliminates lock contention on reads.
+
+The `WASM_REQUEST_SERIALIZER` was **removed** — it forced all gRPC calls to execute sequentially, but analysis of `tonic-web-wasm-client` v0.8.0 confirmed each `fetch()` creates an independent `Response` with its own `ReadableStream`. The "already locked to a reader" errors were caused by the cache `RwLock` and context provider `Mutex` (fixed above), not by concurrent gRPC calls. gRPC requests now run concurrently in WASM.
 
 Other `RwLock` usage in the codebase is safe for WASM:
 - `CURRENT_PLATFORM_VERSION` (`rs-dpp/src/version/mod.rs`) — all call sites are synchronous, no lock held across `.await`.

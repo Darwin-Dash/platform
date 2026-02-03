@@ -54,15 +54,24 @@ declare const process: { env: { [key: string]: string | undefined } } | undefine
  * // Fetch an identity
  * const identity = await identities.fetch(identityId);
  *
- * // Create a new identity
- * const result = await identities.createWithWallet(
+ * // Find a UTXO, then create an identity
+ * const utxo = await identities.findSpendableUTXO({ mnemonic, startHeight: 1000000 });
+ * const result = await identities.createWithUTXO({
  *   mnemonic,
- *   200000,
- *   { onProgress: (e) => console.log(e.message) }
- * );
+ *   utxo: utxo.utxo,
+ *   amount: 200000,
+ *   derivedAddresses: utxo.derivedAddresses,
+ * });
  *
  * // Top up an identity
- * await identities.topUpWithWallet(identityId, 50000, mnemonic);
+ * const utxo2 = await identities.findSpendableUTXO({ mnemonic, startHeight: 1000000 });
+ * await identities.topupWithUTXO({
+ *   mnemonic,
+ *   identityId,
+ *   utxo: utxo2.utxo,
+ *   amount: 50000,
+ *   derivedAddresses: utxo2.derivedAddresses,
+ * });
  *
  * // Transfer credits between identities
  * await identities.creditTransfer({
@@ -412,36 +421,6 @@ export class IdentitiesFacade {
     return w.identityCreate(proofJson, assetLockPrivateKeyWif, keysJson);
   }
 
-  /**
-   * Create a new identity with wallet coordination
-   *
-   * @param mnemonic 12-word BIP39 mnemonic
-   * @param amount Amount in duffs to fund identity with
-   * @param options Advanced options
-   * @returns Identity creation result
-   *
-   * @example
-   * ```typescript
-   * const result = await identities.createWithWallet(
-   *   'abandon abandon ... about',
-   *   200000,
-   *   { onProgress: (e) => console.log(e.message) }
-   * );
-   * console.log('Created:', result.identityId);
-   * ```
-   */
-  async createWithWallet(
-    mnemonic: string,
-    amount: number,
-    options?: {
-      startHeight?: number;
-      useSourceAsChangeAddress?: boolean;
-      onProgress?: (event: any) => void;
-    }
-  ): Promise<any> {
-    return this.creator.createWithWallet(mnemonic, amount, options);
-  }
-
   // ============================================================================
   // UTXO-First Operations (Modular Flow)
   // ============================================================================
@@ -495,8 +474,7 @@ export class IdentitiesFacade {
   /**
    * Create a new identity with a pre-found UTXO
    *
-   * Unlike createWithWallet which scans the blockchain for UTXOs, this method
-   * uses a UTXO that was already found via findSpendableUTXO(). This provides:
+   * Uses a UTXO that was already found via findSpendableUTXO(). This provides:
    * - Faster execution (no redundant blockchain scan)
    * - Separation between UTXO finding and identity creation
    * - Ability to show user the balance before committing
@@ -536,8 +514,7 @@ export class IdentitiesFacade {
   /**
    * Top up an existing identity with a pre-found UTXO
    *
-   * Unlike topUpWithWallet which scans the blockchain for UTXOs, this method
-   * uses a UTXO that was already found via findSpendableUTXO(). This provides:
+   * Uses a UTXO that was already found via findSpendableUTXO(). This provides:
    * - Faster execution (no redundant blockchain scan)
    * - Separation between UTXO finding and top-up operation
    * - Ability to show user the balance before committing
@@ -593,39 +570,6 @@ export class IdentitiesFacade {
     const proofJson = JSON.stringify(assetLockProof);
     const w = await this.sdk.getWasmSdkConnected();
     return w.identityTopUp(identityId, proofJson, assetLockPrivateKeyWif);
-  }
-
-  /**
-   * Top up an existing identity with wallet coordination
-   *
-   * @param identityId Identity to top up (Base58)
-   * @param amount Amount in duffs
-   * @param mnemonic 12-word BIP39 mnemonic for funding
-   * @param options Advanced options
-   * @returns Top-up result
-   *
-   * @example
-   * ```typescript
-   * const result = await identities.topUpWithWallet(
-   *   identityId,
-   *   50000,
-   *   mnemonic,
-   *   { onProgress: (e) => console.log(e.message) }
-   * );
-   * console.log('New balance:', result.newBalance);
-   * ```
-   */
-  async topUpWithWallet(
-    identityId: string,
-    amount: number,
-    mnemonic: string,
-    options?: {
-      startHeight?: number;
-      useSourceAsChangeAddress?: boolean;
-      onProgress?: (event: any) => void;
-    }
-  ): Promise<any> {
-    return this.updater.topUpWithWallet(identityId, amount, mnemonic, options);
   }
 
   // ============================================================================
@@ -847,67 +791,72 @@ export class IdentitiesFacade {
     let currentIndex = 0;
     let batchNumber = 0;
 
-    // Iterative discovery with gap limit
+    // Iterative discovery with gap limit — concurrent batches
     while (consecutiveNotFound < gapLimit) {
       batchNumber++;
+      const batchStartIndex = currentIndex;
+      const batchIndices: number[] = [];
+      for (let i = 0; i < batchSize; i++) {
+        batchIndices.push(currentIndex++);
+      }
 
-      // Process batch
-      for (let i = 0; i < batchSize && consecutiveNotFound < gapLimit; i++) {
-        const index = currentIndex++;
-
+      // Step 1: Derive all keys in batch (local, fast)
+      const batchItems: Array<{ index: number; publicKeyHashHex: string }> = [];
+      for (const index of batchIndices) {
         try {
-          // Build DIP13 identity key derivation path for key 0 (MASTER)
-          // Format: m/9'/coin_type'/5'/0'/0'/identityIndex'/keyIndex'
           const path = `m/9'/${coinType}'/5'/0'/0'/${index}'/0'`;
-
-          // Use WASM SDK wallet function to derive key
           const childKey = await walletFunctions.deriveKeyFromSeedWithPath({
             mnemonic,
             passphrase: null,
             path,
             network
           });
-
-          // Get public key and compute hash
-          const publicKeyHex = childKey.publicKey;
-
-          // Use dashcore-lib to compute public key hash (RIPEMD160(SHA256(pubkey)))
-          const PublicKey = dashcoreLib.PublicKey;
-          const pubKey = new PublicKey(publicKeyHex);
+          const pubKey = new dashcoreLib.PublicKey(childKey.publicKey);
           const publicKeyHashHex = pubKey.toAddress(network).hashBuffer.toString('hex');
-
-          // Query Platform via WASM SDK (now safe for concurrent use with RwLock fix)
-          const identity = await this.byPublicKeyHash(publicKeyHashHex);
-
-          if (identity) {
-            // Convert WASM object to plain JS object with proper types
-            const identityJson = identity.toJSON();
-            const identityId = identityJson.id;
-
-            // Store the full identity (no need to re-fetch later)
-            foundIdentities.push({
-              index,
-              identityId,
-              publicKeyHash: publicKeyHashHex,
-              balance: identityJson.balance,
-              revision: identityJson.revision,
-              identityJson,
-            });
-            consecutiveNotFound = 0;
-            logger.debug(`  [${index}] ${identityId} (balance: ${identityJson.balance})`);
-          } else {
-            consecutiveNotFound++;
-          }
+          batchItems.push({ index, publicKeyHashHex });
         } catch (error: any) {
           logger.debug(`Key derivation error for index ${index}: ${error.message}`);
+        }
+      }
+
+      // Step 2: Query Platform concurrently for entire batch
+      const results = await Promise.all(
+        batchItems.map(async ({ index, publicKeyHashHex }) => {
+          try {
+            const identity = await this.byPublicKeyHash(publicKeyHashHex);
+            return { index, publicKeyHashHex, identity };
+          } catch (error: any) {
+            logger.debug(`Lookup error for index ${index}: ${error.message}`);
+            return { index, publicKeyHashHex, identity: null };
+          }
+        })
+      );
+
+      // Step 3: Process results in order to maintain correct gap counting
+      for (const { index, publicKeyHashHex, identity } of results) {
+        if (identity) {
+          const identityJson = identity.toJSON();
+          const identityId = identityJson.id;
+          foundIdentities.push({
+            index,
+            identityId,
+            publicKeyHash: publicKeyHashHex,
+            balance: identityJson.balance,
+            revision: identityJson.revision,
+            identityJson,
+          });
+          consecutiveNotFound = 0;
+          logger.debug(`  [${index}] ${identityId} (balance: ${identityJson.balance})`);
+        } else {
           consecutiveNotFound++;
         }
+      }
 
-        // Check gap limit
-        if (consecutiveNotFound >= gapLimit) {
-          logger.debug(`Gap limit (${gapLimit}) reached at index ${index}`);
-          break;
-        }
+      // Account for indices that failed key derivation
+      consecutiveNotFound += (batchIndices.length - batchItems.length);
+
+      if (consecutiveNotFound >= gapLimit) {
+        logger.debug(`Gap limit (${gapLimit}) reached at batch ending index ${currentIndex - 1}`);
       }
 
       // Progress callback
@@ -944,7 +893,7 @@ export class IdentitiesFacade {
    * console.log(`Next available index: ${nextIndex}`);
    *
    * // Use for identity creation
-   * await sdk.identities.createWithWallet(mnemonic, 200000, { identityIndex: nextIndex });
+   * await sdk.identities.createWithUTXO({ mnemonic, utxo, amount: 200000, identityIndex: nextIndex });
    * ```
    */
   async getNextAvailableIndex(
@@ -962,6 +911,51 @@ export class IdentitiesFacade {
     }
 
     const maxIndex = Math.max(...identities.map(i => i.index));
+    return maxIndex + 1;
+  }
+
+  /**
+   * Find the first unused identity index, filling gaps.
+   *
+   * Unlike getNextAvailableIndex() which always returns max + 1,
+   * this method finds the first gap in the used index sequence.
+   * Given used indexes [0, 1, 3], returns 2 (not 4).
+   *
+   * @param mnemonic 12-word BIP39 mnemonic
+   * @param options Discovery options
+   * @returns First unused index (gap-aware)
+   *
+   * @example
+   * ```typescript
+   * const nextIndex = await sdk.identities.getNextFreeIndex(mnemonic);
+   * // If identities exist at [0, 1, 3], returns 2
+   * // If identities exist at [0, 1, 2], returns 3
+   * // If no identities exist, returns 0
+   * ```
+   */
+  async getNextFreeIndex(
+    mnemonic: string,
+    options?: {
+      gapLimit?: number;
+      batchSize?: number;
+      onProgress?: (state: { currentIndex: number; foundCount: number; batchNumber: number }) => void;
+    }
+  ): Promise<number> {
+    const identities = await this.getIdentityIds(mnemonic, options);
+
+    if (identities.length === 0) {
+      return 0;
+    }
+
+    const usedIndexes = new Set(identities.map(i => i.index));
+    const maxIndex = Math.max(...usedIndexes);
+
+    // Find first gap
+    for (let i = 0; i <= maxIndex; i++) {
+      if (!usedIndexes.has(i)) return i;
+    }
+
+    // No gaps — use next after max
     return maxIndex + 1;
   }
 }

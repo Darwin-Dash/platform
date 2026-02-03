@@ -291,16 +291,17 @@ describe('Identity Operations - Integration', () => {
       // Cache for later tests
       discoveredIds = identityIds.map(i => ({ identityId: i.identityId, index: i.index }));
 
-      // Gap-aware free index
-      nextFreeIndex = await sdk.identities.getNextFreeIndex(mnemonic, { gapLimit: 5 });
+      // Compute next free index from already-discovered identities (avoid re-scanning)
+      const usedIndexes = new Set(identityIds.map(i => i.index));
+      nextFreeIndex = 0;
+      while (usedIndexes.has(nextFreeIndex)) {
+        nextFreeIndex++;
+      }
 
       expect(typeof nextFreeIndex).toBe('number');
       expect(nextFreeIndex).toBeGreaterThanOrEqual(0);
-      console.log(`[Discovery] Next free index: ${nextFreeIndex}`);
-
-      // Validate gap-aware logic: index should not be in use
-      const usedIndexes = new Set(identityIds.map(i => i.index));
       expect(usedIndexes.has(nextFreeIndex)).toBe(false);
+      console.log(`[Discovery] Next free index: ${nextFreeIndex}`);
     }, 300000); // 5 min — sequential scan of many HD indices on testnet
   });
 

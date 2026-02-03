@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { config } from 'dotenv';
+
+// Load .env file at config time
+config();
 
 export default defineConfig({
   test: {
@@ -7,21 +11,29 @@ export default defineConfig({
     environment: 'node',
 
     // Test file patterns - include both unit and integration tests
+    // NOTE: When running specific tests with --run, also use path to limit file collection
     include: [
       'tests/unit/**/*.spec.ts',
       'tests/integration/**/*.spec.ts',
     ],
+
+    // Isolate test files to prevent WASM conflicts
+    isolate: true,
     exclude: ['node_modules', 'dist'],
 
     // Timeout configuration
     testTimeout: 120000,
     hookTimeout: 60000,
 
-    // Run tests sequentially to avoid WASM concurrency issues
-    pool: 'forks',
+    // Run tests with threads pool - forks have async behavior issues with WASM
+    // The forks pool creates child processes that don't properly handle WASM async operations,
+    // causing "already locked to a reader" errors from wasm-streams
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: true, // Single process to prevent WASM conflicts
+      threads: {
+        singleThread: true, // Single thread to prevent WASM conflicts
+        maxThreads: 1, // Limit to 1 worker thread to prevent parallel file execution
+        minThreads: 1, // Don't spawn extra threads
       },
     },
 
@@ -39,6 +51,9 @@ export default defineConfig({
     // Setup files
     setupFiles: ['tests/setup.ts'],
 
+    // Stop on first failure — integration tests are sequential and dependent
+    bail: 1,
+
     // Reporter
     reporter: 'verbose',
 
@@ -54,7 +69,8 @@ export default defineConfig({
       // Use non-compressed WASM SDK in tests to avoid dynamic import issues
       // The compressed version uses `new Function('return import("node:zlib")')`
       // which Vitest's VM doesn't support
-      '@dashevo/wasm-sdk/compressed': '@dashevo/wasm-sdk',
+      // Map to the explicit dist path for correct resolution
+      '@dashevo/wasm-sdk/compressed': path.resolve(__dirname, '../wasm-sdk/dist/sdk.js'),
     },
   },
 });
