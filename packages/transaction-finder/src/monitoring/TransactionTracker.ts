@@ -63,9 +63,17 @@ export class TransactionTracker {
    */
   recordInstantLock(txid: string, timestamp: number, instantLockHex?: string): boolean {
     const tx = this.transactions.get(txid);
-    if (tx && !tx.instantLockTime) {
+    if (!tx) return false;
+
+    // Always store hex when provided, even if IS was already recorded by poller.
+    // The poller detects IS via boolean flag (no hex); the stream delivers raw
+    // proof bytes later. Both must be accepted.
+    if (instantLockHex && !tx.instantLockHex) {
+      tx.instantLockHex = instantLockHex;
+    }
+
+    if (!tx.instantLockTime) {
       tx.instantLockTime = timestamp;
-      tx.instantLockHex = instantLockHex || null;
       if (tx.status === 'pending') {
         tx.status = 'instantlocked';
       }
@@ -107,6 +115,26 @@ export class TransactionTracker {
         this.blockHeightMap.set(blockHeight, []);
       }
       this.blockHeightMap.get(blockHeight)!.push(txid);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Record ChainLock confirmation for a specific transaction by txid.
+   * Used by the polling-based TransactionStatusPoller when getTransaction()
+   * reports isChainLocked for an individual txid.
+   * @param txid Transaction ID
+   * @param timestamp Time of ChainLock detection
+   * @returns true if newly recorded, false if already existed
+   */
+  recordChainLockByTxid(txid: string, timestamp: number): boolean {
+    const tx = this.transactions.get(txid);
+    if (tx && !tx.chainLockTime) {
+      tx.chainLockTime = timestamp;
+      if (tx.status === 'instantlocked' || tx.status === 'pending') {
+        tx.status = 'chainlocked';
+      }
       return true;
     }
     return false;

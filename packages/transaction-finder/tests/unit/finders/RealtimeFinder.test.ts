@@ -1248,6 +1248,201 @@ describe('RealtimeFinder', () => {
   });
 
   //
+  // Scenario 9: InstantLock Hex Race Condition Fix
+  //
+  describe('InstantLock Hex Race Condition', () => {
+    it('onInstantLock fires with hex even when poller already detected IS', async () => {
+      // This tests Bug 1 + Bug 2: poller records IS without hex, then stream
+      // delivers hex. The callback should fire with hex on the stream delivery.
+      const configNoReconnect: RealtimeFinderConfig = {
+        ...config,
+        streamReconnectInterval: 0,
+        reconnectOnPreRegister: false,
+        enableTransactionPolling: false, // We'll simulate poller manually
+      };
+
+      const finder = new RealtimeFinder(configNoReconnect);
+      const onInstantLock = vi.fn();
+
+      const tx = createMockTransaction({
+        outputs: [{ satoshis: 100000, address: config.addresses[0] }],
+      });
+
+      // Stream delivers transaction first, then IS with hex
+      const instantLock = createMockInstantLock(tx.hash);
+
+      // First: set up stream with ONLY the transaction (no IS yet)
+      const streamBuilder1 = new MockStreamBuilder();
+      streamBuilder1.addTransactions([tx.toBuffer()]);
+      mockDAPIClient.setTransactionStreamMessages(streamBuilder1.build());
+
+      const cleanup = await finder.monitorAddresses(config.addresses, {
+        onInstantLock,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Simulate poller detecting IS first (no hex) — directly access tracker
+      const trackerTx = finder.getTransaction(tx.hash);
+      expect(trackerTx).toBeDefined();
+      expect(trackerTx!.status).toBe('pending');
+
+      // Manually record IS via tracker (simulating what poller does)
+      // Access tracker through the finder's internal state
+      // The poller calls tracker.recordInstantLock(txid, timestamp) without hex
+      (finder as any).tracker.recordInstantLock(tx.hash, Date.now());
+
+      const afterPoller = finder.getTransaction(tx.hash);
+      expect(afterPoller!.status).toBe('instantlocked');
+      expect(afterPoller!.instantLockHex).toBeNull(); // Poller has no hex
+
+      // Now set up new stream with the IS proof (simulating stream delivery after poller)
+      const streamBuilder2 = new MockStreamBuilder();
+      streamBuilder2
+        .addTransactions([tx.toBuffer()])
+        .addInstantLock(instantLock.toBuffer());
+      mockDAPIClient.setTransactionStreamMessages(streamBuilder2.build());
+
+      // Trigger reconnect to get new stream with IS
+      await (finder as any).reconnectStream();
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // The onInstantLock callback should have fired with hex
+      expect(onInstantLock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          txid: tx.hash,
+          instantLockHex: expect.any(String),
+        })
+      );
+
+      // Hex should now be stored in tracker
+      const finalTx = finder.getTransaction(tx.hash);
+      expect(finalTx!.instantLockHex).not.toBeNull();
+
+      cleanup();
+    });
+
+    it('waitForConfirmation resolves immediately when hex is available', async () => {
+      const finder = new RealtimeFinder({
+        ...config,
+        streamReconnectInterval: 0,
+        enableTransactionPolling: false,
+      });
+
+      const tx = createMockTransaction({
+        outputs: [{ satoshis: 100000, address: config.addresses[0] }],
+      });
+
+      const instantLock = createMockInstantLock(tx.hash);
+
+      // Stream delivers tx + IS with hex
+      const streamBuilder = new MockStreamBuilder();
+      streamBuilder
+        .addTransactions([tx.toBuffer()])
+        .addInstantLock(instantLock.toBuffer());
+      mockDAPIClient.setTransactionStreamMessages(streamBuilder.build());
+
+      const cleanup = await finder.monitorAddresses(config.addresses, {});
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Should resolve immediately since hex is already available
+      const result = await finder.waitForConfirmation(tx.hash, {
+        requireInstantLock: true,
+        timeout: 5000,
+      });
+
+      expect(result.method).toBe('instantlock');
+      expect(result.instantLockHex).not.toBeNull();
+
+      cleanup();
+    });
+
+    it('waitForConfirmation waits for hex on pre-registered txids', async () => {
+      const hexWaitMs = 2000;
+      const finder = new RealtimeFinder({
+        ...config,
+        streamReconnectInterval: 0,
+        reconnectOnPreRegister: false,
+        enableTransactionPolling: false,
+        instantLockHexWaitMs: hexWaitMs,
+      });
+
+      mockDAPIClient.setTransactionStreamMessages([]);
+
+      const cleanup = await finder.monitorAddresses(config.addresses, {});
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const txid = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+
+      // Pre-register the txid
+      finder.preRegisterTransaction(txid);
+
+      // Simulate poller detecting IS without hex
+      (finder as any).tracker.recordInstantLock(txid, Date.now());
+
+      const trackedTx = finder.getTransaction(txid);
+      expect(trackedTx!.status).toBe('instantlocked');
+      expect(trackedTx!.instantLockHex).toBeNull();
+
+      // Start waiting — should NOT resolve immediately due to hex wait
+      const startTime = Date.now();
+      const result = await finder.waitForConfirmation(txid, {
+        requireInstantLock: true,
+        timeout: 10000,
+      });
+
+      const elapsed = Date.now() - startTime;
+
+      // Should have waited at least hexWaitMs before resolving without hex
+      expect(elapsed).toBeGreaterThanOrEqual(hexWaitMs - 100); // Small tolerance
+      expect(result.method).toBe('instantlock');
+      expect(result.instantLockHex).toBeNull(); // No hex arrived
+
+      cleanup();
+    }, 10000);
+
+    it('waitForConfirmation resolves without waiting for non-pre-registered txids', async () => {
+      const finder = new RealtimeFinder({
+        ...config,
+        streamReconnectInterval: 0,
+        enableTransactionPolling: false,
+        instantLockHexWaitMs: 5000,
+      });
+
+      mockDAPIClient.setTransactionStreamMessages([]);
+
+      const cleanup = await finder.monitorAddresses(config.addresses, {});
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const txid = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
+
+      // Do NOT pre-register — just add broadcast and IS
+      (finder as any).tracker.addBroadcast(txid);
+      (finder as any).tracker.recordInstantLock(txid, Date.now());
+
+      // Should resolve immediately (no hex wait for non-pre-registered)
+      const startTime = Date.now();
+      const result = await finder.waitForConfirmation(txid, {
+        requireInstantLock: true,
+        timeout: 5000,
+      });
+
+      const elapsed = Date.now() - startTime;
+
+      // Should resolve within the 1s check interval (not wait 5s for hex)
+      expect(elapsed).toBeLessThan(2000);
+      expect(result.method).toBe('instantlock');
+      expect(result.instantLockHex).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  //
   // Edge Cases
   //
   describe('Edge Cases', () => {

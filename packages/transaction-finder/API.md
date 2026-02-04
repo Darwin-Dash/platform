@@ -337,6 +337,9 @@ interface RealtimeFinderConfig {
   reconnectGracePeriod?: number;        // Grace period (ms) after pre-registered tx is found on stream
                                         // (WAIT phase). Periodic reconnection is paused so IS proof
                                         // bytes can arrive. Default: 15000 (15s).
+  instantLockHexWaitMs?: number;        // How long to wait (ms) for stream to deliver IS proof bytes
+                                        // after the poller detects IS (boolean only). Only applies to
+                                        // pre-registered txids. Default: 5000 (5s). Set to 0 to disable.
 }
 ```
 

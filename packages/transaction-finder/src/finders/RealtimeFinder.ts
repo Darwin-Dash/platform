@@ -445,9 +445,17 @@ export class RealtimeFinder extends EventEmitter {
               const isMonitored = this.tracker.isMonitored(txid);
               this.logger.debug(`🔒 InstantLock received: ${txid} (monitored: ${isMonitored})`);
 
+              // Check if hex was absent before this call
+              const txBeforeRecord = this.tracker.getTransaction(txid);
+              const hadHex = txBeforeRecord?.instantLockHex != null;
+
               const wasNew = this.tracker.recordInstantLock(txid, timestamp, instantLockHex);
 
-              if (wasNew && callbacks.onInstantLock && isMonitored) {
+              // Fire callback if IS is new OR if hex was just delivered for the first time
+              const hexJustDelivered = !hadHex && instantLockHex
+                && this.tracker.getTransaction(txid)?.instantLockHex != null;
+
+              if ((wasNew || hexJustDelivered) && callbacks.onInstantLock && isMonitored) {
                 const tx = this.tracker.getTransaction(txid);
                 callbacks.onInstantLock({
                   txid,
@@ -460,7 +468,9 @@ export class RealtimeFinder extends EventEmitter {
               // If this was a pre-registered txid, remove it from the pending set.
               // Once all pre-registered txids have IS proof, clear the grace period
               // to resume periodic reconnection.
-              if (wasNew && this.preRegisteredTxids.has(txid)) {
+              // Trigger on wasNew (first IS detection) OR hexJustDelivered (stream
+              // delivers hex after poller already detected IS).
+              if ((wasNew || hexJustDelivered) && this.preRegisteredTxids.has(txid)) {
                 this.preRegisteredTxids.delete(txid);
                 this.logger.debug(`✅ IS proof received for pre-registered txid ${txid} (${this.preRegisteredTxids.size} remaining)`);
                 if (this.preRegisteredTxids.size === 0 && this.reconnectPausedUntil > Date.now()) {
@@ -533,8 +543,11 @@ export class RealtimeFinder extends EventEmitter {
     // Register transaction for monitoring
     this.tracker.addBroadcast(txid);
 
+    const hexWaitMs = this.config.instantLockHexWaitMs ?? 5000;
+
     return new Promise<ConfirmationResult>((resolve) => {
       let resolved = false;
+      let instantLockDetectedAt: number | null = null;
 
       const checkCompletion = () => {
         if (resolved) return;
@@ -555,16 +568,71 @@ export class RealtimeFinder extends EventEmitter {
             instantLockHex: tx.instantLockHex,
           });
         } else if (requireInstantLock && !requireChainLock && tx.status === 'instantlocked') {
-          resolved = true;
-          resolve({
-            txid,
-            method: 'instantlock',
-            instantLockTime: tx.instantLockTime,
-            chainLockTime: null,
-            blockHeight: tx.blockHeight,
-            totalLatencyMs: Date.now() - startTime,
-            instantLockHex: tx.instantLockHex,
-          });
+          // Hex available — resolve immediately
+          if (tx.instantLockHex) {
+            resolved = true;
+            resolve({
+              txid,
+              method: 'instantlock',
+              instantLockTime: tx.instantLockTime,
+              chainLockTime: null,
+              blockHeight: tx.blockHeight,
+              totalLatencyMs: Date.now() - startTime,
+              instantLockHex: tx.instantLockHex,
+            });
+            return;
+          }
+
+          // No hex yet — for pre-registered txids, wait briefly for stream delivery
+          if (hexWaitMs > 0 && (this.preRegisteredTxids.has(txid) || instantLockDetectedAt)) {
+            if (!instantLockDetectedAt) {
+              instantLockDetectedAt = Date.now();
+              this.logger.info(`⏳ IS detected without hex for ${txid.substring(0, 16)}... — waiting up to ${hexWaitMs}ms for stream proof bytes`);
+            }
+            if (Date.now() - instantLockDetectedAt >= hexWaitMs) {
+              // Re-check hex one final time (may have arrived during wait)
+              const txFinal = this.tracker.getTransaction(txid);
+              if (txFinal?.instantLockHex) {
+                this.logger.info(`⏳ Hex arrived during wait — resolving with hex`);
+                resolved = true;
+                resolve({
+                  txid,
+                  method: 'instantlock',
+                  instantLockTime: txFinal.instantLockTime,
+                  chainLockTime: null,
+                  blockHeight: txFinal.blockHeight,
+                  totalLatencyMs: Date.now() - startTime,
+                  instantLockHex: txFinal.instantLockHex,
+                });
+                return;
+              }
+              // Waited long enough — resolve without hex (SDK falls back to ChainLock)
+              this.logger.info(`⏳ Hex wait expired after ${hexWaitMs}ms — resolving without hex`);
+              resolved = true;
+              resolve({
+                txid,
+                method: 'instantlock',
+                instantLockTime: tx.instantLockTime,
+                chainLockTime: null,
+                blockHeight: tx.blockHeight,
+                totalLatencyMs: Date.now() - startTime,
+                instantLockHex: null,
+              });
+            }
+            // else: still waiting, check again next tick
+          } else {
+            // Non-pre-registered tx or hex wait disabled — resolve immediately without hex
+            resolved = true;
+            resolve({
+              txid,
+              method: 'instantlock',
+              instantLockTime: tx.instantLockTime,
+              chainLockTime: null,
+              blockHeight: tx.blockHeight,
+              totalLatencyMs: Date.now() - startTime,
+              instantLockHex: null,
+            });
+          }
         }
       };
 

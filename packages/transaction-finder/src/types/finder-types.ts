@@ -124,6 +124,12 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
    *  proof or the grace period expires.
    *  Default: 15000 (15 seconds). */
   reconnectGracePeriod?: number;
+
+  /** How long to wait (ms) for stream to deliver InstantLock proof bytes
+   *  after the poller detects IS (boolean only). Only applies to pre-registered
+   *  txids where the SDK needs raw hex for InstantAssetLockProof creation.
+   *  Default: 5000 (5 seconds). Set to 0 to disable hex wait. */
+  instantLockHexWaitMs?: number;
 }
 
 /**

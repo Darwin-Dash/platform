@@ -138,6 +138,38 @@ describe('TransactionTracker', () => {
       expect(tracker.getTransaction(txid)!.instantLockTime).toBe(firstTime); // Unchanged
     });
 
+    it('should accept hex after poller-only IS recording (no hex)', () => {
+      const txid = 'tx-hex-race';
+
+      tracker.addBroadcast(txid);
+
+      // Poller detects IS first (boolean only, no hex)
+      const wasNew1 = tracker.recordInstantLock(txid, 1000);
+      expect(wasNew1).toBe(true);
+      expect(tracker.getTransaction(txid)!.instantLockTime).toBe(1000);
+      expect(tracker.getTransaction(txid)!.instantLockHex).toBeNull();
+
+      // Stream delivers IS later WITH hex bytes
+      const wasNew2 = tracker.recordInstantLock(txid, 2000, 'deadbeef1234');
+      expect(wasNew2).toBe(false); // Not "new" IS detection
+      expect(tracker.getTransaction(txid)!.instantLockTime).toBe(1000); // Unchanged
+      expect(tracker.getTransaction(txid)!.instantLockHex).toBe('deadbeef1234'); // Hex stored!
+    });
+
+    it('should not overwrite existing hex with a second hex', () => {
+      const txid = 'tx-hex-no-overwrite';
+
+      tracker.addBroadcast(txid);
+
+      // Stream delivers IS with hex
+      tracker.recordInstantLock(txid, 1000, 'firsthex');
+      expect(tracker.getTransaction(txid)!.instantLockHex).toBe('firsthex');
+
+      // Second call with different hex should NOT overwrite
+      tracker.recordInstantLock(txid, 2000, 'secondhex');
+      expect(tracker.getTransaction(txid)!.instantLockHex).toBe('firsthex');
+    });
+
     it('should not re-record block inclusion if already recorded', () => {
       const txid = 'tx999';
 

@@ -154,6 +154,11 @@ preRegisterTransaction(txid) → immediate reconnect + HUNT mode
   → onInstantLock fires with instantLockHex
   → SDK creates InstantAssetLockProof
 
+  If poller detects IS before stream delivers hex:
+  → waitForConfirmation() waits up to instantLockHexWaitMs (5s)
+  → If stream delivers hex during wait → resolves with hex
+  → If hex wait expires → resolves without hex → SDK falls back
+
   If IS proof bytes NOT available:
   → ChainLockHeightMonitor detects CL height >= tx block height
   → SDK creates ChainAssetLockProof (fallback, always works)
@@ -201,6 +206,7 @@ waitForConfirmation(txid) → returns { method, instantLockHex, ... }
 | `streamReconnectInterval` | `number` | `10000` | Periodic stream reconnect interval (ms). Set to 0 to disable. |
 | `reconnectOnPreRegister` | `boolean` | `true` | Immediately reconnect on `preRegisterTransaction()` |
 | `reconnectGracePeriod` | `number` | `15000` | Grace period (ms) after pre-registered tx is found on stream (WAIT phase), during which periodic reconnection is paused for IS proof delivery |
+| `instantLockHexWaitMs` | `number` | `5000` | How long `waitForConfirmation()` waits for stream to deliver IS proof bytes after poller detects IS (boolean only). Only applies to pre-registered txids. Set to 0 to disable. |
 
 ## Running Tests
 

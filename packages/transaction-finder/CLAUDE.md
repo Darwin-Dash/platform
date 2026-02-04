@@ -367,8 +367,56 @@ txid, the callback is skipped. This ensures `onTransaction` fires exactly once p
 ### Key Files
 
 - `src/finders/RealtimeFinder.ts` — Grace period logic, duplicate prevention, reconnection
-- `src/types/finder-types.ts` — `reconnectGracePeriod` config field
+- `src/types/finder-types.ts` — `reconnectGracePeriod`, `instantLockHexWaitMs` config fields
 - `src/monitoring/TransactionTracker.ts` — Transaction state tracking and deduplication
+
+## InstantLock Hex Race Condition (CRITICAL KNOWLEDGE)
+
+### The Problem
+
+The poller (`TransactionStatusPoller`) and the DAPI stream race to detect InstantSend. The poller
+calls `getTransaction()` which returns a boolean `isInstantLocked` (no raw proof bytes). The stream
+delivers raw IS proof bytes (`instantLockHex`) needed for `InstantAssetLockProof`.
+
+When the poller wins the race (~5s vs stream's ~5-10s), two bugs prevented hex delivery:
+
+**Bug 1 — Tracker rejected hex:** `recordInstantLock()` had a guard `if (!tx.instantLockTime)` that
+rejected the stream's hex delivery because the poller had already set `instantLockTime`.
+
+**Bug 2 — waitForConfirmation resolved without hex:** Once the poller set status to `instantlocked`,
+`waitForConfirmation()` resolved immediately with `instantLockHex: null`. Even if the stream
+delivered hex 1-2s later, the SDK had already received a result without hex.
+
+### The Fix (Three Parts)
+
+**1. TransactionTracker always accepts hex:** `recordInstantLock()` now stores `instantLockHex`
+whenever provided, even if `instantLockTime` was already set by the poller. The hex is stored
+independently of whether this is a "new" IS detection.
+
+**2. Stream IS handler fires callback on hex delivery:** The `processStream()` IS handler now fires
+`onInstantLock` when hex is newly delivered (even if `wasNew` is false because the poller already
+recorded IS). Pre-registered txid cleanup also triggers on hex delivery.
+
+**3. waitForConfirmation hex wait:** When IS is detected without hex for pre-registered txids,
+`waitForConfirmation()` waits up to `instantLockHexWaitMs` (default 5s) for the stream to deliver
+hex. Non-pre-registered txids resolve immediately (no hex wait). Config: `instantLockHexWaitMs`.
+
+### Race Condition Timeline (Fixed)
+
+```
+t=0.0s  preRegisterTransaction() → reconnect (HUNT phase)
+t=0.5s  Stream reconnects, doesn't find tx in mempool yet
+t=4.8s  Poller: getTransaction() → isInstantLocked=true
+        → tracker.recordInstantLock(txid, timestamp)  [no hex]
+        → tx.instantLockTime SET, tx.instantLockHex = null
+        → waitForConfirmation(): IS detected without hex, starts hex wait
+t=5.5s  Stream delivers IS proof bytes
+        → tracker.recordInstantLock(txid, ts, hexBytes)
+        → hex ACCEPTED (Bug 1 fixed: always stores hex)
+        → onInstantLock fires with hex (Bug 2a fixed: fires on hex delivery)
+        → waitForConfirmation() re-checks: hex now available, resolves with hex
+t=5.5s  SDK proof manager: hex available → creates InstantAssetLockProof (fast path!)
+```
 
 ## ChainLock Architecture (CRITICAL KNOWLEDGE)
 
