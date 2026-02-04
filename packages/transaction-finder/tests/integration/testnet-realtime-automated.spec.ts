@@ -35,7 +35,22 @@ import type {
   InstantLockEvent,
   ChainLockEvent,
   BlockInclusionEvent,
+  ConfirmationResult,
 } from '../../src/types/index.js';
+
+// Suppress gRPC CANCELLED rejections that fire asynchronously when streams
+// are cancelled during reconnection or teardown. This is a known @grpc/grpc-js
+// behavior — cancel() triggers an internal Promise rejection that cannot be
+// caught via stream.on('error').
+const grpcCancelHandler = (err: unknown) => {
+  if (err && typeof err === 'object' && (err as any).code === 1 &&
+      (err as any).details === 'Cancelled on client') {
+    return; // swallow expected gRPC cancel rejection
+  }
+  // Re-throw anything else so it's not silently lost
+  throw err;
+};
+process.on('unhandledRejection', grpcCancelHandler);
 
 // Load .env from js-evo-sdk
 config({ path: '../js-evo-sdk/.env' });
@@ -170,21 +185,28 @@ describe('Automated Realtime Monitoring', () => {
       timeout: 60000,
     });
 
-    // Initialize finder
+    // Initialize finder with stream reconnection enabled.
+    // Periodic reconnection forces DAPI to re-run its historical + mempool scan,
+    // catching transactions missed during continuous streaming.
     finder = new TransactionFinder({
       mode: FinderMode.REALTIME,
       network: NETWORK as 'testnet' | 'mainnet',
       addresses: [testAddress],
       dapiClient: dapiClient as any,
-      // Stream is fire-and-forget; poller handles IS/CL detection if stream stales
+      streamReconnectInterval: 10000, // Reconnect every 10s to catch missed txs
+      reconnectOnPreRegister: true,   // Immediate reconnect when txid is registered
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     if (cleanup) {
       cleanup();
     }
     finder?.stop();
+    // Wait for gRPC to flush its internal CANCELLED rejection before
+    // the test process exits and vitest's global handler catches it.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    process.removeListener('unhandledRejection', grpcCancelHandler);
   });
 
   it(`should detect confirmations for broadcast transaction [${MODE_LABEL}]`, async () => {
@@ -220,6 +242,7 @@ describe('Automated Realtime Monitoring', () => {
         console.log(`   Tx: ${lock.txid.substring(0, 16)}...`);
         console.log(`   Tx → InstantLock latency: ${lock.latency} ms`);
         console.log(`   Broadcast → InstantLock: ${timestamps.instantLock - timestamps.txBroadcast} ms`);
+        console.log(`   instantLockHex: ${lock.instantLockHex ? lock.instantLockHex.substring(0, 32) + '...' : '(not delivered — poller detected IS, no raw proof bytes)'}`);
       },
       onChainLock: (cl) => {
         events.chainLocks.push(cl);
@@ -267,29 +290,26 @@ describe('Automated Realtime Monitoring', () => {
       throw error;
     }
 
-    // Wait for confirmations with timeout
-    const startTime = Date.now();
-    await new Promise<void>((resolve) => {
-      const checkInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-
-        // Success: all required confirmations received
-        const isOk = !waitForIS || instantLockReceived;
-        const clOk = !waitForCL || chainLockReceived;
-        if (isOk && clOk) {
-          clearInterval(checkInterval);
-          resolve();
-        }
-
-        // Timeout reached
-        if (elapsed > TIMEOUT_MS) {
-          clearInterval(checkInterval);
-          console.log('');
-          console.log('⏱️  Test timeout reached');
-          resolve();
-        }
-      }, 1000);
-    });
+    // Use waitForConfirmation() — this is what the SDK actually calls.
+    // It exercises the hex wait logic when poller detects IS before stream delivers hex.
+    console.log('   Using waitForConfirmation() to validate hex delivery...');
+    let confirmation: ConfirmationResult | undefined;
+    try {
+      confirmation = await finder.waitForConfirmation(broadcastTxid, {
+        requireInstantLock: waitForIS,
+        requireChainLock: waitForCL,
+        timeout: TIMEOUT_MS,
+        onProgress: (progress) => {
+          // Log progress every 10s to show test is alive
+          if (progress.elapsedMs % 10000 < 1100) {
+            console.log(`   [${(progress.elapsedMs / 1000).toFixed(0)}s] ${progress.message}`);
+          }
+        },
+      });
+    } catch (error) {
+      console.log('');
+      console.log('⏱️  waitForConfirmation() error:', (error as Error).message);
+    }
 
     // Print results
     console.log('');
@@ -324,6 +344,28 @@ describe('Automated Realtime Monitoring', () => {
     const status = finder.getStatus();
     console.log('Monitor Status:', status);
     console.log('═'.repeat(70));
+
+    // Log waitForConfirmation() result
+    if (confirmation) {
+      console.log('');
+      console.log('waitForConfirmation() result:');
+      console.log(`  method: ${confirmation.method}`);
+      console.log(`  instantLockHex: ${confirmation.instantLockHex ? confirmation.instantLockHex.substring(0, 32) + '...' : '(absent)'}`);
+      console.log(`  totalLatencyMs: ${confirmation.totalLatencyMs}`);
+
+      // Assert method is correct
+      if (waitForIS && !waitForCL) {
+        expect(confirmation.method).toBe('instantlock');
+      }
+
+      // Log which hex delivery path was taken
+      if (confirmation.instantLockHex) {
+        console.log('✅ InstantLock hex delivered — InstantAssetLockProof path available');
+      } else if (confirmation.method === 'instantlock') {
+        console.log('⚠️  InstantLock detected but hex NOT delivered — SDK would fall back to ChainLock');
+        console.log('   (This means the stream did not deliver IS proof bytes within the hex wait window)');
+      }
+    }
 
     // Find OUR transaction/lock events (there may be other testnet transactions)
     const ourTx = events.transactions.find((tx) => tx.txid === broadcastTxid);
