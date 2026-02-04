@@ -4,8 +4,9 @@
  */
 
 import { mockDocuments, mockDataContracts } from '../mock-data.js';
-import { formatTimestamp } from '../utils/formatter.js';
+import { escapeHtml, formatTimestamp } from '../utils/formatter.js';
 import { notifications } from './notifications.js';
+import { transformWasmDocument } from '../utils/identity-transformer.js';
 
 // Known platform contract IDs (testnet)
 const DASHPAY_CONTRACT_ID = 'Bwr4WHCPz5rFVAD87RqTs3izo4zpzwsEdKPWUT1NS1C7';
@@ -182,22 +183,25 @@ export class DocumentViewer {
 
   /**
    * Transform SDK document to the format expected by the component
+   * Uses the shared transformWasmDocument utility for WASM object conversion
    */
   transformSDKDocument(doc, contractId, documentType) {
-    // SDK documents may be WASM objects or plain objects depending on how they're returned
-    const id = doc.getId?.() ? doc.getId().base58() : (doc.id || doc.$id);
-    const ownerId = doc.getOwnerId?.() ? doc.getOwnerId().base58() : (doc.ownerId || doc.$ownerId);
-    // Handle BigInt timestamps from WASM SDK
-    const rawCreatedAt = doc.getCreatedAt?.() || doc.createdAt || doc.$createdAt;
-    const rawUpdatedAt = doc.getUpdatedAt?.() || doc.updatedAt || doc.$updatedAt;
-    const createdAt = rawCreatedAt ? new Date(Number(rawCreatedAt)).toISOString() : new Date().toISOString();
-    const updatedAt = rawUpdatedAt ? new Date(Number(rawUpdatedAt)).toISOString() : createdAt;
-    // WASM documents expose properties via toJSON(), not getProperties()
-    const data = (typeof doc.toJSON === 'function' ? doc.toJSON() : null) || doc.getProperties?.() || doc.data || doc;
+    const transformed = transformWasmDocument(doc);
+
+    // Map from the shared utility's shape to the component's expected shape
+    const id = transformed.id || `${contractId}-${Date.now()}`;
+    const ownerId = transformed.ownerId || this.identityId;
+    const createdAt = transformed.createdAt
+      ? new Date(Number(transformed.createdAt)).toISOString()
+      : new Date().toISOString();
+    const updatedAt = transformed.updatedAt
+      ? new Date(Number(transformed.updatedAt)).toISOString()
+      : createdAt;
+    const data = transformed.properties || transformed.data || doc.data || doc;
 
     return {
-      id: id || `${contractId}-${Date.now()}`,
-      ownerId: ownerId || this.identityId,
+      id,
+      ownerId,
       contractId,
       documentType,
       createdAt,
@@ -245,9 +249,9 @@ export class DocumentViewer {
                   <path d="M17 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   <path d="M12 12h.01M8 9h.01M16 9h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                ${dashPayContract?.name || 'DashPay'}
+                ${escapeHtml(dashPayContract?.name || 'DashPay')}
               </h4>
-              ${dashPayContract?.description ? `<p class="contract-description">${dashPayContract.description}</p>` : ''}
+              ${dashPayContract?.description ? `<p class="contract-description">${escapeHtml(dashPayContract.description)}</p>` : ''}
             </div>
             <div class="document-count">${dashPayDocs.length} document${dashPayDocs.length !== 1 ? 's' : ''}</div>
           </div>
@@ -270,8 +274,8 @@ export class DocumentViewer {
         <div class="contract-section">
           <div class="contract-header">
             <div class="contract-info">
-              <h4 class="contract-name">${contractName}</h4>
-              ${contractDesc ? `<p class="contract-description">${contractDesc}</p>` : ''}
+              <h4 class="contract-name">${escapeHtml(contractName)}</h4>
+              ${contractDesc ? `<p class="contract-description">${escapeHtml(contractDesc)}</p>` : ''}
             </div>
             <div class="document-count">${docs.length} document${docs.length !== 1 ? 's' : ''}</div>
           </div>
@@ -361,8 +365,8 @@ export class DocumentViewer {
             </svg>
           </div>
           <div class="contract-card-info">
-            <h4 class="contract-card-name">${contract.name}</h4>
-            ${contract.description ? `<p class="contract-card-description">${contract.description}</p>` : ''}
+            <h4 class="contract-card-name">${escapeHtml(contract.name)}</h4>
+            ${contract.description ? `<p class="contract-card-description">${escapeHtml(contract.description)}</p>` : ''}
           </div>
           ${contract.isOwner ? '<span class="owner-badge">Owner</span>' : ''}
         </div>
@@ -383,12 +387,12 @@ export class DocumentViewer {
         <div class="contract-card-details">
           <div class="contract-detail-item">
             <span class="detail-label">Contract ID:</span>
-            <code class="detail-value">${contract.id}</code>
+            <code class="detail-value">${escapeHtml(contract.id)}</code>
           </div>
           <div class="contract-detail-item">
             <span class="detail-label">Document Types:</span>
             <div class="document-types-list">
-              ${contract.documentTypes.map(type => `<span class="document-type-tag">${type}</span>`).join('')}
+              ${contract.documentTypes.map(type => `<span class="document-type-tag">${escapeHtml(type)}</span>`).join('')}
             </div>
           </div>
         </div>
@@ -440,8 +444,8 @@ export class DocumentViewer {
             ${documentIcon}
           </div>
           <div class="dashpay-document-info">
-            <div class="dashpay-document-type">${documentType}</div>
-            <div class="dashpay-document-preview">${preview}</div>
+            <div class="dashpay-document-type">${escapeHtml(documentType)}</div>
+            <div class="dashpay-document-preview">${escapeHtml(preview)}</div>
             <div class="dashpay-document-meta">Created: ${createdDate}</div>
           </div>
           <button class="document-toggle" aria-label="Expand document" data-toggle="${doc.id}">
@@ -498,8 +502,8 @@ export class DocumentViewer {
             ${this.getDocumentIcon(documentType)}
           </div>
           <div class="document-info">
-            <div class="document-type">${documentType}</div>
-            <div class="document-preview">${preview}</div>
+            <div class="document-type">${escapeHtml(documentType)}</div>
+            <div class="document-preview">${escapeHtml(preview)}</div>
             <div class="document-meta">Created: ${createdDate}</div>
           </div>
           <button class="document-toggle" aria-label="Expand document" data-toggle="${doc.id}">

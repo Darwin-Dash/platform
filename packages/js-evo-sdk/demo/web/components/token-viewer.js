@@ -5,6 +5,7 @@
  */
 
 import { notifications } from './notifications.js';
+import { escapeHtml } from '../utils/formatter.js';
 
 export class TokenViewer {
   constructor(containerElement, platformOps, sdk = null) {
@@ -61,7 +62,7 @@ export class TokenViewer {
    * Discover tokens for the current identity
    */
   async discoverTokens() {
-    if (!this.sdk || !this.identityId) {
+    if (!this.sdk || !this.identityId || !this.sdk.tokens?.discoverTokensWithBalances) {
       return;
     }
 
@@ -326,14 +327,14 @@ export class TokenViewer {
           <h4>Your Tokens</h4>
           <div class="token-empty">
             <p>Unable to discover tokens. The Token History Contract may not be available on this network yet.</p>
-            <p class="token-error-detail">${this.escapeHtml(this.discoveryError)}</p>
+            <p class="token-error-detail">${escapeHtml(this.discoveryError)}</p>
           </div>
           <div class="token-manual-section">
             <h5>Manual Token Lookup</h5>
             <div class="token-input-group">
               <label for="manual-token-id">Token ID</label>
               <input type="text" id="manual-token-id" class="token-input"
-                placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+                placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
               <button class="btn btn-primary btn-sm" id="manual-lookup-btn">Look Up Balance</button>
             </div>
           </div>
@@ -354,7 +355,7 @@ export class TokenViewer {
             <div class="token-input-group">
               <label for="manual-token-id">Token ID</label>
               <input type="text" id="manual-token-id" class="token-input"
-                placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+                placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
               <button class="btn btn-primary btn-sm" id="manual-lookup-btn">Look Up Balance</button>
             </div>
           </div>
@@ -370,15 +371,15 @@ export class TokenViewer {
           ${this.discoveredTokens
             .map(
               (token) => `
-            <div class="token-discovered-item ${this.selectedToken === token.tokenId ? 'selected' : ''}" data-token-id="${this.escapeHtml(token.tokenId)}">
+            <div class="token-discovered-item ${this.selectedToken === token.tokenId ? 'selected' : ''}" data-token-id="${escapeHtml(token.tokenId)}">
               <div class="token-discovered-main">
                 <code class="token-id">${this.truncateId(token.tokenId, 24)}</code>
                 <span class="token-balance-value">${this.formatBalance(token.balance)}</span>
               </div>
               <div class="token-discovered-actions">
-                <button class="btn btn-xs btn-outline" data-action="supply" data-token-id="${this.escapeHtml(token.tokenId)}">Supply</button>
-                <button class="btn btn-xs btn-outline" data-action="status" data-token-id="${this.escapeHtml(token.tokenId)}">Status</button>
-                <button class="btn btn-xs btn-outline" data-action="prices" data-token-id="${this.escapeHtml(token.tokenId)}">Prices</button>
+                <button class="btn btn-xs btn-outline" data-action="supply" data-token-id="${escapeHtml(token.tokenId)}">Supply</button>
+                <button class="btn btn-xs btn-outline" data-action="status" data-token-id="${escapeHtml(token.tokenId)}">Status</button>
+                <button class="btn btn-xs btn-outline" data-action="prices" data-token-id="${escapeHtml(token.tokenId)}">Prices</button>
               </div>
             </div>
           `
@@ -397,7 +398,7 @@ export class TokenViewer {
         <div class="token-input-group">
           <label for="balance-token-id">Token ID</label>
           <input type="text" id="balance-token-id" class="token-input"
-            placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+            placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
           <button class="btn btn-primary btn-sm" id="load-balances-btn">Load Balances</button>
         </div>
 
@@ -454,7 +455,7 @@ export class TokenViewer {
         <div class="token-input-group">
           <label for="supply-token-id">Token ID</label>
           <input type="text" id="supply-token-id" class="token-input"
-            placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+            placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
           <button class="btn btn-primary btn-sm" id="load-supply-btn">Load Supply</button>
         </div>
 
@@ -492,7 +493,7 @@ export class TokenViewer {
         <div class="token-input-group">
           <label for="status-token-id">Token ID</label>
           <input type="text" id="status-token-id" class="token-input"
-            placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+            placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
           <button class="btn btn-primary btn-sm" id="load-status-btn">Load Status</button>
         </div>
 
@@ -545,7 +546,7 @@ export class TokenViewer {
         <div class="token-input-group">
           <label for="contract-id">Contract ID</label>
           <input type="text" id="contract-id" class="token-input"
-            placeholder="Enter contract ID" value="${this.escapeHtml(this.inputContractId)}" />
+            placeholder="Enter contract ID" value="${escapeHtml(this.inputContractId)}" />
           <button class="btn btn-primary btn-sm" id="load-contract-btn">Load Contract</button>
         </div>
 
@@ -593,7 +594,7 @@ export class TokenViewer {
         <div class="token-input-group">
           <label for="prices-token-id">Token ID</label>
           <input type="text" id="prices-token-id" class="token-input"
-            placeholder="Enter token ID" value="${this.escapeHtml(this.inputTokenId)}" />
+            placeholder="Enter token ID" value="${escapeHtml(this.inputTokenId)}" />
           <button class="btn btn-primary btn-sm" id="load-prices-btn">Load Prices</button>
         </div>
 
@@ -761,13 +762,6 @@ export class TokenViewer {
     const str = id.toString();
     if (str.length <= length) return str;
     return `${str.substring(0, length / 2)}...${str.substring(str.length - length / 2)}`;
-  }
-
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   formatBalance(balance) {

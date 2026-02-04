@@ -4,7 +4,7 @@
  */
 
 import { stateManager } from '../state-manager.js';
-import { formatIdentityId } from '../utils/formatter.js';
+import { formatIdentityId, escapeHtml } from '../utils/formatter.js';
 import { formatBalance } from '../utils/identity-transformer.js';
 
 export class IdentitySelector {
@@ -12,6 +12,8 @@ export class IdentitySelector {
     this.container = containerElement;
     this.isOpen = false;
     this.searchTerm = '';
+
+    this._unsubscribers = [];
 
     this.init();
     this.bindEvents();
@@ -66,22 +68,22 @@ export class IdentitySelector {
 
   subscribeToState() {
     // Update when identities change
-    stateManager.on('identity-updated', () => {
+    this._unsubscribers.push(stateManager.on('identity-updated', () => {
       this.renderIdentityList();
       this.updateDisplay();
-    });
+    }));
 
     // Update when identity is selected
-    stateManager.on('identity-selected', () => {
+    this._unsubscribers.push(stateManager.on('identity-selected', () => {
       this.updateDisplay();
       this.close();
-    });
+    }));
 
     // Update when identity is removed
-    stateManager.on('identity-removed', () => {
+    this._unsubscribers.push(stateManager.on('identity-removed', () => {
       this.renderIdentityList();
       this.updateDisplay();
-    });
+    }));
   }
 
   toggle() {
@@ -134,8 +136,8 @@ export class IdentitySelector {
                          idDisplay;
 
       preview.innerHTML = `
-        <span class="identity-label">${displayName}</span>
-        <span class="identity-balance">${balanceDisplay}</span>
+        <span class="identity-label">${escapeHtml(displayName)}</span>
+        <span class="identity-balance">${escapeHtml(balanceDisplay)}</span>
       `;
     } else {
       preview.innerHTML = `
@@ -194,9 +196,9 @@ export class IdentitySelector {
       li.innerHTML = `
         ${checkmarkIcon}
         <div class="identity-item-content">
-          <span class="identity-id">${displayName}</span>
+          <span class="identity-id">${escapeHtml(displayName)}</span>
         </div>
-        ${displayName !== idDisplay ? `<span class="identity-id-full">${idDisplay}</span>` : ''}
+        ${displayName !== idDisplay ? `<span class="identity-id-full">${escapeHtml(idDisplay)}</span>` : ''}
       `;
 
       li.addEventListener('click', () => {
@@ -254,6 +256,13 @@ export class IdentitySelector {
   // Public methods for external control
   setIdentity(identityId) {
     this.selectIdentity(identityId);
+  }
+
+  destroy() {
+    if (this._unsubscribers) {
+      this._unsubscribers.forEach(unsub => unsub());
+      this._unsubscribers = [];
+    }
   }
 
   refresh() {

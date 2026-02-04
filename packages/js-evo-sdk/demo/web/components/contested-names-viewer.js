@@ -3,8 +3,7 @@
  * Displays contested names (voting) for an identity
  */
 
-import { mockContestedNames } from '../mock-data.js';
-import { formatTimestamp } from '../utils/formatter.js';
+import { escapeHtml, formatTimestamp } from '../utils/formatter.js';
 import { notifications } from './notifications.js';
 
 export class ContestedNamesViewer {
@@ -72,8 +71,8 @@ export class ContestedNamesViewer {
       <div class="contest-card ${isActive ? 'contest-active' : 'contest-completed'}">
         <div class="contest-header">
           <div class="contest-name-info">
-            <h4 class="contest-name">${contest.name}</h4>
-            <span class="contest-normalized">Normalized: ${contest.normalizedName}</span>
+            <h4 class="contest-name">${escapeHtml(contest.name)}</h4>
+            <span class="contest-normalized">Normalized: ${escapeHtml(contest.normalizedName)}</span>
           </div>
           <span class="contest-status-badge ${isActive ? 'status-active' : 'status-completed'}">
             ${isActive ? '🗳️ Voting' : contest.winner === this.identityId ? '🏆 Won' : '❌ Lost'}

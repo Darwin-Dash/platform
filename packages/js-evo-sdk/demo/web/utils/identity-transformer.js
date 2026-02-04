@@ -5,6 +5,8 @@
  * expected by the demo app's state manager and components.
  */
 
+import { formatBalance } from './formatter.js';
+
 /**
  * Transform WASM identity to UI format
  * @param {Object} wasmIdentity - Identity object from WASM SDK
@@ -159,28 +161,8 @@ export function enrichIdentityForDisplay(identity) {
   };
 }
 
-/**
- * Format balance for display
- * NOTE: The SDK returns identity.balance in CREDITS (confirmed via Platform Explorer).
- * This function correctly expects CREDITS as input.
- *
- * Conversion: 1 duff = 1000 credits
- * 1 DASH = 100,000,000 duffs = 100,000,000,000 credits
- * @param {number} credits - Amount in credits (as returned by SDK)
- * @returns {Object} Formatted balance with dash, duffs, and credit representations
- */
-export function formatBalance(credits) {
-  const duffs = credits / 1000;
-  const dash = duffs / 100000000;
-
-  return {
-    credits: credits.toLocaleString(),
-    duffs: duffs.toLocaleString(),
-    dash: dash.toFixed(8),
-    displayDash: `${dash.toFixed(8).replace(/\.?0+$/, '')} DASH`,
-    displayCredits: `${credits.toLocaleString()} credits`
-  };
-}
+// Re-export formatBalance from formatter.js for backward compatibility
+export { formatBalance };
 
 /**
  * Validate transformed identity has all required fields
@@ -248,4 +230,51 @@ export function validateIdentityIndex(identity) {
 export function needsReDiscovery(identity) {
   const validation = validateIdentityIndex(identity);
   return !validation.valid || identity.needsReDiscovery === true;
+}
+
+/**
+ * Transform a WASM SDK document into a plain JavaScript object
+ * Handles getId(), getOwnerId(), getDataContractId(), BigInt timestamps,
+ * and toJSON()/getProperties() methods.
+ *
+ * @param {Object} doc - WASM document object
+ * @returns {Object} Plain JS object with extracted fields
+ */
+export function transformWasmDocument(doc) {
+  if (!doc) return null;
+
+  // If already a plain object (e.g., from mock data), return as-is
+  if (!doc.getId && !doc.getOwnerId && !doc.toJSON) {
+    return doc;
+  }
+
+  const id = doc.getId ? doc.getId().base58?.() || doc.getId().toString?.() || String(doc.getId()) : doc.id;
+  const ownerId = doc.getOwnerId ? doc.getOwnerId().base58?.() || doc.getOwnerId().toString?.() || String(doc.getOwnerId()) : doc.ownerId;
+  const contractId = doc.getDataContractId ? doc.getDataContractId().base58?.() || doc.getDataContractId().toString?.() || String(doc.getDataContractId()) : doc.dataContractId;
+
+  // Get timestamps, handling BigInt
+  let createdAt = doc.getCreatedAt ? doc.getCreatedAt() : doc.createdAt;
+  let updatedAt = doc.getUpdatedAt ? doc.getUpdatedAt() : doc.updatedAt;
+  if (typeof createdAt === 'bigint') createdAt = Number(createdAt);
+  if (typeof updatedAt === 'bigint') updatedAt = Number(updatedAt);
+
+  // Get document properties
+  let properties = {};
+  if (doc.getProperties) {
+    properties = doc.getProperties();
+  } else if (doc.toJSON) {
+    const json = doc.toJSON();
+    const { $id, $ownerId, $dataContractId, $createdAt, $updatedAt, $revision, ...rest } = json;
+    properties = rest;
+  }
+
+  return {
+    id,
+    ownerId,
+    dataContractId: contractId,
+    createdAt,
+    updatedAt,
+    revision: doc.getRevision ? doc.getRevision() : doc.revision,
+    properties
+  };
 }

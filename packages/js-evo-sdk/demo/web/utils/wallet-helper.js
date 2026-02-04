@@ -3,15 +3,23 @@
  * Provides utilities for creating and initializing wallets from mnemonics
  */
 
-// Import Wallet from wallet-lib if available in Node context
-// In browser context, this will fail and that's expected - browser app should use SDK directly
-let Wallet;
-try {
-  const walletLibModule = await import('@dashevo/wallet-lib');
-  Wallet = walletLibModule.Wallet;
-} catch (e) {
-  // Expected in browser context
-  Wallet = null;
+import { validateMnemonic } from './validator.js';
+
+// Lazy-loaded Wallet from wallet-lib (Node.js only)
+let Wallet = null;
+let _walletLoadAttempted = false;
+
+async function loadWalletLib() {
+  if (_walletLoadAttempted) return Wallet;
+  _walletLoadAttempted = true;
+  try {
+    const walletLibModule = await import('@dashevo/wallet-lib');
+    Wallet = walletLibModule.Wallet;
+  } catch (e) {
+    // Expected in browser context
+    Wallet = null;
+  }
+  return Wallet;
 }
 
 /**
@@ -28,6 +36,7 @@ try {
  * @throws {Error} If mnemonic is invalid or wallet-lib unavailable
  */
 export async function initializeWalletFromMnemonic(mnemonic, network = 'testnet', options = {}) {
+  await loadWalletLib();
   if (!Wallet) {
     throw new Error('wallet-lib not available - use SDK methods in browser context instead');
   }
@@ -86,32 +95,8 @@ export async function initializeWalletFromMnemonic(mnemonic, network = 'testnet'
   }
 }
 
-/**
- * Validate a mnemonic without creating a wallet
- * Useful for form validation
- *
- * @param {string} mnemonic - BIP39 mnemonic phrase
- * @returns {Object} Validation result { valid: boolean, error?: string }
- */
-export function validateMnemonic(mnemonic) {
-  if (!mnemonic || typeof mnemonic !== 'string') {
-    return { valid: false, error: 'Mnemonic must be a non-empty string' };
-  }
-
-  const words = mnemonic.trim().split(/\s+/);
-
-  // BIP39 mnemonics must be 12 or 24 words
-  if (![12, 24].includes(words.length)) {
-    return { valid: false, error: `Mnemonic must be 12 or 24 words, got ${words.length}` };
-  }
-
-  // Basic check: all words should be alphanumeric
-  if (words.some(word => !/^[a-z]+$/.test(word.toLowerCase()))) {
-    return { valid: false, error: 'Mnemonic contains invalid characters' };
-  }
-
-  return { valid: true };
-}
+// validateMnemonic is re-exported from validator.js for backward compatibility
+export { validateMnemonic };
 
 /**
  * Browser-safe wallet info extraction

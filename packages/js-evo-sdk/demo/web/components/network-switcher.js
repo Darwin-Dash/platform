@@ -211,10 +211,8 @@ export class NetworkSwitcher {
       }
     }
 
-    // Dispatch event for other components to react
-    window.dispatchEvent(new CustomEvent('network-changed', {
-      detail: { network }
-    }));
+    // Note: stateManager.setNetwork() already emits 'network-changed' via the event emitter.
+    // Components should listen to stateManager events for state changes.
   }
 
   getCurrentNetwork() {

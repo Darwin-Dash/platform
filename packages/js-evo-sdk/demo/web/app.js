@@ -7,9 +7,48 @@ import { stateManager } from './state-manager.js';
 import { mockIdentities, MockPlatformOperations, MNEMONIC } from './mock-data.js';
 import { IdentitySelector } from './components/identity-selector.js';
 import { retryOperation, isTransientError, verifyByBalanceChange } from './utils/retry-utils.js';
+import { NotificationCenter } from './components/notification-center.js';
+import { NetworkSwitcher } from './components/network-switcher.js';
+import { NameResolver } from './components/name-resolver.js';
+import { DocumentViewer } from './components/document-viewer.js';
+import { ContestedNamesViewer } from './components/contested-names-viewer.js';
+import { ContactsViewer } from './components/contacts-viewer.js';
+import { ContactRequestsManager } from './components/contact-requests.js';
+import { TokenViewer } from './components/token-viewer.js';
+import { notifications } from './components/notifications.js';
+import { WalletFundingFlow } from './components/wallet-funding-flow.js';
+import {
+  formatIdentityId,
+  formatDuffs,
+  formatTimestamp,
+  formatPublicKey,
+  formatKeyPurpose,
+  formatSecurityLevel,
+  formatTransactionStatus,
+  dashToDuffs,
+  duffsToCredits,
+  escapeHtml,
+  normalizeSecurityLevel,
+  normalizePurpose
+} from './utils/formatter.js';
+import {
+  validateAmount,
+  validateAddress,
+  validateIdentityId
+} from './utils/validator.js';
+import {
+  formatBalance,
+  transformIdentityForUI,
+  transformDiscoveryResult,
+  enrichIdentityForDisplay,
+  isValidTransformedIdentity,
+  mergeIdentityData
+} from './utils/identity-transformer.js';
 
-// Expose MNEMONIC globally for debugging and ensure it's set on load
-window.MNEMONIC = MNEMONIC;
+// Only expose MNEMONIC in mock/development mode
+if (localStorage.getItem('useMockMode') === 'true') {
+  window.MNEMONIC = MNEMONIC;
+}
 
 // Known platform contract IDs (testnet)
 const DPNS_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
@@ -128,41 +167,6 @@ async function getNetworkSdkOptions(network = 'testnet') {
   return baseOptions;
 }
 
-import { NotificationCenter } from './components/notification-center.js';
-import { NetworkSwitcher } from './components/network-switcher.js';
-import { NameResolver } from './components/name-resolver.js';
-import { DocumentViewer } from './components/document-viewer.js';
-import { ContestedNamesViewer } from './components/contested-names-viewer.js';
-import { ContactsViewer } from './components/contacts-viewer.js';
-import { ContactRequestsManager } from './components/contact-requests.js';
-import { TokenViewer } from './components/token-viewer.js';
-import { notifications } from './components/notifications.js';
-import { WalletFundingFlow } from './components/wallet-funding-flow.js';
-import {
-  formatIdentityId,
-  formatDuffs,
-  formatTimestamp,
-  formatPublicKey,
-  formatKeyPurpose,
-  formatSecurityLevel,
-  formatTransactionStatus,
-  dashToDuffs,
-  duffsToCredits
-} from './utils/formatter.js';
-import {
-  validateAmount,
-  validateAddress,
-  validateIdentityId
-} from './utils/validator.js';
-import {
-  formatBalance,
-  transformIdentityForUI,
-  transformDiscoveryResult,
-  enrichIdentityForDisplay,
-  isValidTransformedIdentity,
-  mergeIdentityData
-} from './utils/identity-transformer.js';
-
 class IdentityManagerApp {
   constructor() {
     this.platformOps = new MockPlatformOperations();
@@ -170,15 +174,13 @@ class IdentityManagerApp {
     this.fundingFlow = null; // Will be initialized after useMockMode is determined
     this.mnemonic = null; // Stored from login for use in SDK operations
 
-    // Auto-set mnemonic for testnet testing (when not in mock mode)
-    // This allows the real SDK to be used without manual login
-    // Differentiate logging between new and returning sessions for clarity
+    // Auto-set mnemonic for testnet testing
+    // Only set when in mock mode or returning session (login already validated)
     const isReturningSession = localStorage.getItem('dash-logged-in') === 'true';
-    this.mnemonic = MNEMONIC;
-    if (isReturningSession) {
-      console.log('🔑 Restored test mnemonic for returning session');
-    } else {
-      console.log('🔑 Auto-set test mnemonic for new session');
+    const isMockMode = localStorage.getItem('useMockMode') === 'true';
+    if (isMockMode || isReturningSession) {
+      this.mnemonic = MNEMONIC;
+      console.log(isReturningSession ? '🔑 Restored test mnemonic for returning session' : '🔑 Auto-set test mnemonic (mock mode)');
     }
 
     // DIAGNOSTIC: Clear localStorage to force REAL mode for testing
@@ -341,7 +343,7 @@ class IdentityManagerApp {
       console.log(`  Found ${identities.length} identities`);
 
       // Check URL hash for identity navigation
-      const hashMatch = window.location.hash.match(/^#identity\/(.+)$/);
+      const hashMatch = window.location.hash.match(/^#identity\/([1-9A-HJ-NP-Za-km-z]{43,44})$/);
       const hashIdentityId = hashMatch ? hashMatch[1] : null;
 
       // Smart routing logic
@@ -376,7 +378,7 @@ class IdentityManagerApp {
 
       // Add URL hash change listener for navigation
       window.addEventListener('hashchange', () => {
-        const hashMatch = window.location.hash.match(/^#identity\/(.+)$/);
+        const hashMatch = window.location.hash.match(/^#identity\/([1-9A-HJ-NP-Za-km-z]{43,44})$/);
         const hashIdentityId = hashMatch ? hashMatch[1] : null;
 
         if (hashIdentityId) {
@@ -392,13 +394,7 @@ class IdentityManagerApp {
         }
       });
 
-      // Handle browser back/forward navigation
-      window.addEventListener('popstate', (event) => {
-        if (event.state?.identityId) {
-          stateManager.selectIdentity(event.state.identityId);
-          this.showIdentityView();
-        }
-      });
+      // Note: popstate is handled in subscribeToState() to avoid duplicate listeners
 
       console.log('✅ Identity Manager ready!');
     } catch (error) {
@@ -437,56 +433,52 @@ class IdentityManagerApp {
       this.sdk = sdk;
       console.log('  ✅ SDK initialized and connected (background)');
 
-      // Update funding flow with SDK for real UTXO discovery
-      if (this.fundingFlow) {
-        this.fundingFlow.setSDK(sdk);
-        if (this.mnemonic) {
-          this.fundingFlow.setMnemonic(this.mnemonic);
-        }
-      }
+      // Propagate SDK to all components
+      this.propagateSDKToComponents(sdk, this.mnemonic);
 
-      // Update document viewer with SDK for real document fetching
-      if (this.components.documentViewer) {
-        this.components.documentViewer.setSDK(sdk);
-
-        // Reload documents for currently selected identity if identity view is active
-        const selectedIdentity = stateManager.getSelectedIdentity();
-        const identityViewVisible = !document.getElementById('identity-view')?.hidden;
-        if (selectedIdentity && identityViewVisible) {
+      // Reload documents/tokens for currently selected identity if identity view is active
+      const selectedIdentity = stateManager.getSelectedIdentity();
+      const identityViewVisible = !document.getElementById('identity-view')?.hidden;
+      if (selectedIdentity && identityViewVisible) {
+        if (this.components.documentViewer) {
           console.log('  📄 Reloading documents with SDK for:', selectedIdentity.id.substring(0, 8) + '...');
           this.components.documentViewer.loadDocuments(selectedIdentity.id);
         }
-      }
-
-      // Update token viewer with SDK for real token queries
-      if (this.components.tokenViewer) {
-        this.components.tokenViewer.setSDK(sdk);
-        const selectedIdentity = stateManager.getSelectedIdentity();
-        if (selectedIdentity) {
+        if (this.components.tokenViewer) {
           this.components.tokenViewer.setIdentityId(selectedIdentity.id);
         }
-      }
-
-      // Update name resolver with SDK for DPNS network queries
-      if (this.components.nameResolver) {
-        this.components.nameResolver.setSDK(sdk);
-      }
-
-      // Update DashPay components with SDK for real DashPay operations
-      if (this.components.contactsViewer && this.mnemonic) {
-        this.components.contactsViewer.setSDK(sdk, this.mnemonic);
-      }
-      if (this.components.contactRequestsManager && this.mnemonic) {
-        this.components.contactRequestsManager.setSDK(sdk, this.mnemonic);
-      }
-
-      // Enable real SDK operations for transfers/withdrawals if mnemonic is available
-      if (this.mnemonic) {
-        this.platformOps.setRealSDK(sdk, this.mnemonic);
       }
     } catch (error) {
       console.error('  ❌ Failed to initialize SDK:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Propagate SDK and mnemonic to all components that need them
+   */
+  propagateSDKToComponents(sdk, mnemonic) {
+    if (this.fundingFlow) {
+      this.fundingFlow.setSDK(sdk);
+      if (mnemonic) this.fundingFlow.setMnemonic(mnemonic);
+    }
+    if (this.components.documentViewer) {
+      this.components.documentViewer.setSDK(sdk);
+    }
+    if (this.components.tokenViewer) {
+      this.components.tokenViewer.setSDK(sdk);
+    }
+    if (this.components.nameResolver) {
+      this.components.nameResolver.setSDK(sdk);
+    }
+    if (this.components.contactsViewer && mnemonic) {
+      this.components.contactsViewer.setSDK(sdk, mnemonic);
+    }
+    if (this.components.contactRequestsManager && mnemonic) {
+      this.components.contactRequestsManager.setSDK(sdk, mnemonic);
+    }
+    if (mnemonic) {
+      this.platformOps.setRealSDK(sdk, mnemonic);
     }
   }
 
@@ -627,7 +619,7 @@ class IdentityManagerApp {
 
       // Show dashboard by default, but check URL hash for direct identity navigation
       console.log('  → Checking URL hash for identity navigation...');
-      const hashMatch = window.location.hash.match(/^#identity\/(.+)$/);
+      const hashMatch = window.location.hash.match(/^#identity\/([1-9A-HJ-NP-Za-km-z]{43,44})$/);
       const hashIdentityId = hashMatch ? hashMatch[1] : null;
       const identities = stateManager.getAllIdentities();
 
@@ -731,38 +723,8 @@ class IdentityManagerApp {
       this.sdk = sdk;
       console.log(`  ✅ SDK initialized`);
 
-      // Update funding flow with SDK for real UTXO discovery
-      if (this.fundingFlow) {
-        this.fundingFlow.setSDK(sdk);
-        this.fundingFlow.setMnemonic(mnemonic);
-      }
-
-      // Update document viewer with SDK for real document fetching
-      if (this.components.documentViewer) {
-        this.components.documentViewer.setSDK(sdk);
-      }
-
-      // Update token viewer with SDK for real token queries
-      if (this.components.tokenViewer) {
-        this.components.tokenViewer.setSDK(sdk);
-      }
-
-      // Update name resolver with SDK for DPNS network queries
-      if (this.components.nameResolver) {
-        this.components.nameResolver.setSDK(sdk);
-      }
-
-      // Update DashPay components with SDK for real DashPay operations
-      if (this.components.contactsViewer) {
-        this.components.contactsViewer.setSDK(sdk, mnemonic);
-      }
-      if (this.components.contactRequestsManager) {
-        this.components.contactRequestsManager.setSDK(sdk, mnemonic);
-      }
-
-      // Enable real SDK operations for transfers/withdrawals
-      // mnemonic is available in this scope from the function parameter
-      this.platformOps.setRealSDK(sdk, mnemonic);
+      // Propagate SDK to all components
+      this.propagateSDKToComponents(sdk, mnemonic);
     } catch (initError) {
       console.error(`  ❌ Failed to initialize SDK:`, initError);
       throw initError;
@@ -988,6 +950,8 @@ class IdentityManagerApp {
         }
       } else if (fundingData.context === 'topup') {
         // Funding complete for topup - execute topup operation
+        if (this._topupInProgress) return;
+        this._topupInProgress = true;
         try {
           console.log('✅ Topup funding received, starting topup operation');
           console.log('   Funding details:', fundingData);
@@ -1121,6 +1085,8 @@ class IdentityManagerApp {
         } catch (error) {
           console.error('❌ Failed to process topup:', error);
           notifications.error(`Failed to start top-up: ${error.message}`);
+        } finally {
+          this._topupInProgress = false;
         }
       } else {
         console.warn('⚠️ Unknown funding context:', fundingData.context);
@@ -1793,6 +1759,7 @@ class IdentityManagerApp {
     // Reset form
     if (form) form.reset();
 
+    if (modal.dataset.listenersInitialized !== 'true') {
     // Real-time validation for DPNS name format
     if (recipientInput && validationText) {
       recipientInput.addEventListener('input', () => {
@@ -2128,6 +2095,9 @@ class IdentityManagerApp {
         stateManager.setLoading(false);
       }
     });
+
+    modal.dataset.listenersInitialized = 'true';
+    } // end listenersInitialized guard
 
     // Show modal
     modal.hidden = false;
@@ -2571,32 +2541,8 @@ class IdentityManagerApp {
             const sdkOptions = await getNetworkSdkOptions('testnet');
             this.sdk = new EvoSDK(sdkOptions);
             console.log('✅ SDK initialized successfully');
-            // Update funding flow with SDK for real UTXO discovery
-            if (this.fundingFlow) {
-              this.fundingFlow.setSDK(this.sdk);
-              if (this.mnemonic) {
-                this.fundingFlow.setMnemonic(this.mnemonic);
-              }
-            }
-            // Update document viewer with SDK for real document fetching
-            if (this.components.documentViewer) {
-              this.components.documentViewer.setSDK(this.sdk);
-            }
-            // Update token viewer with SDK for real token queries
-            if (this.components.tokenViewer) {
-              this.components.tokenViewer.setSDK(this.sdk);
-            }
-            // Update name resolver with SDK for DPNS network queries
-            if (this.components.nameResolver) {
-              this.components.nameResolver.setSDK(this.sdk);
-            }
-            // Update DashPay components with SDK for real DashPay operations
-            if (this.components.contactsViewer && this.mnemonic) {
-              this.components.contactsViewer.setSDK(this.sdk, this.mnemonic);
-            }
-            if (this.components.contactRequestsManager && this.mnemonic) {
-              this.components.contactRequestsManager.setSDK(this.sdk, this.mnemonic);
-            }
+            // Propagate SDK to all components
+            this.propagateSDKToComponents(this.sdk, this.mnemonic);
           } else {
             console.warn('⚠️ EvoSDK class not found in browser bundle');
           }
@@ -3063,7 +3009,7 @@ class IdentityManagerApp {
       console.error('[ShowPrivateKey] Failed to derive key:', {
         error: error.message,
         stack: error.stack,
-        mnemonic: this.mnemonic ? `${this.mnemonic.substring(0, 20)}...` : 'undefined',
+        hasMnemonic: !!this.mnemonic,
         identityIndex: identity.index,
         keyId: key.id
       });
@@ -3092,7 +3038,7 @@ class IdentityManagerApp {
         </div>
         <h3>Private Key Not Available</h3>
         <p class="unavailable-description">
-          ${reason}
+          ${escapeHtml(reason)}
         </p>
         <div class="key-info-box">
           <strong>Key Information:</strong>
@@ -3194,23 +3140,6 @@ class IdentityManagerApp {
   }
 
   canDisableKey(identity, key) {
-    // Normalize values to handle both string and numeric formats
-    const normalizeSecurityLevel = (level) => {
-      if (typeof level === 'string') {
-        const map = { 'MASTER': 0, 'CRITICAL': 1, 'HIGH': 2, 'MEDIUM': 3 };
-        return map[level.toUpperCase()] ?? level;
-      }
-      return level;
-    };
-
-    const normalizePurpose = (purpose) => {
-      if (typeof purpose === 'string') {
-        const map = { 'AUTHENTICATION': 0, 'ENCRYPTION': 1, 'TRANSFER': 2, 'DECRYPTION': 3, 'WITHDRAW': 4 };
-        return map[purpose.toUpperCase()] ?? purpose;
-      }
-      return purpose;
-    };
-
     const securityLevel = normalizeSecurityLevel(key.securityLevel);
     const purpose = normalizePurpose(key.purpose);
 
@@ -3251,22 +3180,6 @@ class IdentityManagerApp {
    * Get human-readable reason why a key cannot be disabled (Fix 3.3)
    */
   getDisableBlockReason(identity, key) {
-    const normalizeSecurityLevel = (level) => {
-      if (typeof level === 'string') {
-        const map = { 'MASTER': 0, 'CRITICAL': 1, 'HIGH': 2, 'MEDIUM': 3 };
-        return map[level.toUpperCase()] ?? level;
-      }
-      return level;
-    };
-
-    const normalizePurpose = (purpose) => {
-      if (typeof purpose === 'string') {
-        const map = { 'AUTHENTICATION': 0, 'ENCRYPTION': 1, 'TRANSFER': 2, 'DECRYPTION': 3, 'WITHDRAW': 4 };
-        return map[purpose.toUpperCase()] ?? purpose;
-      }
-      return purpose;
-    };
-
     const securityLevel = normalizeSecurityLevel(key.securityLevel);
     const purpose = normalizePurpose(key.purpose);
 
@@ -3694,12 +3607,13 @@ class IdentityManagerApp {
     // Show modal
     modal.hidden = false;
 
-    // Bind event handlers
+    // Bind event handlers (only once)
     const form = document.getElementById('withdraw-form');
     const amountInput = document.getElementById('withdraw-amount');
     const conversionDisplay = document.getElementById('withdraw-conversion');
     const closeButtons = modal.querySelectorAll('.modal-close');
 
+    if (modal.dataset.listenersInitialized !== 'true') {
     // Real-time conversion
     const updateConversion = () => {
       const dash = parseFloat(amountInput.value) || 0;
@@ -3764,6 +3678,9 @@ class IdentityManagerApp {
         stateManager.setLoading(false);
       }
     });
+
+    modal.dataset.listenersInitialized = 'true';
+    } // end listenersInitialized guard
   }
 
   showTransferModal() {
@@ -3785,7 +3702,7 @@ class IdentityManagerApp {
       const recipientDatalist = document.getElementById('transfer-recipient-list');
       if (recipientDatalist) {
         recipientDatalist.innerHTML = otherIdentities.map(id => `
-          <option value="${id.id}">${id.label || formatIdentityId(id.id)}</option>
+          <option value="${escapeHtml(id.id)}">${escapeHtml(id.label || formatIdentityId(id.id))}</option>
         `).join('');
       }
 
@@ -3955,12 +3872,13 @@ class IdentityManagerApp {
     // Show modal
     modal.hidden = false;
 
-    // Bind event handlers
+    // Bind event handlers (only once)
     const form = document.getElementById('register-name-form');
     const nameInput = document.getElementById('dpns-name');
     const liveNameType = document.getElementById('live-name-type');
     const closeButtons = modal.querySelectorAll('.modal-close');
 
+    if (modal.dataset.listenersInitialized !== 'true') {
     // Helper: Convert to homograph-safe (o→0, i/l→1)
     const convertToHomographSafe = (input) => {
       return input.toLowerCase()
@@ -4018,7 +3936,7 @@ class IdentityManagerApp {
         if (normalizationPreview && name && name !== normalized) {
           normalizationPreview.innerHTML = `
             <span style="color: var(--text-secondary);">Normalized: </span>
-            <span style="color: var(--dash-blue); font-family: var(--font-mono); font-weight: var(--font-semibold);">"${name}" → "${normalized}"</span>
+            <span style="color: var(--dash-blue); font-family: var(--font-mono); font-weight: var(--font-semibold);">"${escapeHtml(name)}" → "${escapeHtml(normalized)}"</span>
             <span style="color: var(--text-muted); font-size: var(--text-xs); margin-left: var(--space-2);">(o→0, i/l→1)</span>
           `;
           normalizationPreview.style.display = 'block';
@@ -4258,37 +4176,12 @@ class IdentityManagerApp {
           const derivedKey = await walletFunctions.deriveKeyFromSeedWithPath(mnemonic, null, derivedKeyPath, 'testnet');
           const derivedPublicKeyHex = derivedKey.public_key.toLowerCase();
 
-          // Get on-chain key data (handle different formats)
-          let onChainKeyHex = onChainKey1.data;
-          if (typeof onChainKeyHex !== 'string') {
-            if (onChainKeyHex?.type === 'Buffer') {
-              onChainKeyHex = Buffer.from(onChainKeyHex.data).toString('hex');
-            } else if (Array.isArray(onChainKeyHex)) {
-              onChainKeyHex = Buffer.from(onChainKeyHex).toString('hex');
-            }
-          } else if (/[+/=]/.test(onChainKeyHex) || !/^[0-9a-fA-F]+$/.test(onChainKeyHex)) {
-            // Base64 encoded
-            onChainKeyHex = Buffer.from(onChainKeyHex, 'base64').toString('hex');
-          }
-          onChainKeyHex = onChainKeyHex?.toLowerCase();
-
-          // Compare keys (handle HASH160 key type which stores 20-byte hash instead of 33-byte pubkey)
-          let keysMatch = false;
-          if (onChainKey1.type === 1) {
-            // ECDSA_HASH160 - on-chain key is RIPEMD160(SHA256(pubkey))
-            const { createHash } = await import('crypto');
-            const sha256 = createHash('sha256').update(Buffer.from(derivedPublicKeyHex, 'hex')).digest();
-            const hash160 = createHash('ripemd160').update(sha256).digest('hex').toLowerCase();
-            keysMatch = hash160 === onChainKeyHex;
-          } else {
-            // ECDSA_SECP256K1 - direct comparison
-            keysMatch = derivedPublicKeyHex === onChainKeyHex;
-          }
+          // Compare derived key with on-chain key using shared compareKeys()
+          const keysMatch = await this.compareKeys({ publicKeyHex: derivedPublicKeyHex }, onChainKey1);
 
           if (!keysMatch) {
             console.error('[DPNS] KEY MISMATCH DETECTED!');
             console.error(`  Derived public key: ${derivedPublicKeyHex?.substring(0, 40)}...`);
-            console.error(`  On-chain key data:  ${onChainKeyHex?.substring(0, 40)}...`);
             console.error(`  On-chain key type:  ${onChainKey1.type} (${onChainKey1.type === 0 ? 'SECP256K1' : 'HASH160'})`);
             console.error(`  Identity index:     ${identity.index}`);
 
@@ -4418,6 +4311,9 @@ class IdentityManagerApp {
         stateManager.setLoading(false);
       }
     });
+
+    modal.dataset.listenersInitialized = 'true';
+    } // end listenersInitialized guard
   }
 
   showRenameIdentityModal(identityId) {
@@ -4672,9 +4568,10 @@ class IdentityManagerApp {
    * Highlight search matches in DPNS names
    */
   highlightMatch(text, searchTerm) {
-    if (!searchTerm) return text;
+    if (!searchTerm) return escapeHtml(text);
+    const escaped = escapeHtml(text);
     const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
+    return escaped.replace(regex, '<mark>$1</mark>');
   }
 
   bindEventHandlers() {
@@ -4844,9 +4741,11 @@ try {
   console.log('Starting Dash Identity Manager...');
   const app = new IdentityManagerApp();
 
-  // Export for debugging
-  window.app = app;
-  window.stateManager = stateManager;
+  // Debug access only
+  if (localStorage.getItem('debugMode') === 'true') {
+    window.app = app;
+    window.stateManager = stateManager;
+  }
   console.log('✅ Dash Identity Manager initialized successfully');
 
   // Ensure mnemonic is set - try immediately and on load
@@ -4863,5 +4762,5 @@ try {
 } catch (error) {
   console.error('❌ Failed to initialize app:', error);
   console.error('Stack:', error.stack);
-  alert(`Failed to load application: ${error.message}`);
+  notifications.error(`Failed to load application: ${error.message}`);
 }

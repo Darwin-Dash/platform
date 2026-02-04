@@ -9,7 +9,8 @@
 
 import { stateManager } from '../state-manager.js';
 import { notifications } from './notifications.js';
-import { formatIdentityId, formatTimestamp } from '../utils/formatter.js';
+import { formatIdentityId, formatTimestamp, escapeHtml } from '../utils/formatter.js';
+import { transformWasmDocument } from '../utils/identity-transformer.js';
 import { retryOperation, verifyByBalanceChange } from '../utils/retry-utils.js';
 import cbor from 'cbor';
 import CryptoJS from 'crypto-js';
@@ -23,14 +24,14 @@ export class DashPayManager {
     this.sdk = sdk;
     this.mnemonic = mnemonic;
     this.currentIdentityId = null;
+    this._profileCache = new Map(); // Cache profiles to avoid duplicate queries (Issue 3)
   }
 
   /**
    * Check if real SDK operations are available
    */
   canUseRealSDK() {
-    const useMockMode = localStorage.getItem('useMockMode') === 'true';
-    return !useMockMode && this.sdk && this.mnemonic;
+    return !stateManager.isMockMode() && this.sdk && this.mnemonic;
   }
 
   /**
@@ -39,37 +40,6 @@ export class DashPayManager {
   setSDK(sdk, mnemonic) {
     this.sdk = sdk;
     this.mnemonic = mnemonic;
-  }
-
-  /**
-   * Transform WASM SDK document to the format expected by the component
-   * WASM documents expose properties via toJSON(), not getProperties()
-   */
-  transformWasmDocument(doc, documentType = 'contactRequest') {
-    if (!doc) return null;
-
-    // Get document ID
-    const id = doc.getId?.() ? doc.getId().base58() : (doc.id || doc.$id);
-    const ownerId = doc.getOwnerId?.() ? doc.getOwnerId().base58() : (doc.ownerId || doc.$ownerId);
-
-    // Handle BigInt timestamps
-    const rawCreatedAt = doc.getCreatedAt?.() || doc.createdAt || doc.$createdAt;
-    const rawUpdatedAt = doc.getUpdatedAt?.() || doc.updatedAt || doc.$updatedAt;
-    const createdAt = rawCreatedAt ? new Date(Number(rawCreatedAt)).toISOString() : new Date().toISOString();
-    const updatedAt = rawUpdatedAt ? new Date(Number(rawUpdatedAt)).toISOString() : createdAt;
-
-    // WASM documents expose properties via toJSON()
-    const data = (typeof doc.toJSON === 'function' ? doc.toJSON() : null) || doc.getProperties?.() || doc.data || {};
-
-    return {
-      id: id || `dashpay-${Date.now()}`,
-      ownerId,
-      contractId: 'dashpay',
-      documentType,
-      createdAt,
-      updatedAt,
-      data
-    };
   }
 
   /**
@@ -124,21 +94,28 @@ export class DashPayManager {
           console.log('[DashPay] SDK query returned:', resultMap);
           // Convert Map to array and transform WASM documents
           const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
-          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactRequest'));
+          return docsArray.map(doc => transformWasmDocument(doc, 'contactRequest'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK query failed, falling back to mock:', sdkError);
         }
       }
 
-      // Fallback to mock: Find all contactRequest documents where toUserId equals identityId
-      const mockDocuments = await import('../mock-data.js');
-      const inboundRequests = mockDocuments.mockDocuments.filter(doc =>
-        doc.contractId === 'dashpay' &&
-        doc.documentType === 'contactRequest' &&
-        doc.data.toUserId === identityId
-      );
-
-      return inboundRequests;
+      // Fallback to platformOps or mock data
+      if (this.platformOps?.getDocumentsByOwner) {
+        const documents = await this.platformOps.getDocumentsByOwner(identityId);
+        return documents.filter(doc =>
+          doc.contractId === 'dashpay' &&
+          doc.documentType === 'contactRequest' &&
+          doc.data?.toUserId === identityId
+        );
+      } else {
+        const { mockDocuments } = await import('../mock-data.js');
+        return mockDocuments.filter(doc =>
+          doc.contractId === 'dashpay' &&
+          doc.documentType === 'contactRequest' &&
+          doc.data?.toUserId === identityId
+        );
+      }
     } catch (error) {
       console.error('Failed to get inbound contact requests:', error);
       return [];
@@ -163,7 +140,7 @@ export class DashPayManager {
           console.log('[DashPay] SDK query returned:', resultMap);
           // Convert Map to array and transform WASM documents
           const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
-          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactRequest'));
+          return docsArray.map(doc => transformWasmDocument(doc, 'contactRequest'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK query failed, falling back to mock:', sdkError);
         }
@@ -187,6 +164,11 @@ export class DashPayManager {
    * Get profile for an identity
    */
   async getProfile(identityId) {
+    // Return cached profile if available (Issue 3: avoid duplicate queries)
+    if (this._profileCache.has(identityId)) {
+      return this._profileCache.get(identityId);
+    }
+
     try {
       // Try real SDK query first if available
       if (this.canUseRealSDK()) {
@@ -201,8 +183,10 @@ export class DashPayManager {
           console.log('[DashPay] SDK profile query returned:', resultMap);
           // Convert Map to array and transform WASM documents
           const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
-          const documents = docsArray.map(doc => this.transformWasmDocument(doc, 'profile'));
-          return documents.length > 0 ? documents[0] : null;
+          const documents = docsArray.map(doc => transformWasmDocument(doc, 'profile'));
+          const sdkResult = documents.length > 0 ? documents[0] : null;
+          this._profileCache.set(identityId, sdkResult);
+          return sdkResult;
         } catch (sdkError) {
           console.warn('[DashPay] SDK profile query failed, falling back to mock:', sdkError);
         }
@@ -215,7 +199,9 @@ export class DashPayManager {
         doc.contractId === 'dashpay' && doc.documentType === 'profile'
       );
 
-      return profile || null;
+      const result = profile || null;
+      this._profileCache.set(identityId, result);
+      return result;
     } catch (error) {
       console.error('Failed to get profile:', error);
       return null;
@@ -240,7 +226,7 @@ export class DashPayManager {
           console.log('[DashPay] SDK contacts query returned:', resultMap);
           // Convert Map to array and transform WASM documents
           const docsArray = resultMap instanceof Map ? Array.from(resultMap.values()).filter(Boolean) : [];
-          return docsArray.map(doc => this.transformWasmDocument(doc, 'contactInfo'));
+          return docsArray.map(doc => transformWasmDocument(doc, 'contactInfo'));
         } catch (sdkError) {
           console.warn('[DashPay] SDK contacts query failed, falling back to mock:', sdkError);
         }

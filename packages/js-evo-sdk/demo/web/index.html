@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Dash Platform Identity Management - Create, manage, and interact with your Dash identities">
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' wss: https:;">
     <title>Dash Identity Manager</title>
     <link rel="icon" type="image/svg+xml" href="./blue-d.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -838,7 +840,7 @@
                     <div class="modal-backdrop"></div>
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h2>Send Contact Request</h2>
+                            <h2>Add Contact</h2>
                             <button class="btn-icon modal-close" aria-label="Close">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                                     <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -848,28 +850,12 @@
                         <div class="modal-body">
                             <form id="send-contact-request-form">
                                 <div class="form-group">
-                                    <label for="contact-request-recipient">Recipient Identity ID</label>
+                                    <label for="contact-request-recipient">Username</label>
                                     <input type="text"
                                            id="contact-request-recipient"
-                                           placeholder="Enter 44-character identity ID..."
-                                           maxlength="44"
+                                           placeholder="Enter username (e.g., alice.dash)"
                                            required />
-                                    <span class="input-help" id="contact-request-validation">Enter the identity ID of the person you want to add</span>
-                                </div>
-                                <!-- Quick-select section for wallet identities (populated dynamically) -->
-                                <div id="contact-request-quick-select" class="quick-select-section" hidden>
-                                    <label class="quick-select-label">Your other identities:</label>
-                                    <div class="identity-chips" id="contact-request-identity-chips">
-                                        <!-- Identity chips populated by JavaScript -->
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="contact-request-message">Message (Optional)</label>
-                                    <textarea id="contact-request-message"
-                                              rows="3"
-                                              placeholder="Hi, I'd like to connect with you on Dash Platform!"
-                                              maxlength="200"></textarea>
-                                    <span class="input-help">Add a personal message to your contact request</span>
+                                    <span class="input-help" id="contact-request-validation">Enter the DPNS name of the person you want to add</span>
                                 </div>
                             </form>
                         </div>

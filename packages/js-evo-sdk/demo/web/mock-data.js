@@ -5,9 +5,9 @@
 
 import { stateManager } from './state-manager.js';
 
-// Test mnemonic for development - from packages/js-evo-sdk/.env
-// WARNING: Never use this in production!
-export const TEST_MNEMONIC = 'lamp truck drip furnace now swing income victory leisure popular jeans vehicle';
+// DEMO ONLY — this mnemonic holds no real funds
+// Used for mock mode development and testing
+export const MNEMONIC = 'lamp truck drip furnace now swing income victory leisure popular jeans vehicle';
 
 export const mockIdentities = new Map([
   ['GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec', {
@@ -305,19 +305,6 @@ export const mockDocuments = [
     updatedAt: '2024-03-20T16:00:00Z'
   },
   {
-    id: 'doc_dashpay_contact_req_1',
-    contractId: 'dashpay',
-    documentType: 'contactRequest',
-    ownerId: 'H3KTBYNQkBYZVpXmGAonVGwJqxDKkr5NRXAuthXXXXXX',
-    data: {
-      toUserId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-      encryptedPublicKey: '0xabc123...',
-      encryptedAccountReference: '0xdef456...'
-    },
-    createdAt: '2024-09-15T12:00:00Z',
-    updatedAt: '2024-09-15T12:00:00Z'
-  },
-  {
     id: 'doc_dpns_gamer_1',
     contractId: 'dpns',
     documentType: 'domain',
@@ -509,8 +496,7 @@ export class MockPlatformOperations {
       throw new Error(`Key ${keyId} not found in generated keys`);
     }
 
-    console.log(`[KeyDerivation] WASM SDK derived key ${keyId} for identity index ${identityIndex}`);
-    console.log(`  Path: m/9'/1'/5'/0'/0'/${identityIndex}'/${keyId}'`);
+    console.debug(`[KeyDerivation] Derived key ${keyId} for identity index ${identityIndex}`);
 
     return key.privateKeyWif;
   }
@@ -1044,7 +1030,7 @@ export class MockPlatformOperations {
   async generateFundingAddress() {
     await this.delay(500);
 
-    // Use the real testnet address derived from TEST_MNEMONIC
+    // Use the real testnet address derived from MNEMONIC
     // This address is derived from: lamp truck drip furnace now swing income victory leisure popular jeans vehicle
     // Using BIP44 path m/44'/1'/0'/0/0
     const realTestAddress = 'yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy';

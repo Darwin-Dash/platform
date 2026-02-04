@@ -300,3 +300,36 @@ export function formatFileSize(bytes) {
 
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${units[i]}`;
 }
+
+/**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text safe for innerHTML
+ */
+export function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = String(text ?? '');
+  return div.innerHTML;
+}
+
+/**
+ * Normalize security level from various formats to a numeric value
+ * @param {string|number} level - Security level (string name or numeric enum)
+ * @returns {number} Normalized numeric security level
+ */
+export function normalizeSecurityLevel(level) {
+  if (typeof level === 'number') return level;
+  const map = { 'MASTER': 0, 'CRITICAL': 1, 'HIGH': 2, 'MEDIUM': 3 };
+  return map[String(level).toUpperCase()] ?? level;
+}
+
+/**
+ * Normalize key purpose from various formats to a numeric value
+ * @param {string|number} purpose - Key purpose (string name or numeric enum)
+ * @returns {number} Normalized numeric purpose
+ */
+export function normalizePurpose(purpose) {
+  if (typeof purpose === 'number') return purpose;
+  const map = { 'AUTHENTICATION': 0, 'ENCRYPTION': 1, 'DECRYPTION': 2, 'TRANSFER': 3, 'SIGNING': 4 };
+  return map[String(purpose).toUpperCase()] ?? purpose;
+}

@@ -5,7 +5,7 @@
 
 import { stateManager } from '../state-manager.js';
 import { notifications } from './notifications.js';
-import { formatIdentityId } from '../utils/formatter.js';
+import { escapeHtml, formatIdentityId } from '../utils/formatter.js';
 import { DashPayManager } from './dashpay-manager.js';
 
 export class ContactsViewer {
@@ -79,24 +79,26 @@ export class ContactsViewer {
       return;
     }
 
-    list.innerHTML = this.contacts.map(contact => `
+    list.innerHTML = this.contacts.map(contact => {
+      const safeAvatarUrl = contact.avatarUrl && /^(https:|data:)/.test(contact.avatarUrl) ? contact.avatarUrl : '';
+      return `
       <div class="contact-card" data-contact-id="${contact.id}">
         <div class="contact-avatar">
-          ${contact.avatarUrl ? `<img src="${contact.avatarUrl}" alt="${contact.displayName}" />` : `
+          ${safeAvatarUrl ? `<img src="${escapeHtml(safeAvatarUrl)}" alt="${escapeHtml(contact.displayName)}" />` : `
             <div class="contact-avatar-placeholder">
-              ${contact.displayName.charAt(0).toUpperCase()}
+              ${escapeHtml(contact.displayName.charAt(0).toUpperCase())}
             </div>
           `}
         </div>
         <div class="contact-info">
-          <div class="contact-name">${contact.displayName}</div>
+          <div class="contact-name">${escapeHtml(contact.displayName)}</div>
           ${contact.dpnsNames.length > 0 ? `
             <div class="contact-dpns">
-              ${contact.dpnsNames.map(name => `<span class="dpns-badge">${name}</span>`).join('')}
+              ${contact.dpnsNames.map(name => `<span class="dpns-badge">${escapeHtml(name)}</span>`).join('')}
             </div>
           ` : ''}
           ${contact.publicMessage ? `
-            <div class="contact-message">${contact.publicMessage}</div>
+            <div class="contact-message">${escapeHtml(contact.publicMessage)}</div>
           ` : ''}
           <div class="contact-id">
             <span class="monospace">${formatIdentityId(contact.identityId)}</span>
@@ -117,7 +119,7 @@ export class ContactsViewer {
           </button>
         </div>
       </div>
-    `).join('');
+    `;}).join('');
 
     // Bind action buttons
     this.bindContactActions();
@@ -160,20 +162,56 @@ export class ContactsViewer {
   }
 
   async handleRemoveContact(contactId) {
-    const confirmed = confirm('Are you sure you want to remove this contact?');
-    if (!confirmed) return;
+    this._showConfirmation('Are you sure you want to remove this contact?', async () => {
+      try {
+        const identity = stateManager.getSelectedIdentity();
+        if (!identity) return;
 
-    try {
-      const identity = stateManager.getSelectedIdentity();
-      if (!identity) return;
+        await this.dashpay.removeContact(identity.id, contactId);
 
-      await this.dashpay.removeContact(identity.id, contactId);
+        // Reload contacts
+        await this.loadContacts(identity.id);
+      } catch (error) {
+        notifications.error(`Failed to remove contact: ${error.message}`);
+      }
+    });
+  }
 
-      // Reload contacts
-      await this.loadContacts(identity.id);
-    } catch (error) {
-      notifications.error(`Failed to remove contact: ${error.message}`);
+  /**
+   * Show an inline confirmation UI instead of a blocking confirm() dialog
+   * @param {string} message - Confirmation message to display
+   * @param {Function} onConfirm - Callback to execute if confirmed
+   */
+  _showConfirmation(message, onConfirm) {
+    // Remove any existing confirmation banner
+    const existing = this.container.querySelector('.inline-confirmation');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'inline-confirmation';
+    banner.innerHTML = `
+      <p class="confirmation-message">${escapeHtml(message)}</p>
+      <div class="confirmation-actions">
+        <button class="btn btn-danger btn-sm confirmation-yes">Yes, remove</button>
+        <button class="btn btn-secondary btn-sm confirmation-no">Cancel</button>
+      </div>
+    `;
+
+    const list = this.container.querySelector('#contacts-list');
+    if (list) {
+      list.parentNode.insertBefore(banner, list);
+    } else {
+      this.container.prepend(banner);
     }
+
+    banner.querySelector('.confirmation-yes').addEventListener('click', () => {
+      banner.remove();
+      onConfirm();
+    });
+
+    banner.querySelector('.confirmation-no').addEventListener('click', () => {
+      banner.remove();
+    });
   }
 
   showAddContactDialog() {
@@ -185,7 +223,7 @@ export class ContactsViewer {
   renderError(message) {
     const list = this.container.querySelector('#contacts-list');
     if (list) {
-      list.innerHTML = `<p class="error-message">Failed to load contacts: ${message}</p>`;
+      list.innerHTML = `<p class="error-message">Failed to load contacts: ${escapeHtml(message)}</p>`;
     }
   }
 }

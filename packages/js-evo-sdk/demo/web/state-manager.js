@@ -9,6 +9,9 @@ export class StateManager {
   constructor() {
     // Initialize application state
     this.state = {
+      // Mock mode flag
+      useMockMode: localStorage.getItem('useMockMode') !== 'false', // Default true
+
       // UI State
       ui: {
         selectedIdentityId: null,
@@ -369,6 +372,17 @@ export class StateManager {
     this.emit('modal-state', isOpen);
   }
 
+  // Mock mode management
+  setMockMode(enabled) {
+    this.state.useMockMode = enabled;
+    localStorage.setItem('useMockMode', String(enabled));
+    this.emit('mock-mode-changed', enabled);
+  }
+
+  isMockMode() {
+    return this.state.useMockMode;
+  }
+
   // Network state management
   setNetwork(network) {
     this.state.network = network;
@@ -388,6 +402,8 @@ export class StateManager {
   }
 
   // Event emitter implementation
+  // Convention: stateManager events for state changes (identity-updated, network-changed, etc.)
+  //             window CustomEvents for UI commands only (show-operation-progress, open-transfer-modal, etc.)
   on(event, callback) {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
@@ -521,6 +537,7 @@ export class StateManager {
   // Clear all state (reset)
   reset() {
     this.state = {
+      useMockMode: localStorage.getItem('useMockMode') !== 'false',
       ui: {
         selectedIdentityId: null,
         activePanel: null,
@@ -665,6 +682,21 @@ stateManager.on('transaction-added', () => {
 });
 
 stateManager.on('operation-progress', () => {
+  clearTimeout(persistTimeout);
+  persistTimeout = setTimeout(() => stateManager.persist(), 1000);
+});
+
+stateManager.on('identity-removed', () => {
+  clearTimeout(persistTimeout);
+  persistTimeout = setTimeout(() => stateManager.persist(), 1000);
+});
+
+stateManager.on('identity-label-updated', () => {
+  clearTimeout(persistTimeout);
+  persistTimeout = setTimeout(() => stateManager.persist(), 1000);
+});
+
+stateManager.on('operation-completed', () => {
   clearTimeout(persistTimeout);
   persistTimeout = setTimeout(() => stateManager.persist(), 1000);
 });

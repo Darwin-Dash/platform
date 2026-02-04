@@ -8,7 +8,7 @@
 
 import { stateManager } from '../state-manager.js';
 import { notifications } from './notifications.js';
-import { formatIdentityId, formatTimestamp } from '../utils/formatter.js';
+import { escapeHtml, formatIdentityId, formatTimestamp } from '../utils/formatter.js';
 import { DashPayManager } from './dashpay-manager.js';
 
 export class ContactRequestsManager {
@@ -16,6 +16,7 @@ export class ContactRequestsManager {
     this.container = containerElement;
     this.platformOps = platformOps;
     this.dashpay = new DashPayManager(platformOps);
+    this._app = null;
     this.inboundRequests = [];
     this.outboundRequests = [];
     // Store original documents for SDK operations
@@ -32,7 +33,18 @@ export class ContactRequestsManager {
     this.dashpay.setSDK(sdk, mnemonic);
   }
 
+  /**
+   * Set the app reference to avoid window.app coupling
+   */
+  setApp(app) {
+    this._app = app;
+  }
+
   async loadContactRequests(identityId) {
+    // Guard against concurrent loads (Issue 9: prevents duplicate rendering)
+    if (this._loadingForIdentity === identityId) return;
+    this._loadingForIdentity = identityId;
+
     try {
       // Load both inbound and outbound requests
       const [inbound, outbound] = await Promise.all([
@@ -87,6 +99,8 @@ export class ContactRequestsManager {
     } catch (error) {
       console.error('Failed to load contact requests:', error);
       this.renderError(error.message);
+    } finally {
+      this._loadingForIdentity = null;
     }
   }
 
@@ -188,18 +202,18 @@ export class ContactRequestsManager {
       <div class="contact-request-card request-inbound" data-request-id="${req.id}">
         <div class="request-avatar">
           <div class="contact-avatar-placeholder">
-            ${req.senderName.charAt(0).toUpperCase()}
+            ${escapeHtml(req.senderName.charAt(0).toUpperCase())}
           </div>
         </div>
         <div class="request-info">
-          <div class="request-sender-name">${req.senderName}</div>
+          <div class="request-sender-name">${escapeHtml(req.senderName)}</div>
           ${req.senderDpnsNames.length > 0 ? `
             <div class="request-dpns">
-              ${req.senderDpnsNames.map(name => `<span class="dpns-badge">${name}</span>`).join('')}
+              ${req.senderDpnsNames.map(name => `<span class="dpns-badge">${escapeHtml(name)}</span>`).join('')}
             </div>
           ` : ''}
           ${req.senderMessage ? `
-            <div class="request-message">${req.senderMessage}</div>
+            <div class="request-message">${escapeHtml(req.senderMessage)}</div>
           ` : ''}
           <div class="request-meta">
             <span class="request-id">${formatIdentityId(req.senderId)}</span>
@@ -240,14 +254,14 @@ export class ContactRequestsManager {
       <div class="contact-request-card request-outbound" data-request-id="${req.id}">
         <div class="request-avatar">
           <div class="contact-avatar-placeholder">
-            ${req.recipientName.charAt(0).toUpperCase()}
+            ${escapeHtml(req.recipientName.charAt(0).toUpperCase())}
           </div>
         </div>
         <div class="request-info">
-          <div class="request-sender-name">${req.recipientName}</div>
+          <div class="request-sender-name">${escapeHtml(req.recipientName)}</div>
           ${req.recipientDpnsNames.length > 0 ? `
             <div class="request-dpns">
-              ${req.recipientDpnsNames.map(name => `<span class="dpns-badge">${name}</span>`).join('')}
+              ${req.recipientDpnsNames.map(name => `<span class="dpns-badge">${escapeHtml(name)}</span>`).join('')}
             </div>
           ` : ''}
           <div class="request-meta">
@@ -309,7 +323,7 @@ export class ContactRequestsManager {
       if (this.dashpay.canUseRealSDK() && identity.index !== undefined) {
         try {
           // Use platformOps to get private key for the identity
-          privateKeyWif = await window.app?.platformOps?.getPrivateKeyForIdentity?.(identity.index, 1);
+          privateKeyWif = await this._app?.platformOps?.getPrivateKeyForIdentity?.(identity.index, 1);
         } catch (keyError) {
           console.warn('[ContactRequests] Could not get private key:', keyError);
         }
@@ -348,7 +362,7 @@ export class ContactRequestsManager {
       let privateKeyWif = null;
       if (this.dashpay.canUseRealSDK() && identity.index !== undefined) {
         try {
-          privateKeyWif = await window.app?.platformOps?.getPrivateKeyForIdentity?.(identity.index, 1);
+          privateKeyWif = await this._app?.platformOps?.getPrivateKeyForIdentity?.(identity.index, 1);
         } catch (keyError) {
           console.warn('[ContactRequests] Could not get private key:', keyError);
         }
@@ -380,10 +394,10 @@ export class ContactRequestsManager {
     const outboundList = this.container.querySelector('#outbound-requests-list');
 
     if (inboundList) {
-      inboundList.innerHTML = `<p class="error-message">Failed to load: ${message}</p>`;
+      inboundList.innerHTML = `<p class="error-message">Failed to load: ${escapeHtml(message)}</p>`;
     }
     if (outboundList) {
-      outboundList.innerHTML = `<p class="error-message">Failed to load: ${message}</p>`;
+      outboundList.innerHTML = `<p class="error-message">Failed to load: ${escapeHtml(message)}</p>`;
     }
   }
 }

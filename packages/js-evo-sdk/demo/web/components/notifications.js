@@ -3,11 +3,20 @@
  * Toast notifications for user feedback
  */
 
+import { escapeHtml } from '../utils/formatter.js';
+
 export class NotificationSystem {
   constructor() {
-    this.container = document.getElementById('notification-container');
+    this._container = null;
     this.notifications = new Map();
     this.nextId = 1;
+  }
+
+  get container() {
+    if (!this._container) {
+      this._container = document.getElementById('notification-container');
+    }
+    return this._container;
   }
 
   /**
@@ -32,7 +41,7 @@ export class NotificationSystem {
     notification.innerHTML = `
       <div class="notification-icon">${icon}</div>
       <div class="notification-content">
-        <p class="notification-message">${this.escapeHtml(message)}</p>
+        <p class="notification-message">${escapeHtml(message)}</p>
       </div>
       <button class="notification-close" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -189,23 +198,11 @@ export class NotificationSystem {
     return icons[type] || icons.info;
   }
 
-  /**
-   * Escape HTML to prevent XSS
-   */
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
 }
 
 // Create singleton instance
 export const notifications = new NotificationSystem();
 
 // Global convenience functions
-window.showSuccess = (msg, duration) => notifications.success(msg, duration);
-window.showError = (msg, duration) => notifications.error(msg, duration);
-window.showWarning = (msg, duration) => notifications.warning(msg, duration);
-window.showInfo = (msg, duration) => notifications.info(msg, duration);
 window.showLoading = (msg) => notifications.loading(msg);
 window.hideLoading = () => notifications.dismissAll();

@@ -7,7 +7,7 @@
 
 import { stateManager } from '../state-manager.js';
 import { notifications } from './notifications.js';
-import { formatIdentityId } from '../utils/formatter.js';
+import { escapeHtml, formatIdentityId } from '../utils/formatter.js';
 import { validateIdentityId } from '../utils/validator.js';
 
 export class NameResolver {
@@ -308,18 +308,18 @@ export class NameResolver {
             </div>
             <div class="result-details">
               <div class="result-title">Name Resolved</div>
-              <div class="result-name">${name}</div>
+              <div class="result-name">${escapeHtml(name)}</div>
               <div class="result-label">Owner Identity:</div>
               <div class="result-identity">
-                <code class="monospace">${owner.id}</code>
-                <button class="copy-btn" data-copy="${owner.id}" title="Copy ID">
+                <code class="monospace">${escapeHtml(owner.id)}</code>
+                <button class="copy-btn" data-copy="${escapeHtml(owner.id)}" title="Copy ID">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                     <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
                   </svg>
                 </button>
               </div>
-              ${owner.label ? `<div class="result-label-tag">${owner.label}</div>` : ''}
+              ${owner.label ? `<div class="result-label-tag">${escapeHtml(owner.label)}</div>` : ''}
             </div>
           </div>
         `;
@@ -335,7 +335,7 @@ export class NameResolver {
             </div>
             <div class="result-details">
               <div class="result-title">Name Not Found</div>
-              <div class="result-name">${name}</div>
+              <div class="result-name">${escapeHtml(name)}</div>
               <p class="result-message">This name is not registered or not in your local identities.</p>
             </div>
           </div>
@@ -419,8 +419,8 @@ export class NameResolver {
       const namesList = names.length > 0
         ? names.map(name => `
             <div class="name-item">
-              <span class="name-value">${name}</span>
-              <button class="copy-btn" data-copy="${name}" title="Copy name">
+              <span class="name-value">${escapeHtml(name)}</span>
+              <button class="copy-btn" data-copy="${escapeHtml(name)}" title="Copy name">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
                   <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
@@ -444,7 +444,7 @@ export class NameResolver {
               <div class="result-title">${identity ? 'Identity Found' : 'DPNS Lookup Complete'}</div>
               <div class="result-identity-short">
                 <code class="monospace">${formatIdentityId(identityId)}</code>
-                ${identityLabel ? `<span class="result-label-tag">${identityLabel}</span>` : ''}
+                ${identityLabel ? `<span class="result-label-tag">${escapeHtml(identityLabel)}</span>` : ''}
               </div>
               <div class="result-label">Registered Names (${names.length}):</div>
               <div class="names-list">
