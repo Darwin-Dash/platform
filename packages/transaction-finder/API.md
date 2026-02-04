@@ -188,6 +188,39 @@ console.log('Confirmed via:', result.method);
 console.log('Total latency:', result.totalLatencyMs, 'ms');
 ```
 
+#### preRegisterTransaction()
+
+Pre-register a txid for InstantLock monitoring. Call this BEFORE broadcasting
+a transaction to ensure InstantLock proof bytes are captured.
+
+Triggers an immediate stream reconnection (if `reconnectOnPreRegister` is true)
+so DAPI's mempool scan picks up the newly broadcast transaction. Reconnection
+continues normally (HUNT phase) until the stream finds the pre-registered tx,
+at which point a grace period starts (WAIT phase, default 15s) to keep the
+stream alive for IS proof byte delivery from the LLMQ quorum.
+
+The grace period ends early if all pre-registered txids receive IS proof bytes.
+
+```typescript
+preRegisterTransaction(txid: string): void
+```
+
+**Parameters:**
+- `txid` - Transaction ID to pre-register
+
+**Example:**
+```typescript
+// 1. Pre-register BEFORE broadcasting
+finder.preRegisterTransaction(assetLockTxid);
+
+// 2. Broadcast the transaction via DAPI
+await dapiClient.core.broadcastTransaction(txBuffer);
+
+// 3. Wait for confirmation — instantLockHex will be available
+const result = await finder.waitForConfirmation(assetLockTxid);
+console.log('Proof bytes:', result.instantLockHex);
+```
+
 #### getTransaction()
 
 Get current state of a tracked transaction.
@@ -286,12 +319,24 @@ interface RealtimeFinderConfig {
   retries?: number;
   bloomFalsePositiveRate?: number;
   logLevel?: 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+  enableDAPIFailover?: boolean;
+  dapiNodeRetryDelay?: number;
   autoPruneOnConfirmation?: boolean;
   maxTrackedTransactions?: number;
   basePollInterval?: number;
   maxPollInterval?: number;
   minPollInterval?: number;
   adaptivePolling?: boolean;
+  enableTransactionPolling?: boolean;   // Enable polling-based IS/CL detection via getTransaction(). Default: true
+  transactionPollInterval?: number;     // Poll interval in ms (minimum 1000). Default: 2000
+  streamReconnectInterval?: number;     // Periodic stream reconnection interval in ms. Forces DAPI to
+                                        // re-run historical + mempool scan to catch missed txs.
+                                        // Default: 10000 (10s). Set to 0 to disable.
+  reconnectOnPreRegister?: boolean;     // Immediately reconnect stream when preRegisterTransaction() is called.
+                                        // Ensures mempool scan picks up newly broadcast tx. Default: true
+  reconnectGracePeriod?: number;        // Grace period (ms) after pre-registered tx is found on stream
+                                        // (WAIT phase). Periodic reconnection is paused so IS proof
+                                        // bytes can arrive. Default: 15000 (15s).
 }
 ```
 
@@ -358,7 +403,9 @@ interface TransactionEvent {
 interface InstantLockEvent {
   txid: string;
   timestamp: number;
-  latency: number;    // ms from broadcast
+  latency: number;          // ms from broadcast
+  instantLockHex?: string;  // Raw InstantLock proof bytes as hex (from DAPI stream only,
+                            // not available from polling). Required for InstantAssetLockProof.
 }
 ```
 
@@ -406,6 +453,10 @@ interface ConfirmationResult {
   chainLockTime: number | null;
   blockHeight: number | null;
   totalLatencyMs: number;
+  instantLockHex?: string | null;  // Raw InstantLock proof bytes as hex.
+                                   // Present when IS proof arrived via stream.
+                                   // null when IS was detected via polling only
+                                   // (boolean flag without raw bytes).
 }
 ```
 

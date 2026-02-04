@@ -72,12 +72,6 @@ export interface HistoricFinderConfig extends BaseFinderConfig {
 export interface RealtimeFinderConfig extends BaseFinderConfig {
   mode: FinderMode.REALTIME;
 
-  /** Maximum stream reconnection attempts */
-  maxReconnectAttempts?: number;
-
-  /** Base reconnection delay in milliseconds */
-  reconnectDelay?: number;
-
   /** Enable DAPI node failover on connection failure */
   enableDAPIFailover?: boolean;
 
@@ -101,6 +95,35 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
 
   /** Minimum allowed polling interval to prevent DAPI abuse */
   minPollInterval?: number;
+
+  /** Enable polling-based transaction status checking for IS/CL detection.
+   *  Polls getTransaction() for each tracked txid. Default: true */
+  enableTransactionPolling?: boolean;
+
+  /** Transaction status poll interval in milliseconds.
+   *  Min 1000ms to prevent DAPI abuse. Default: 2000 */
+  transactionPollInterval?: number;
+
+  /** Stream reconnection interval in milliseconds.
+   *  Periodic reconnection ensures missed transactions are caught
+   *  via DAPI's historical data + mempool scan phases.
+   *  Default: 10000 (10 seconds). Set to 0 to disable. */
+  streamReconnectInterval?: number;
+
+  /** Whether to immediately reconnect the stream when preRegisterTransaction()
+   *  is called. Ensures the mempool scan picks up newly broadcast transactions
+   *  so IS proof bytes are delivered. Default: true */
+  reconnectOnPreRegister?: boolean;
+
+  /** Grace period (ms) after a pre-registered transaction is found on the
+   *  DAPI stream (WAIT phase). Periodic reconnection is paused so the stream
+   *  stays alive for IS proof byte delivery from the LLMQ quorum (~1-2s).
+   *  This is NOT set when preRegisterTransaction() is called — reconnection
+   *  continues normally during the HUNT phase until the stream finds the tx.
+   *  Periodic reconnection resumes after all pre-registered txids receive IS
+   *  proof or the grace period expires.
+   *  Default: 15000 (15 seconds). */
+  reconnectGracePeriod?: number;
 }
 
 /**

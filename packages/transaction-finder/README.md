@@ -5,28 +5,13 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](./tsconfig.json)
 [![License](https://img.shields.io/badge/license-MIT-green)](./package.json)
 
-Unified transaction finding library for Dash Platform. Discover UTXOs through blockchain scanning and monitor transactions in real-time with InstantSend and ChainLock confirmations.
+Bridge between Dash Core funding transactions and DAPI Platform operations. Discovers spendable UTXOs via blockchain scanning (Historic mode) and monitors asset lock confirmations via InstantSend and ChainLock (Realtime mode) so the SDK can create identity proofs.
 
-## Features
+## Use Cases
 
-- 🔍 **Historic Mode**: Blockchain scanning for UTXO discovery from transaction history
-- ⚡ **Realtime Mode**: Live InstantSend/ChainLock monitoring for incoming transactions
-- 🔄 **Hybrid Mode**: Combined historic scanning + realtime monitoring for complete wallet sync
-- 📦 **Lightweight**: Minimal dependencies, works in browsers and Node.js
-- 🎯 **Type-Safe**: Full TypeScript support with strict typing
-- 🔌 **Flexible**: Works with standard DAPIClient from @dashevo/dapi-client
+### 1. Historic UTXO Discovery
 
-## Installation
-
-```bash
-npm install @dashevo/transaction-finder
-# or
-yarn add @dashevo/transaction-finder
-```
-
-## Quick Start
-
-### Historic Mode - Find UTXOs
+Scan the blockchain for spendable UTXOs to fund identity creation and top-up. Uses a bloom filter stream to find transactions at monitored addresses, extracts UTXOs, and selects the best spendable output.
 
 ```typescript
 import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
@@ -39,20 +24,15 @@ const finder = new TransactionFinder({
   fromHeight: 1,
 });
 
-// Find all UTXOs
-const utxos = await finder.findUTXOs();
-console.log('Found', utxos.length, 'UTXOs');
-
-// Or find just the latest spendable one
-const latestUTXO = await finder.findLatestSpendableUTXO();
-console.log('Latest UTXO:', latestUTXO.satoshis, 'satoshis');
+const utxo = await finder.findLatestSpendableUTXO();
+// Use utxo for asset lock creation
 ```
 
-### Realtime Mode - Monitor Payments
+### 2. Realtime Confirmation Monitoring
+
+Monitor asset lock transactions for InstantSend and ChainLock confirmation. The SDK needs raw InstantLock proof bytes (fast path, ~2s) or ChainLock height (slow fallback, ~30-60s) to create identity proofs on Platform.
 
 ```typescript
-import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
-
 const finder = new TransactionFinder({
   mode: FinderMode.REALTIME,
   network: 'testnet',
@@ -60,335 +40,215 @@ const finder = new TransactionFinder({
   dapiClient: myDapiClient,
 });
 
-// Monitor for incoming transactions
-await finder.monitorAddresses(['yX3CJJ42...'], {
-  onTransaction: (tx) => {
-    console.log('Transaction detected:', tx.txid);
-  },
+const stop = await finder.monitorAddresses(['yX3CJJ42...'], {
+  onTransaction: (tx) => console.log('TX detected:', tx.txid),
   onInstantLock: (lock) => {
-    console.log('InstantLocked in', lock.latency, 'ms');
+    console.log('IS proof:', lock.instantLockHex);  // Raw bytes for InstantAssetLockProof
   },
-  onChainLock: (cl) => {
-    console.log('ChainLocked at height', cl.chainLockedHeight);
-  },
+  onChainLock: (cl) => console.log('CL at height:', cl.chainLockedHeight),
+});
+
+// Pre-register a txid BEFORE broadcasting to ensure IS proof bytes arrive
+finder.preRegisterTransaction(assetLockTxid);
+
+// Wait for confirmation
+const result = await finder.waitForConfirmation(assetLockTxid);
+// result.instantLockHex — raw proof bytes if IS path succeeded
+// result.method — 'instantlock' | 'chainlock' | 'timeout'
+```
+
+### 3. Address Monitoring
+
+General-purpose payment detection for any address with real-time InstantSend and ChainLock callbacks.
+
+```typescript
+const stop = await finder.monitorAddresses(['yPaymentAddr...'], {
+  onTransaction: (tx) => console.log('Payment received:', tx.txid),
+  onInstantLock: (lock) => console.log('Confirmed in', lock.latency, 'ms'),
+  onChainLock: (cl) => console.log('Final at height', cl.chainLockedHeight),
 });
 ```
 
-### Hybrid Mode - Wallet Sync + Monitoring
+## How It Works
 
-```typescript
-import { TransactionFinder, FinderMode } from '@dashevo/transaction-finder';
+### Architecture
 
-const finder = new TransactionFinder({
-  mode: FinderMode.HYBRID,
-  network: 'testnet',
-  addresses: ['yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy'],
-  dapiClient: myDapiClient,
-  historic: {
-    fromHeight: 1,
-    onProgress: (progress) => {
-      console.log(`Syncing: ${progress.progress.toFixed(1)}%`);
-    },
-  },
-  realtime: {
-    autoPruneOnConfirmation: true,
-  },
-});
-
-// Sync history then monitor for new transactions
-const { utxos, stopMonitoring } = await finder.syncAndMonitor({
-  onTransaction: (tx) => console.log('New transaction:', tx.txid),
-  onInstantLock: (lock) => console.log('InstantLocked!'),
-  onChainLock: (cl) => console.log('ChainLocked!'),
-});
-
-console.log('Historic scan found', utxos.length, 'UTXOs');
-console.log('Now monitoring for new transactions...');
-
-// Later: stop monitoring when done
-stopMonitoring();
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                       RealtimeFinder                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────────────────────────┐  ┌──────────────────────────┐ │
+│  │  DAPI Bloom Filter Stream        │  │  TransactionStatusPoller │ │
+│  │  subscribeToTransactionsWithProofs│  │  polls getTransaction()  │ │
+│  │                                  │  │  for IS/CL booleans      │ │
+│  │  Delivers:                       │  │                          │ │
+│  │  - Raw transactions              │  │  Detects:                │ │
+│  │  - MerkleBlocks (block inclusion)│  │  - IS boolean (no bytes) │ │
+│  │  - InstantLock proof bytes       │  │  - CL boolean            │ │
+│  │                                  │  │                          │ │
+│  │  Reconnection:                   │  └──────────────────────────┘ │
+│  │  - Periodic (every 10s)          │                                │
+│  │  - On preRegisterTransaction()   │  ┌──────────────────────────┐ │
+│  │  - Grace period pauses periodic  │  │  ChainLockHeightMonitor  │ │
+│  │    after preRegister so IS proof  │  │  polls getEpochsInfo()   │ │
+│  │    bytes can arrive               │  │  for CL height           │ │
+│  └──────────────────────────────────┘  │                          │ │
+│                                         │  High-water mark:        │ │
+│  ┌──────────────────────────────────┐  │  monotonic, never drops  │ │
+│  │  TransactionTracker              │  │  (stale node protection) │ │
+│  │  Tracks tx state through stages: │  └──────────────────────────┘ │
+│  │  pending → instantlocked →       │                                │
+│  │  chainlocked                     │                                │
+│  └──────────────────────────────────┘                                │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Modes
+### DAPI Stream Behavior
 
-### Historic Mode
+`subscribeToTransactionsWithProofs` only bloom-filter-tests block transactions on the **first block** after connection. For subsequent blocks, it relies on internal ZMQ events which can miss transactions if the event was dropped. Periodic reconnection forces the server to re-run its historical data + mempool scan, catching anything missed.
 
-Scans blockchain history to discover UTXOs for a set of addresses. Perfect for:
-- Initial wallet sync
-- UTXO discovery for payment operations
-- Historical transaction analysis
+### Two Proof Paths
 
-**Key Methods**:
-- `findUTXOs()` - Returns all UTXOs found
-- `findLatestSpendableUTXO()` - Returns single latest UTXO
+The SDK creates asset lock proofs via two paths:
 
-**Configuration**:
-```typescript
-{
-  mode: FinderMode.HISTORIC,
-  network: 'testnet',
-  addresses: string[],
-  dapiClient: DAPIClientLike,
-  fromHeight: number,        // Start block
-  toHeight?: number,         // End block (default: current tip)
-  requiredAmount?: number,   // Minimum satoshis needed
-  timeout?: number,          // Stream timeout
-}
+**InstantAssetLockProof (fast path, ~2s):**
+- Needs `instantLockHex` (raw LLMQ signature bytes) + `transactionHex`
+- Created via `AssetLockProof.createInstantAssetLockProof(instantLockBuffer, transactionBuffer, outputIndex)`
+- The `instantLockHex` is the LLMQ quorum's cryptographic signature on a SPECIFIC TRANSACTION — only delivered via DAPI stream
+
+**ChainAssetLockProof (slow fallback, ~30-60s):**
+- Needs `coreChainLockedHeight` (a number) + `outPoint` (txid + output index)
+- Created via `AssetLockProof.createChainAssetLockProof(height, outPoint)`
+- No "chain lock hex proof" exists — ChainLocks are on BLOCKS, and Platform already knows its own ChainLock height, so it verifies the tx's block height <= CL height
+- Slow because it must wait for block mining + CL + Platform sync
+
+**Fallback behavior:** If `instantLockHex` is available, the SDK creates an InstantAssetLockProof (fast). If not — for any reason (IS failed, stream missed it, poller detected IS boolean only) — there is no way to create an InstantAssetLockProof, and ChainAssetLockProof is the only option. The IS boolean from the poller is informational only; it cannot produce the raw proof bytes needed.
+
+### Two-Phase Grace Period
+
+After `preRegisterTransaction()`:
+
+**Phase 1 (HUNT):** Reconnection continues normally. Each reconnect forces DAPI to re-scan its mempool, eventually finding the newly broadcast transaction. This is necessary because a single reconnect may miss the tx due to P2P propagation delay.
+
+**Phase 2 (WAIT):** When the stream detects a pre-registered txid, the grace period starts (default 15s). Periodic reconnection pauses so the stream stays alive for IS proof byte delivery from the LLMQ quorum (~1-2s after detection).
+
+Periodic reconnection resumes after:
+- All pre-registered txids have received IS proof, OR
+- The grace period expires
+
+## SDK Integration
+
+### How `js-evo-sdk` Uses Both Modes
+
+**Historic (UTXO discovery):**
+```
+findSpendableUTXO() → scans blockchain → returns UTXO for asset lock
 ```
 
-### Realtime Mode
+**Realtime (confirmation monitoring):**
+```
+preRegisterTransaction(txid) → immediate reconnect + HUNT mode
+  → reconnections continue → stream mempool scan finds tx
+  → WAIT mode starts → IS proof bytes arrive (~1-2s)
+  → onInstantLock fires with instantLockHex
+  → SDK creates InstantAssetLockProof
 
-Monitors addresses for new transactions with InstantSend and ChainLock confirmations. Perfect for:
-- Payment monitoring
-- Transaction confirmation tracking
-- Real-time wallet updates
+  If IS proof bytes NOT available:
+  → ChainLockHeightMonitor detects CL height >= tx block height
+  → SDK creates ChainAssetLockProof (fallback, always works)
 
-**Key Methods**:
-- `monitorAddresses(addresses, callbacks)` - Start monitoring
-- `waitForConfirmation(txid, options)` - Wait for specific transaction
-- `getTransaction(txid)` - Get transaction state
-- `stop()` - Stop monitoring
-
-**Configuration**:
-```typescript
-{
-  mode: FinderMode.REALTIME,
-  network: 'testnet',
-  addresses: string[],
-  dapiClient: DAPIClientLike,
-  autoPruneOnConfirmation?: boolean,
-  maxTrackedTransactions?: number,
-  basePollInterval?: number,
-  adaptivePolling?: boolean,
-}
+waitForConfirmation(txid) → returns { method, instantLockHex, ... }
 ```
 
-### Hybrid Mode
+## Configuration Reference
 
-Combines historic scanning with realtime monitoring for complete wallet functionality. Perfect for:
-- Full wallet sync workflows
-- Complete transaction history with live updates
-- Payment tracking from broadcast to final confirmation
+### HistoricFinderConfig
 
-**Key Methods**:
-- `syncAndMonitor(callbacks)` - Full hybrid workflow
-- `findUTXOs()` - Historic scan only
-- `monitorAddresses(callbacks)` - Realtime only
-- All methods from both Historic and Realtime modes
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mode` | `FinderMode.HISTORIC` | required | Operating mode |
+| `network` | `string` | required | `'mainnet'` / `'testnet'` / `'regtest'` |
+| `addresses` | `string[]` | required | Addresses to scan |
+| `dapiClient` | `DAPIClientLike` | required | DAPI client instance |
+| `fromHeight` | `number` | required | Starting block height |
+| `toHeight` | `number` | current tip | Ending block height |
+| `requiredAmount` | `number` | — | Minimum satoshis needed |
+| `timeout` | `number` | — | Stream timeout (ms) |
+| `retries` | `number` | — | Retry attempts |
+| `bloomFalsePositiveRate` | `number` | — | Bloom filter FP rate |
+| `logLevel` | `string` | — | Log level |
+| `onProgress` | `function` | — | Progress callback |
 
-**Configuration**:
-```typescript
-{
-  mode: FinderMode.HYBRID,
-  network: 'testnet',
-  addresses: string[],
-  dapiClient: DAPIClientLike,
-  historic: {
-    fromHeight: number,
-    toHeight?: number,
-    onProgress?: (progress) => void,
-  },
-  realtime: {
-    autoPruneOnConfirmation?: boolean,
-    maxTrackedTransactions?: number,
-  },
-}
-```
+### RealtimeFinderConfig
 
-## Events
-
-### Historic Mode Events
-
-```typescript
-finder.on('start', ({ addressCount, fromHeight }) => {});
-finder.on('step', ({ step }) => {});
-finder.on('progress', ({ progress, syncedBlocks, totalBlocks }) => {});
-finder.on('found', ({ utxo, totalUTXOs }) => {});
-finder.on('error', (error) => {});
-```
-
-### Realtime Mode Events
-
-Callbacks are passed to `monitorAddresses()`:
-
-```typescript
-{
-  onTransaction: (tx) => {},     // New transaction detected
-  onInstantLock: (lock) => {},   // InstantLock received (~1-3s)
-  onChainLock: (cl) => {},       // ChainLock received (~1-3min)
-  onBlockInclusion: (block) => {}, // Transaction in block
-}
-```
-
-### Hybrid Mode Events
-
-```typescript
-finder.on('historic:start', (data) => {});
-finder.on('historic:progress', (data) => {});
-finder.on('historic:found', (data) => {});
-finder.on('phase', ({ phase, status }) => {});
-finder.on('realtime:error', (error) => {});
-```
-
-## API Reference
-
-### TransactionFinder
-
-Main class with factory pattern. Creates appropriate finder based on mode.
-
-#### Constructor
-
-```typescript
-new TransactionFinder(config: TransactionFinderConfig)
-```
-
-#### Methods
-
-**Common Methods** (all modes):
-- `getMode(): FinderMode` - Get current operating mode
-- `getNetwork(): string` - Get configured network
-- `getStatus(): any` - Get mode-specific status
-
-**Historic Methods** (Historic/Hybrid modes only):
-- `findUTXOs(): Promise<UTXO[]>` - Find all UTXOs
-- `findLatestSpendableUTXO(): Promise<UTXO>` - Find latest UTXO
-
-**Realtime Methods** (Realtime/Hybrid modes only):
-- `monitorAddresses(addresses, callbacks): Promise<() => void>` - Monitor addresses
-- `waitForConfirmation(txid, options): Promise<ConfirmationResult>` - Wait for TX confirmation
-- `getTransaction(txid): TrackedTransaction | undefined` - Get transaction state
-- `clearTransaction(txid): void` - Clear specific transaction
-- `clearAllConfirmed(): void` - Clear all confirmed transactions
-- `stop(): void` - Stop monitoring
-
-**Hybrid Methods** (Hybrid mode only):
-- `syncAndMonitor(callbacks): Promise<{utxos, stopMonitoring}>` - Full hybrid workflow
-
-### Types
-
-See [API.md](./API.md) for complete type definitions.
-
-## Examples
-
-See [EXAMPLES.md](./EXAMPLES.md) for detailed examples including:
-- Wallet sync workflow
-- Payment monitoring
-- Transaction confirmation tracking
-- Error handling and retries
-- Memory management for long-running services
-
-## Migration
-
-Migrating from `@dashevo/dash-utxo-finder` or `@dashevo/instantsend-chainlock-monitor`? See [MIGRATION.md](./MIGRATION.md) for upgrade guide.
-
-## Architecture
-
-This package consolidates two previous packages:
-- `@dashevo/dash-utxo-finder` → Historic mode
-- `@dashevo/instantsend-chainlock-monitor` → Realtime mode
-
-Benefits of consolidation:
-- Unified API for all transaction finding needs
-- Eliminated ~450 lines of duplicate code
-- Shared core utilities (BloomFilter, Logger, StreamParser)
-- Type-safe mode switching
-- Better maintainability
-
-## Browser Support
-
-Works in modern browsers with Buffer polyfill:
-
-```javascript
-if (typeof window !== 'undefined' && !window.Buffer) {
-  window.Buffer = require('buffer').Buffer;
-}
-```
-
-## Performance
-
-- **Historic Mode**: Efficient streaming with header pre-caching
-- **Realtime Mode**: Adaptive polling reduces DAPI load
-- **Memory**: Auto-pruning support for long-running services
-- **Network**: Bloom filters minimize bandwidth usage
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mode` | `FinderMode.REALTIME` | required | Operating mode |
+| `network` | `string` | required | `'mainnet'` / `'testnet'` / `'regtest'` |
+| `addresses` | `string[]` | required | Addresses to monitor |
+| `dapiClient` | `DAPIClientLike` | required | DAPI client instance |
+| `enableDAPIFailover` | `boolean` | — | Enable node failover |
+| `dapiNodeRetryDelay` | `number` | — | Min delay before retrying failed node |
+| `autoPruneOnConfirmation` | `boolean` | `false` | Auto-remove confirmed txs |
+| `maxTrackedTransactions` | `number` | `1000` | Max tracked txs |
+| `adaptivePolling` | `boolean` | — | Adaptive CL polling |
+| `basePollInterval` | `number` | — | Base CL poll interval (ms) |
+| `maxPollInterval` | `number` | — | Max CL poll interval (ms) |
+| `minPollInterval` | `number` | — | Min CL poll interval (ms) |
+| `enableTransactionPolling` | `boolean` | `true` | Enable IS/CL polling via `getTransaction()` |
+| `transactionPollInterval` | `number` | `2000` | TX poll interval (ms, min 1000) |
+| `streamReconnectInterval` | `number` | `10000` | Periodic stream reconnect interval (ms). Set to 0 to disable. |
+| `reconnectOnPreRegister` | `boolean` | `true` | Immediately reconnect on `preRegisterTransaction()` |
+| `reconnectGracePeriod` | `number` | `15000` | Grace period (ms) after pre-registered tx is found on stream (WAIT phase), during which periodic reconnection is paused for IS proof delivery |
 
 ## Running Tests
 
 ### Unit Tests (No Network Required)
 
 ```bash
-# Run all unit tests
 npm run test:unit
-
-# Run all tests (unit + integration with mocks)
-npm test
-
-# Run with coverage
-npm run test:coverage
+npm test                    # unit + integration with mocks
+npm run test:coverage       # with coverage report
 ```
 
 ### Real Testnet Tests
 
-These tests connect to the **live Dash testnet** to validate real-world functionality.
-
 #### Historic Mode (UTXO Finding)
 
 ```bash
-# Find UTXOs for a testnet address (~2 minutes)
 npm test tests/integration/testnet-utxo.spec.ts
 ```
 
 #### Realtime Mode (InstantSend/ChainLock)
 
-**Manual IS/CL Test** - Monitors address, requires you to send DASH during test:
+**Manual test** — monitors address, requires you to send DASH during test:
 
 ```bash
-# Default address, 5-minute duration
 npm run test:realtime
-
-# Custom address and duration
 TESTNET_ADDRESS=yYourAddress TEST_DURATION=300 npm run test:realtime
 ```
 
-While the test runs, send DASH to the monitored address. You'll see:
-- Transaction detection
-- InstantLock confirmation (~1-3 seconds)
-- ChainLock confirmation (~1-3 minutes)
-
-**Automated IS/CL Test** - Broadcasts transaction via Dash Core RPC:
+**Automated test** — broadcasts transaction via Dash Core RPC:
 
 ```bash
-# Requires Dash Core node with RPC enabled
 TESTNET_RPC_ENDPOINT=http://localhost:19998 \
 TESTNET_RPC_USERNAME=dashrpc \
 TESTNET_RPC_PASSWORD=yourpassword \
 npm run test:realtime:auto
 ```
 
-This test:
-1. Connects to your Dash Core node
-2. Broadcasts a consolidation transaction
-3. Monitors for IS/CL confirmations automatically
-4. Reports latency metrics
+## Installation
 
-#### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `TESTNET_ADDRESS` | No | Known testnet addr | Address to monitor/use |
-| `NETWORK` | No | `testnet` | Network (testnet/mainnet) |
-| `TEST_DURATION` | No | `300` | Manual test duration (seconds) |
-| `TESTNET_RPC_ENDPOINT` | For auto | `http://localhost:19998` | Dash Core RPC URL |
-| `TESTNET_RPC_USERNAME` | For auto | `dashrpc` | RPC username |
-| `TESTNET_RPC_PASSWORD` | For auto | - | RPC password (required for auto test) |
-| `TESTNET_WALLET` | No | - | Dash Core wallet name |
+```bash
+npm install @dashevo/transaction-finder
+# or
+yarn add @dashevo/transaction-finder
+```
 
 ## License
 
 MIT
-
-## Contributing
-
-This package is part of the [Dash Platform](https://github.com/dashevo/platform) monorepo.
 
 ## Support
 

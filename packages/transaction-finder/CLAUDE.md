@@ -208,22 +208,34 @@ TransactionFinder serves as the critical bridge that connects:
 - **SDK operations** (identity creation, topup) which ALWAYS use DAPI
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     TRANSACTION FLOW                         │
-├─────────────────────────────────────────────────────────────┤
-│  1. Core RPC sends DASH to derived address                   │
-│              ↓                                               │
-│  2. TransactionFinder detects via DAPI                       │
-│     - Historic: findUTXOs() scans blockchain                 │
-│     - Realtime: monitorAddresses() via IS/CL streams         │
-│              ↓                                               │
-│  3. SDK uses detected UTXOs for asset lock (DAPI)            │
-│              ↓                                               │
-│  4. TransactionFinder confirms asset lock (DAPI)             │
-│     - waitForConfirmation() returns instantLockHex           │
-│              ↓                                               │
-│  5. SDK creates identity with proof (DAPI)                   │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     TRANSACTION FLOW                              │
+├──────────────────────────────────────────────────────────────────┤
+│  1. Core RPC sends DASH to derived address                        │
+│              ↓                                                    │
+│  2. TransactionFinder (HISTORIC) detects via DAPI                 │
+│     - findUTXOs() / findLatestSpendableUTXO()                    │
+│              ↓                                                    │
+│  3. SDK creates asset lock tx using UTXO                          │
+│              ↓                                                    │
+│  4. SDK calls preRegisterTransaction(assetLockTxid)               │
+│     → Immediate reconnect + HUNT mode (reconnection continues)    │
+│              ↓                                                    │
+│  5. SDK broadcasts asset lock via DAPI                            │
+│              ↓                                                    │
+│  6. TransactionFinder (REALTIME) confirms:                        │
+│     a. HUNT: reconnections continue until mempool scan finds tx   │
+│     b. WAIT: grace period starts, stream stays alive              │
+│     c. IS proof bytes arrive via stream (~1-2s)                   │
+│     d. onInstantLock fires with instantLockHex                    │
+│              ↓                                                    │
+│  7. waitForConfirmation() returns { instantLockHex, ... }         │
+│              ↓                                                    │
+│  8. SDK creates InstantAssetLockProof with raw bytes              │
+│     (or falls back to ChainAssetLockProof if no hex available)    │
+│              ↓                                                    │
+│  9. SDK creates identity on Platform                              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Integration Points
@@ -231,7 +243,7 @@ TransactionFinder serves as the critical bridge that connects:
 #### 1. UTXO Discovery (After RPC Funding)
 ```typescript
 const finder = new TransactionFinder({
-  mode: FinderMode.HISTORIC,  // For already-confirmed funding
+  mode: FinderMode.HISTORIC,
   network: 'testnet',
   addresses: [derivedAddress],
   dapiClient: dapiClient,
@@ -242,7 +254,7 @@ const utxos = await finder.findUTXOs();
 // Use utxos[0] for asset lock creation
 ```
 
-#### 2. Realtime Funding Detection
+#### 2. Asset Lock Confirmation (Realtime)
 ```typescript
 const finder = new TransactionFinder({
   mode: FinderMode.REALTIME,
@@ -253,30 +265,110 @@ const finder = new TransactionFinder({
 
 await finder.monitorAddresses([derivedAddress], {
   onInstantLock: (lock) => {
-    // Funding detected via InstantLock - proceed with identity creation
+    // lock.instantLockHex — raw bytes for InstantAssetLockProof (from stream)
+    // lock.instantLockHex is undefined when detected by poller (boolean only)
   },
-  onChainLock: (lock) => {
-    // Additional confirmation
+  onChainLock: (cl) => {
+    // cl.chainLockedHeight — height for ChainAssetLockProof (fallback)
   }
 });
-```
 
-#### 3. Asset Lock Confirmation
-```typescript
-// After broadcasting asset lock via DAPI
+// Pre-register BEFORE broadcasting to enable grace period
+finder.preRegisterTransaction(assetLockTxid);
+
+// Wait for confirmation
 const confirmation = await finder.waitForConfirmation(assetLockTxid, {
   timeout: 60000,
 });
 
-// confirmation.instantLockHex is used for proof in identity creation
+// confirmation.instantLockHex — present if IS proof arrived via stream
+// confirmation.method — 'instantlock' | 'chainlock' | 'timeout'
 ```
+
+### Two Proof Paths (Critical Knowledge)
+
+**InstantAssetLockProof (fast, ~2s):**
+- Needs `instantLockHex` (raw LLMQ signature bytes) + `transactionHex`
+- `instantLockHex` is the LLMQ quorum's cryptographic signature on a SPECIFIC TRANSACTION
+- Only delivered via DAPI stream (polling gives boolean only)
+- The stream must stay alive after detecting the tx so the IS message arrives
+
+**ChainAssetLockProof (slow fallback, ~30-60s):**
+- Needs `coreChainLockedHeight` (just a NUMBER) + `outPoint` (txid + output index)
+- No "chain lock hex proof" exists — ChainLocks are on BLOCKS
+- Platform already knows its own CL height; it just verifies tx's block height <= CL height
+- Slow because: block mining + CL signing + Platform sync all must happen
+
+**Why IS without hex falls back to CL:**
+Without `instantLockHex` there is NO way to create an `InstantAssetLockProof`, period. The IS
+boolean from the poller is informational only — it confirms the tx is IS-locked but provides none
+of the raw LLMQ signature bytes needed for the proof. ChainLock is the only option when
+`instantLockHex` is unavailable. ChainLock must always work — it's the safety net.
+
+### DAPI Stream Behavior (Architectural Context)
+
+`subscribeToTransactionsWithProofs` only bloom-filter-tests block transactions on the **first block**
+after connection. For subsequent blocks, it relies on internal ZMQ `rawtx` events which can miss
+transactions if the event was dropped.
+
+**Why reconnection exists:** Forces DAPI to re-run its historical + mempool scan, catching missed txs.
+
+**Why two-phase grace period exists:** A single reconnect after `preRegisterTransaction()` may miss
+the tx due to P2P propagation delay. HUNT phase keeps reconnecting until the tx is found. Once found,
+WAIT phase pauses reconnection so the stream stays alive for IS proof byte delivery (~1-2s after
+detection). Without WAIT, the periodic reconnect would kill the stream before the IS message arrives.
 
 ### Critical Notes
 
-- **TransactionFinder uses DAPI exclusively** - it never uses Core RPC
-- **RPC is only for funding** - sending DASH to addresses during testing
+- **TransactionFinder uses DAPI exclusively** — it never uses Core RPC
+- **RPC is only for funding** — sending DASH to addresses during testing
 - **All SDK operations (asset lock, identity) broadcast via DAPI**
-- The `instantLockHex` from confirmation is required for identity proof creation
+- The `instantLockHex` from confirmation is required for InstantAssetLockProof creation
+- **Duplicate prevention:** `onTransaction` fires exactly once per unique txid (reconnections skip known txids)
+
+## Stream Reconnection Architecture (CRITICAL KNOWLEDGE)
+
+### The Problem
+
+The DAPI bloom filter stream (`subscribeToTransactionsWithProofs`) only tests transactions against
+the bloom filter on the first block after connection. Subsequent blocks rely on ZMQ events that can
+be missed. To catch missed transactions, the stream reconnects periodically (every 10s by default).
+
+However, periodic reconnection **conflicts with IS proof delivery**: when the stream has found
+an asset lock transaction, the SDK needs the raw InstantLock proof bytes that arrive ~1-2s later.
+If the periodic reconnect kills the stream before those bytes arrive, the SDK falls back to the
+slow ChainLock path (~30-60s instead of ~2s).
+
+### The Fix: Two-Phase Grace Period
+
+**Phase 1 — HUNT:** After `preRegisterTransaction()`, reconnection **continues normally** (every
+10s). Each reconnect forces DAPI to re-scan mempool. This is necessary because a single reconnect
+may miss the tx due to P2P propagation delay.
+
+**Phase 2 — WAIT:** When the stream detects a pre-registered txid, the grace period **starts now**
+(default 15s). Reconnection pauses. IS proof bytes arrive ~1-2s later. Grace clears when all
+pre-registered txids have IS proof, or on expiry.
+
+After `preRegisterTransaction()`:
+1. Immediate reconnect triggers (DAPI mempool scan tries to pick up the tx)
+2. HUNT: periodic reconnection **continues** — each reconnect re-scans mempool
+3. Stream finds the pre-registered tx → WAIT phase starts
+4. Reconnection **paused** for `reconnectGracePeriod` (default 15s)
+5. IS proof bytes arrive → `onInstantLock` fires with `instantLockHex`
+6. Grace period ends early when all pre-registered txids have IS proof
+7. Periodic reconnection resumes
+
+### Duplicate Prevention
+
+Each reconnection re-delivers transactions from mempool. The `processStream()` method checks
+`tracker.getTransaction(txid)` before firing `onTransaction` — if the tracker already knows the
+txid, the callback is skipped. This ensures `onTransaction` fires exactly once per unique txid.
+
+### Key Files
+
+- `src/finders/RealtimeFinder.ts` — Grace period logic, duplicate prevention, reconnection
+- `src/types/finder-types.ts` — `reconnectGracePeriod` config field
+- `src/monitoring/TransactionTracker.ts` — Transaction state tracking and deduplication
 
 ## ChainLock Architecture (CRITICAL KNOWLEDGE)
 
