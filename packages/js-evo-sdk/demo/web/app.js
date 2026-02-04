@@ -200,6 +200,7 @@ class IdentityManagerApp {
     this.useMockMode = storedMode === 'true'; // Only use mock if explicitly set to 'true'
     this.sdk = null;
     this.wallet = null;
+    this.dpnsNamesExpanded = false; // For overview names list pagination
 
     // Initialize WalletFundingFlow with correct mode
     this.fundingFlow = new WalletFundingFlow(this.platformOps, {
@@ -505,6 +506,10 @@ class IdentityManagerApp {
     document.getElementById('dashboard-view').hidden = true;
     document.getElementById('identity-view').hidden = true;
 
+    // Hide header controls on login screen (Issue 8)
+    const headerControls = document.querySelector('.header-controls');
+    if (headerControls) headerControls.hidden = true;
+
     // Bind login form
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -539,6 +544,10 @@ class IdentityManagerApp {
       // Hide login, show discovery progress
       document.getElementById('login-view').hidden = true;
       document.getElementById('discovery-progress-view').hidden = false;
+
+      // Show header controls after login (Issue 8)
+      const headerControls = document.querySelector('.header-controls');
+      if (headerControls) headerControls.hidden = false;
 
       // Reset progress counters
       document.getElementById('discovery-count').textContent = '0';
@@ -645,6 +654,8 @@ class IdentityManagerApp {
       // On error, go back to login screen
       document.getElementById('discovery-progress-view').hidden = true;
       document.getElementById('login-view').hidden = false;
+      const headerControls = document.querySelector('.header-controls');
+      if (headerControls) headerControls.hidden = true;
       notifications.error(`Connection failed: ${error.message}`);
     }
   }
@@ -1215,11 +1226,8 @@ class IdentityManagerApp {
             // Update the DPNS names display
             const dpnsEl = document.querySelector('.dpns-names-compact');
             if (dpnsEl) {
-              dpnsEl.innerHTML = names.map(name => `
-                <div class="dpns-name-tag clickable-name" data-copy="${name}" title="Click to copy">
-                  <span>${name}</span>
-                </div>
-              `).join('');
+              dpnsEl.innerHTML = this.renderDpnsNamesCompact(names);
+              this.bindDpnsNamesShowMore(names);
               // Update the count in the label
               const namesLabel = document.querySelector('.names-section label');
               if (namesLabel) {
@@ -1264,13 +1272,8 @@ class IdentityManagerApp {
         `;
       }).join('');
 
-      const dpnsNamesHTML = identity.dpnsNames && identity.dpnsNames.length > 0
-        ? identity.dpnsNames.map(name => `
-            <div class="dpns-name-tag clickable-name" data-copy="${name}" title="Click to copy">
-              <span>${name}</span>
-            </div>
-          `).join('')
-        : '<span class="text-muted">No names registered</span>';
+      this.dpnsNamesExpanded = false; // Reset on identity change
+      const dpnsNamesHTML = this.renderDpnsNamesCompact(identity.dpnsNames);
 
       // Get display name for identity (custom label or first DPNS name or "Unnamed Identity")
       const displayName = identity.label ||
@@ -1339,6 +1342,9 @@ class IdentityManagerApp {
         });
       }
 
+      // Bind DPNS names show more/less pagination
+      this.bindDpnsNamesShowMore(identity.dpnsNames || []);
+
       // Load transaction history
       this.loadTransactionHistory(identity.id);
 
@@ -1360,6 +1366,11 @@ class IdentityManagerApp {
       // Load contested names for this identity
       if (this.components.contestedNamesViewer) {
         this.components.contestedNamesViewer.loadContests(identity.id);
+      }
+
+      // Update token viewer with selected identity (Issue 2)
+      if (this.components.tokenViewer) {
+        this.components.tokenViewer.setIdentityId(identity.id);
       }
     });
   }
@@ -1603,6 +1614,69 @@ class IdentityManagerApp {
   }
 
   /**
+   * Render DPNS names list with pagination (show first 10, expand on click)
+   */
+  renderDpnsNamesCompact(names) {
+    if (!names || names.length === 0) {
+      return '<span class="text-muted">No names registered</span>';
+    }
+
+    const PAGE_SIZE = 10;
+    const displayNames = this.dpnsNamesExpanded ? names : names.slice(0, PAGE_SIZE);
+    const hasMore = names.length > PAGE_SIZE && !this.dpnsNamesExpanded;
+    const remaining = names.length - PAGE_SIZE;
+
+    let html = displayNames.map(name => `
+      <div class="dpns-name-tag clickable-name" data-copy="${name}" title="Click to copy">
+        <span>${name}</span>
+      </div>
+    `).join('');
+
+    if (hasMore) {
+      html += `<button class="btn btn-secondary btn-sm dpns-show-more-btn" id="dpns-names-show-more">
+        Show ${remaining} more names...
+      </button>`;
+    } else if (names.length > PAGE_SIZE && this.dpnsNamesExpanded) {
+      html += `<button class="btn btn-secondary btn-sm dpns-show-more-btn" id="dpns-names-show-less">
+        Show less
+      </button>`;
+    }
+
+    return html;
+  }
+
+  /**
+   * Bind click handlers for DPNS names show more/less buttons
+   */
+  bindDpnsNamesShowMore(names) {
+    const showMoreBtn = document.getElementById('dpns-names-show-more');
+    const showLessBtn = document.getElementById('dpns-names-show-less');
+
+    if (showMoreBtn) {
+      showMoreBtn.addEventListener('click', () => {
+        this.dpnsNamesExpanded = true;
+        const dpnsEl = document.querySelector('.dpns-names-compact');
+        if (dpnsEl) {
+          dpnsEl.innerHTML = this.renderDpnsNamesCompact(names);
+          this.bindDpnsNamesShowMore(names);
+        }
+      });
+    }
+
+    if (showLessBtn) {
+      showLessBtn.addEventListener('click', () => {
+        this.dpnsNamesExpanded = false;
+        const dpnsEl = document.querySelector('.dpns-names-compact');
+        if (dpnsEl) {
+          dpnsEl.innerHTML = this.renderDpnsNamesCompact(names);
+          this.bindDpnsNamesShowMore(names);
+          dpnsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    }
+  }
+
+  /**
    * Handle DPNS names found from document viewer
    * Updates the identity's dpnsNames and refreshes the UI
    */
@@ -1623,11 +1697,8 @@ class IdentityManagerApp {
       // Update the DPNS names display
       const dpnsEl = document.querySelector('.dpns-names-compact');
       if (dpnsEl) {
-        dpnsEl.innerHTML = names.map(name => `
-          <div class="dpns-name-tag clickable-name" data-copy="${name}" title="Click to copy">
-            <span>${name}</span>
-          </div>
-        `).join('');
+        dpnsEl.innerHTML = this.renderDpnsNamesCompact(names);
+        this.bindDpnsNamesShowMore(names);
       }
 
       // Update the count in the label
@@ -1706,6 +1777,7 @@ class IdentityManagerApp {
   }
 
   showSendContactRequestModal() {
+    this.closeAllModals();
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
 
@@ -2177,6 +2249,7 @@ class IdentityManagerApp {
   }
 
   showCreateModal() {
+    this.closeAllModals();
     // IMPORTANT: Show funding flow first before create modal
     // This ensures users fund their wallet before attempting to create identity
     this.fundingFlow.show();
@@ -2778,6 +2851,7 @@ class IdentityManagerApp {
   }
 
   showKeysModal() {
+    this.closeAllModals();
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
 
@@ -2924,6 +2998,7 @@ class IdentityManagerApp {
    * @param {Object} key - The key object from identity.keys
    */
   async showPrivateKeyModal(key) {
+    this.closeAllModals();
     const modal = document.getElementById('private-key-modal');
     if (!modal) return;
 
@@ -3229,6 +3304,7 @@ class IdentityManagerApp {
   }
 
   showDisableKeyModal(key) {
+    this.closeAllModals();
     const modal = document.getElementById('disable-key-modal');
     if (!modal) return;
 
@@ -3371,6 +3447,7 @@ class IdentityManagerApp {
   }
 
   showAddKeyModal() {
+    this.closeAllModals();
     const modal = document.getElementById('add-key-modal');
     if (!modal) return;
 
@@ -3600,6 +3677,7 @@ class IdentityManagerApp {
   }
 
   showWithdrawModal() {
+    this.closeAllModals();
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
 
@@ -3689,6 +3767,7 @@ class IdentityManagerApp {
   }
 
   showTransferModal() {
+    this.closeAllModals();
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
 
@@ -3866,6 +3945,7 @@ class IdentityManagerApp {
   }
 
   showRegisterNameModal() {
+    this.closeAllModals();
     const identity = stateManager.getSelectedIdentity();
     if (!identity) return;
 
@@ -4341,6 +4421,7 @@ class IdentityManagerApp {
   }
 
   showRenameIdentityModal(identityId) {
+    this.closeAllModals();
     const identity = stateManager.getState().identities.get(identityId);
     if (!identity) return;
 
@@ -4709,6 +4790,28 @@ class IdentityManagerApp {
       }
     });
 
+    // Backdrop click closes modals (Issue 5: uniform backdrop handling)
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-backdrop')) {
+        const modal = e.target.closest('.modal');
+        if (modal) modal.hidden = true;
+      }
+    });
+
+  }
+
+  /**
+   * Close all open modals (Issue 4: prevent multiple simultaneous modals)
+   */
+  closeAllModals() {
+    document.querySelectorAll('.modal:not([hidden])').forEach(modal => {
+      modal.hidden = true;
+    });
+    // Also close the actions dropdown
+    const actionsDropdown = document.querySelector('.actions-dropdown');
+    const actionsTrigger = document.querySelector('.actions-menu-trigger');
+    if (actionsDropdown) actionsDropdown.hidden = true;
+    if (actionsTrigger) actionsTrigger.setAttribute('aria-expanded', 'false');
   }
 
   subscribeToState() {
