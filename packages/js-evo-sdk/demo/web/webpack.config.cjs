@@ -19,7 +19,7 @@ module.exports = (env, argv) => {
       filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js',
       clean: true
     },
-    devtool: isProduction ? 'source-map' : 'eval-source-map',
+    devtool: 'source-map',
     module: {
       rules: [
         {
