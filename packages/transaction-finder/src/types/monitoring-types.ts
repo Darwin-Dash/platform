@@ -20,9 +20,6 @@ export interface MonitoringCallbacks {
 
   /** Called on stream errors */
   onError?: (error: Error) => void;
-
-  /** Called when stream reconnects */
-  onReconnect?: (attempt: number) => void;
 }
 
 /**

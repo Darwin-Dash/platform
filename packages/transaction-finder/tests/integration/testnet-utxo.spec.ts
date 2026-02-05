@@ -14,6 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import DAPIClient from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode } from '../../src/index.js';
 import { config } from 'dotenv';
+import { getDAPIClientOptions } from '../helpers/dapi-config.js';
 
 // Load .env from js-evo-sdk
 config({ path: '../js-evo-sdk/.env' });
@@ -35,11 +36,7 @@ describe('Testnet UTXO Finding', () => {
     console.log(`Network: ${NETWORK}`);
     console.log('');
 
-    dapiClient = new DAPIClient({
-      network: NETWORK as 'testnet' | 'mainnet',
-      timeout: 30000,
-      retries: 3,
-    });
+    dapiClient = new DAPIClient(getDAPIClientOptions(NETWORK as 'testnet' | 'mainnet'));
 
     // Get current height
     const status = await dapiClient.core.getBlockchainStatus();

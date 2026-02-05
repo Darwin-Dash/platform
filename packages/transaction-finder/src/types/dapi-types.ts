@@ -12,6 +12,8 @@ export interface DAPIClientLike {
     subscribeToTransactionsWithProofs: (filter: any, options: any) => any;
     getBlockchainStatus: () => Promise<any>;
     getBlockByHash: (hash: string) => Promise<any>;
+    getTransaction: (txid: string) => Promise<any>;
+    getBestBlockHeight: () => Promise<number>;
   };
   platform?: {
     getEpochsInfo?: (options?: any) => Promise<any>;

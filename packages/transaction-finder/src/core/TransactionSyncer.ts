@@ -104,10 +104,11 @@ export class TransactionSyncer {
   }
 
   /**
-   * Retry helper for DAPI operations that may fail with NOT_FOUND
-   * Some DAPI nodes may be pruned/behind and not have recent blocks.
+   * Retry helper for DAPI operations that may fail with transient errors
+   * Handles NOT_FOUND (pruned/behind nodes), UNAVAILABLE (connection failures),
+   * and other transient gRPC errors.
    *
-   * This is a workaround for @dashevo/dapi-client not retrying NOT_FOUND errors.
+   * This is a workaround for @dashevo/dapi-client not retrying these errors.
    * See: packages/resilient-dapi-client/KNOWN_ISSUES.md#issue-1
    *
    * Enhanced to ban failing nodes before retry to ensure node rotation.
@@ -120,7 +121,7 @@ export class TransactionSyncer {
    * @returns The result of the operation
    * @private
    */
-  private async retryOnNotFound<T>(
+  private async retryOnTransientError<T>(
     operation: () => Promise<T>,
     operationName: string,
     maxRetries: number = 5
@@ -132,17 +133,25 @@ export class TransactionSyncer {
         return await operation();
       } catch (error: any) {
         const errorMessage = error?.message || String(error);
-        const isNotFound = errorMessage.includes('NOT_FOUND') ||
-                           errorMessage.includes('not found') ||
-                           error?.code === 5; // gRPC NOT_FOUND code
+        const isRetryable =
+          errorMessage.includes('NOT_FOUND') ||
+          errorMessage.includes('not found') ||
+          error?.code === 5 ||    // gRPC NOT_FOUND
+          errorMessage.includes('UNAVAILABLE') ||
+          error?.code === 14 ||   // gRPC UNAVAILABLE
+          errorMessage.includes('No connection established') ||
+          errorMessage.includes('RST_STREAM') ||
+          errorMessage.includes('CANCELLED') ||
+          errorMessage.includes('Connection reset') ||
+          errorMessage.includes('GOAWAY');
 
-        if (isNotFound && attempt < maxRetries) {
+        if (isRetryable && attempt < maxRetries) {
           // Ban the failing node to force rotation on next attempt
           // gRPC transport doesn't auto-ban on error like JSON-RPC does
           const bannedHost = this.banLastUsedNode();
 
           this.logger.warn(
-            `${operationName} failed with NOT_FOUND (attempt ${attempt}/${maxRetries})` +
+            `${operationName} failed with transient error (attempt ${attempt}/${maxRetries}): ${errorMessage}` +
             (bannedHost ? `, banned node ${bannedHost}` : '') +
             `, rotating to different node...`
           );
@@ -182,7 +191,7 @@ export class TransactionSyncer {
       if (lastAddress && typeof lastAddress.markAsBanned === 'function') {
         const host = lastAddress.host || lastAddress.toString?.() || 'unknown';
         lastAddress.markAsBanned();
-        this.logger.debug(`Banned DAPI node ${host} due to NOT_FOUND error`);
+        this.logger.debug(`Banned DAPI node ${host} due to transient error`);
         return host;
       }
     } catch (err) {
@@ -252,7 +261,7 @@ export class TransactionSyncer {
     // Wrap ENTIRE sync operation in retry to handle NOT_FOUND errors from bad/pruned nodes
     // The NOT_FOUND error occurs during stream iteration, not just stream creation,
     // so we must wrap the entire operation including the for-await loop
-    await this.retryOnNotFound(
+    await this.retryOnTransientError(
       async () => {
         const core = this.getCore();
         let syncedHeaders = 0;
@@ -678,8 +687,8 @@ export class TransactionSyncer {
         });
       }
 
-      // Wrapped with retryOnNotFound to handle pruned nodes that may not have historical blocks
-      let rawStream = await this.retryOnNotFound(
+      // Wrapped with retryOnTransientError to handle pruned/unavailable nodes
+      let rawStream = await this.retryOnTransientError(
         async () => {
           const s = core.subscribeToTransactionsWithProofs(
             bloomFilter,

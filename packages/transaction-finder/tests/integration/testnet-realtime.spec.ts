@@ -19,6 +19,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import DAPIClient from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode } from '../../src/index.js';
 import { config } from 'dotenv';
+import { getDAPIClientOptions } from '../helpers/dapi-config.js';
 import type {
   TransactionEvent,
   InstantLockEvent,
@@ -59,11 +60,7 @@ describe('Testnet Realtime Monitoring', () => {
     console.log('═'.repeat(60));
     console.log('');
 
-    dapiClient = new DAPIClient({
-      network: NETWORK as 'testnet' | 'mainnet',
-      timeout: 60000,
-      retries: 5,
-    });
+    dapiClient = new DAPIClient(getDAPIClientOptions(NETWORK as 'testnet' | 'mainnet'));
 
     finder = new TransactionFinder({
       mode: FinderMode.REALTIME,

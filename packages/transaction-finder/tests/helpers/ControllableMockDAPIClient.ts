@@ -315,6 +315,9 @@ export class ControllableMockDAPIClient {
   private currentChainLockHeight: number = 100;
   private currentBlockHeight: number = 1000;
 
+  // Transaction status data for polling
+  private transactionStatuses: Map<string, { isInstantLocked: boolean; isChainLocked: boolean }> = new Map();
+
   constructor() {
     this.setDefaultResponses();
   }
@@ -372,6 +375,19 @@ export class ControllableMockDAPIClient {
     getBestBlockHeight: async (): Promise<number> => {
       return this.executeMethod('getBestBlockHeight', async () => {
         return this.currentBlockHeight;
+      });
+    },
+
+    getTransaction: async (txid: string): Promise<any> => {
+      return this.executeMethod('getTransaction', async () => {
+        const status = this.transactionStatuses.get(txid);
+        if (!status) {
+          return null;
+        }
+        return {
+          isInstantLocked: status.isInstantLocked,
+          isChainLocked: status.isChainLocked,
+        };
       });
     },
   };
@@ -647,6 +663,13 @@ export class ControllableMockDAPIClient {
   }
 
   /**
+   * Set transaction IS/CL status for polling mock
+   */
+  setTransactionStatus(txid: string, isInstantLocked: boolean, isChainLocked: boolean): void {
+    this.transactionStatuses.set(txid, { isInstantLocked, isChainLocked });
+  }
+
+  /**
    * Reset all state
    */
   reset(): void {
@@ -658,6 +681,7 @@ export class ControllableMockDAPIClient {
     this.streamDelay = 0;
     this.currentChainLockHeight = 100;
     this.currentBlockHeight = 1000;
+    this.transactionStatuses.clear();
   }
 }
 

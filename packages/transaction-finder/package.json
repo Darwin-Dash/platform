@@ -47,7 +47,7 @@
     "events": "^3.3.0"
   },
   "peerDependencies": {
-    "@dashevo/dapi-client": "^1.0.0",
+    "@dashevo/dapi-client": "^1.0.0 || ^2.0.0",
     "@dashevo/dashcore-lib": "~0.22.0",
     "@dashevo/resilient-dapi-client": "^1.0.0"
   },

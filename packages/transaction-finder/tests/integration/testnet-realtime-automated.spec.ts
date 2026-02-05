@@ -188,13 +188,18 @@ describe('Automated Realtime Monitoring', () => {
     // Initialize finder with stream reconnection enabled.
     // Periodic reconnection forces DAPI to re-run its historical + mempool scan,
     // catching transactions missed during continuous streaming.
+    // preRegisterTransaction() pauses reconnection so the gRPC stream stays
+    // alive for IS proof byte delivery.
     finder = new TransactionFinder({
       mode: FinderMode.REALTIME,
       network: NETWORK as 'testnet' | 'mainnet',
       addresses: [testAddress],
       dapiClient: dapiClient as any,
-      streamReconnectInterval: 10000, // Reconnect every 10s to catch missed txs
-      reconnectOnPreRegister: true,   // Immediate reconnect when txid is registered
+      streamReconnectInterval: 60000, // 60s periodic reconnect for catching missed txs
+      // reconnectOnPreRegister defaults to true — immediate reconnect for fresh IS emitter
+      // preRegisterReconnectDelay defaults to 0 — reconnect before broadcast
+      autoPruneOnConfirmation: true, // Prune confirmed txs from extended scan
+      maxTrackedTransactions: 5000, // Higher limit for extended scan false positives
     });
   });
 
@@ -267,21 +272,56 @@ describe('Automated Realtime Monitoring', () => {
     console.log('✅ Monitoring started');
     console.log('');
 
-    // Broadcast transaction using consolidation pattern
-    console.log('📡 Broadcasting consolidation transaction...');
+    // Build, sign, pre-register, THEN broadcast.
+    // This matches the real SDK pattern (identity-creator.ts) where the txid
+    // is computed locally from the signed tx, preRegisterTransaction() is called
+    // BEFORE broadcast, and then the tx is broadcast. This ordering is critical:
+    // preRegister triggers an immediate stream reconnect so the fresh bloom filter
+    // emitter is registered BEFORE the IS ZMQ event fires (~1-2s after broadcast).
+    console.log('📡 Building consolidation transaction...');
     console.log('   (All UTXOs → single output to same address, no change)');
     try {
-      timestamps.txBroadcast = Date.now();
-      // Use confirmed UTXOs only (minConf=1) to avoid unconfirmed chains
-      // from prior test runs that miners may deprioritize
-      const result = await broadcaster.sendToAddress(testAddress, 1);
-      broadcastTxid = result.txid;
+      // Step 1: Build and sign transaction WITHOUT broadcasting
+      // Use minConf=0 to allow spending unconfirmed outputs from prior test runs.
+      // Dash supports chained IS transactions, so unconfirmed IS-locked outputs are safe.
+      const utxos = await broadcaster.listUnspent(0, 9999999, [testAddress]);
+      if (utxos.length === 0) {
+        throw new Error('No confirmed UTXOs available for test address');
+      }
+      const totalAmount = utxos.reduce((sum: number, u: any) => sum + u.amount, 0);
+      const fee = 0.00001;
+      const sendAmount = Math.floor((totalAmount - fee) * 100000000) / 100000000;
 
-      console.log(`✅ Transaction broadcast: ${broadcastTxid}`);
-      console.log(`   Consolidated amount: ${result.amount} DASH`);
+      const inputs = utxos.map((u: any) => ({ txid: u.txid, vout: u.vout }));
+      const outputs: Record<string, number> = {};
+      outputs[testAddress] = sendAmount;
 
-      // Pre-register the txid so tracker watches for it in merkle blocks
+      const rawTx = await broadcaster.createRawTransaction(inputs, outputs);
+      const signedHex = await broadcaster.signTransaction(rawTx);
+
+      // Step 2: Decode to get txid BEFORE broadcast
+      const decoded = await rpcClient.call<{ txid: string }>('decoderawtransaction', [signedHex]);
+      broadcastTxid = decoded.txid;
+
+      console.log(`   Built tx: ${broadcastTxid}`);
+      console.log(`   Consolidated amount: ${sendAmount} DASH (from ${utxos.length} UTXOs)`);
+
+      // Step 3: Pre-register BEFORE broadcast (matches SDK identity-creator.ts pattern)
+      // This triggers an immediate stream reconnect so the fresh bloom filter
+      // emitter is registered and ready to cache IS ZMQ events.
       finder.preRegisterTransaction(broadcastTxid);
+      console.log(`   Pre-registered txid for IS monitoring`);
+
+      // Brief delay to allow the stream reconnection to initiate (the
+      // reconnect is async via setTimeout(0)). The extended scan (200 blocks)
+      // keeps the preMempoolSentInstantLockListener active long enough for
+      // the broadcast tx to reach the DAPI node and IS to fire.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Step 4: NOW broadcast — IS event fires ~1-2s after this
+      timestamps.txBroadcast = Date.now();
+      const txid = await broadcaster.broadcast(signedHex);
+      console.log(`✅ Transaction broadcast: ${txid}`);
 
       console.log(`   Waiting for confirmations...`);
       console.log('');
@@ -309,6 +349,15 @@ describe('Automated Realtime Monitoring', () => {
     } catch (error) {
       console.log('');
       console.log('⏱️  waitForConfirmation() error:', (error as Error).message);
+      // In IS-only mode, waitForConfirmation MUST succeed — fail hard
+      if (waitForIS && !waitForCL) {
+        throw error;
+      }
+    }
+
+    // In IS-only mode, confirmation must be defined
+    if (waitForIS && !waitForCL) {
+      expect(confirmation).toBeDefined();
     }
 
     // Print results
@@ -353,16 +402,20 @@ describe('Automated Realtime Monitoring', () => {
       console.log(`  instantLockHex: ${confirmation.instantLockHex ? confirmation.instantLockHex.substring(0, 32) + '...' : '(absent)'}`);
       console.log(`  totalLatencyMs: ${confirmation.totalLatencyMs}`);
 
-      // Assert method is correct
+      // Assert method is correct in IS-only mode
       if (waitForIS && !waitForCL) {
         expect(confirmation.method).toBe('instantlock');
+        // Note: instantLockHex delivery depends on DAPI node ZMQ configuration.
+        // Not all testnet DAPI nodes have rawtxlocksig ZMQ enabled, so hex delivery
+        // is best-effort. The SDK falls back to ChainAssetLockProof when hex is absent.
+        // When hex IS delivered, it validates the full InstantAssetLockProof path.
       }
 
       // Log which hex delivery path was taken
       if (confirmation.instantLockHex) {
         console.log('✅ InstantLock hex delivered — InstantAssetLockProof path available');
       } else if (confirmation.method === 'instantlock') {
-        console.log('⚠️  InstantLock detected but hex NOT delivered — SDK would fall back to ChainLock');
+        console.log('❌ InstantLock detected but hex NOT delivered — SDK would fall back to ChainLock');
         console.log('   (This means the stream did not deliver IS proof bytes within the hex wait window)');
       }
     }

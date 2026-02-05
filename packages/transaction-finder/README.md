@@ -88,11 +88,11 @@ const stop = await finder.monitorAddresses(['yPaymentAddr...'], {
 │  │  - InstantLock proof bytes       │  │  - CL boolean            │ │
 │  │                                  │  │                          │ │
 │  │  Reconnection:                   │  └──────────────────────────┘ │
-│  │  - Periodic (every 10s)          │                                │
-│  │  - On preRegisterTransaction()   │  ┌──────────────────────────┐ │
-│  │  - Grace period pauses periodic  │  │  ChainLockHeightMonitor  │ │
-│  │    after preRegister so IS proof  │  │  polls getEpochsInfo()   │ │
-│  │    bytes can arrive               │  │  for CL height           │ │
+│  │  - Periodic (every 60s)          │                                │
+│  │  - Paused on preRegister() so    │  ┌──────────────────────────┐ │
+│  │    stream stays alive for IS      │  │  ChainLockHeightMonitor  │ │
+│  │    proof byte delivery            │  │  polls getEpochsInfo()   │ │
+│  │                                   │  │  for CL height           │ │
 │  └──────────────────────────────────┘  │                          │ │
 │                                         │  High-water mark:        │ │
 │  ┌──────────────────────────────────┐  │  monotonic, never drops  │ │
@@ -106,7 +106,12 @@ const stop = await finder.monitorAddresses(['yPaymentAddr...'], {
 
 ### DAPI Stream Behavior
 
-`subscribeToTransactionsWithProofs` only bloom-filter-tests block transactions on the **first block** after connection. For subsequent blocks, it relies on internal ZMQ events which can miss transactions if the event was dropped. Periodic reconnection forces the server to re-run its historical data + mempool scan, catching anything missed.
+`subscribeToTransactionsWithProofs` only bloom-filter-tests block transactions on the **first block** after connection. For subsequent blocks, DAPI internally relies on ZMQ events from its local Dash Core node, which can miss transactions if the event was dropped. (Our code talks to DAPI via gRPC only — ZMQ is DAPI's internal implementation detail.) Periodic reconnection forces the server to re-run its historical data + mempool scan, catching anything missed.
+
+**DAPI IS Byte Delivery Constraint:**
+DAPI only delivers IS bytes for ZMQ events received AFTER the stream opens.
+Reconnecting after a tx is IS-locked will NOT deliver IS bytes on the new stream.
+Our code ──gRPC──→ DAPI ──(internal ZMQ)──→ Dash Core.
 
 ### Two Proof Paths
 
@@ -125,13 +130,13 @@ The SDK creates asset lock proofs via two paths:
 
 **Fallback behavior:** If `instantLockHex` is available, the SDK creates an InstantAssetLockProof (fast). If not — for any reason (IS failed, stream missed it, poller detected IS boolean only) — there is no way to create an InstantAssetLockProof, and ChainAssetLockProof is the only option. The IS boolean from the poller is informational only; it cannot produce the raw proof bytes needed.
 
-### Two-Phase Grace Period
+### Grace Period
 
 After `preRegisterTransaction()`:
 
-**Phase 1 (HUNT):** Reconnection continues normally. Each reconnect forces DAPI to re-scan its mempool, eventually finding the newly broadcast transaction. This is necessary because a single reconnect may miss the tx due to P2P propagation delay.
+Periodic reconnection is **paused** (default 15s grace period). The existing gRPC stream stays alive and naturally receives the transaction and IS proof bytes after broadcast. The grace period is extended each time the stream detects a pre-registered tx.
 
-**Phase 2 (WAIT):** When the stream detects a pre-registered txid, the grace period starts (default 15s). Periodic reconnection pauses so the stream stays alive for IS proof byte delivery from the LLMQ quorum (~1-2s after detection).
+If the poller detects IS without hex bytes, the hex wait in `waitForConfirmation()` gives the live stream time to deliver the proof bytes (no reconnect — DAPI cannot replay historical IS).
 
 Periodic reconnection resumes after:
 - All pre-registered txids have received IS proof, OR
@@ -148,14 +153,15 @@ findSpendableUTXO() → scans blockchain → returns UTXO for asset lock
 
 **Realtime (confirmation monitoring):**
 ```
-preRegisterTransaction(txid) → immediate reconnect + HUNT mode
-  → reconnections continue → stream mempool scan finds tx
-  → WAIT mode starts → IS proof bytes arrive (~1-2s)
+preRegisterTransaction(txid) → reconnection PAUSED (stream stays alive)
+  → stream receives tx via gRPC subscription
+  → IS proof bytes arrive via stream (~1-2s)
   → onInstantLock fires with instantLockHex
   → SDK creates InstantAssetLockProof
 
   If poller detects IS before stream delivers hex:
-  → waitForConfirmation() waits up to instantLockHexWaitMs (5s)
+  → waitForConfirmation() waits up to instantLockHexWaitMs (8s)
+  → hex wait: live stream given time to deliver proof bytes
   → If stream delivers hex during wait → resolves with hex
   → If hex wait expires → resolves without hex → SDK falls back
 
@@ -203,10 +209,11 @@ waitForConfirmation(txid) → returns { method, instantLockHex, ... }
 | `minPollInterval` | `number` | — | Min CL poll interval (ms) |
 | `enableTransactionPolling` | `boolean` | `true` | Enable IS/CL polling via `getTransaction()` |
 | `transactionPollInterval` | `number` | `2000` | TX poll interval (ms, min 1000) |
-| `streamReconnectInterval` | `number` | `10000` | Periodic stream reconnect interval (ms). Set to 0 to disable. |
-| `reconnectOnPreRegister` | `boolean` | `true` | Immediately reconnect on `preRegisterTransaction()` |
-| `reconnectGracePeriod` | `number` | `15000` | Grace period (ms) after pre-registered tx is found on stream (WAIT phase), during which periodic reconnection is paused for IS proof delivery |
-| `instantLockHexWaitMs` | `number` | `5000` | How long `waitForConfirmation()` waits for stream to deliver IS proof bytes after poller detects IS (boolean only). Only applies to pre-registered txids. Set to 0 to disable. |
+| `streamReconnectInterval` | `number` | `60000` | Periodic stream reconnect interval (ms). Set to 0 to disable. |
+| `reconnectOnPreRegister` | `boolean` | `true` | When true (default), reconnects immediately (0ms delay) for a fresh stream. DAPI streams stall after initial scan — a fresh stream registers a new bloom filter emitter that captures IS events during its scan phase. Call preRegister BEFORE broadcast. When false, only sets grace period. Either way, periodic reconnection is paused for `reconnectGracePeriod` ms. |
+| `preRegisterReconnectDelay` | `number` | `0` | Delay (ms) before reconnecting the stream after `preRegisterTransaction()`. Default 0 (immediate) — caller should call preRegister BEFORE broadcast so emitter is registered before IS fires. |
+| `reconnectGracePeriod` | `number` | `15000` | Grace period (ms) for IS proof delivery. Reconnection is paused when `preRegisterTransaction()` is called, extended when stream detects the tx. |
+| `instantLockHexWaitMs` | `number` | `8000` | How long `waitForConfirmation()` waits for stream to deliver IS proof bytes after poller detects IS (boolean only). No reconnect is triggered — the live stream is given time to deliver. Only applies to pre-registered txids. Set to 0 to disable. |
 
 ## Running Tests
 

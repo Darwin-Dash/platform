@@ -219,13 +219,13 @@ TransactionFinder serves as the critical bridge that connects:
 │  3. SDK creates asset lock tx using UTXO                          │
 │              ↓                                                    │
 │  4. SDK calls preRegisterTransaction(assetLockTxid)               │
-│     → Immediate reconnect + HUNT mode (reconnection continues)    │
+│     → Reconnection PAUSED (stream stays alive for IS delivery)    │
 │              ↓                                                    │
 │  5. SDK broadcasts asset lock via DAPI                            │
 │              ↓                                                    │
 │  6. TransactionFinder (REALTIME) confirms:                        │
-│     a. HUNT: reconnections continue until mempool scan finds tx   │
-│     b. WAIT: grace period starts, stream stays alive              │
+│     a. Stream stays alive, receives tx via gRPC subscription      │
+│     b. Grace period extended when tx found on stream              │
 │     c. IS proof bytes arrive via stream (~1-2s)                   │
 │     d. onInstantLock fires with instantLockHex                    │
 │              ↓                                                    │
@@ -308,15 +308,24 @@ of the raw LLMQ signature bytes needed for the proof. ChainLock is the only opti
 ### DAPI Stream Behavior (Architectural Context)
 
 `subscribeToTransactionsWithProofs` only bloom-filter-tests block transactions on the **first block**
-after connection. For subsequent blocks, it relies on internal ZMQ `rawtx` events which can miss
-transactions if the event was dropped.
+after connection. For subsequent blocks, DAPI internally relies on ZMQ `rawtx` events from its
+local Dash Core node, which can miss transactions if the event was dropped. (Note: our code talks
+to DAPI via gRPC only — ZMQ is DAPI's internal implementation detail, not something we control.)
 
 **Why reconnection exists:** Forces DAPI to re-run its historical + mempool scan, catching missed txs.
 
-**Why two-phase grace period exists:** A single reconnect after `preRegisterTransaction()` may miss
-the tx due to P2P propagation delay. HUNT phase keeps reconnecting until the tx is found. Once found,
-WAIT phase pauses reconnection so the stream stays alive for IS proof byte delivery (~1-2s after
-detection). Without WAIT, the periodic reconnect would kill the stream before the IS message arrives.
+**Why preRegisterTransaction reconnects immediately:** DAPI streams stall after the initial
+historical + mempool scan — no new ZMQ events are delivered (empirically confirmed: 30+ seconds
+of silence). When `preRegisterTransaction()` is called, it reconnects immediately (0ms delay)
+for a fresh stream. The new stream registers a bloom filter emitter on the DAPI server BEFORE
+historical blocks are sent, so IS events arriving during the scan are cached and flushed after
+MEMPOOL_DATA_SENT. The caller should invoke preRegister BEFORE broadcasting to maximize the
+IS capture window. A grace period prevents periodic reconnects from interfering.
+
+**DAPI IS Byte Delivery Constraint:**
+DAPI only delivers IS bytes for ZMQ events received AFTER the stream opens.
+Reconnecting after a tx is IS-locked will NOT deliver IS bytes on the new stream.
+Our code ──gRPC──→ DAPI ──(internal ZMQ)──→ Dash Core.
 
 ### Critical Notes
 
@@ -330,33 +339,38 @@ detection). Without WAIT, the periodic reconnect would kill the stream before th
 
 ### The Problem
 
-The DAPI bloom filter stream (`subscribeToTransactionsWithProofs`) only tests transactions against
-the bloom filter on the first block after connection. Subsequent blocks rely on ZMQ events that can
-be missed. To catch missed transactions, the stream reconnects periodically (every 10s by default).
+The DAPI gRPC stream (`subscribeToTransactionsWithProofs`) may miss transactions between
+reconnections. DAPI internally uses ZMQ events from its local Dash Core node to detect new
+transactions — if a ZMQ event is dropped, the transaction is silently missed. (Note: our code
+communicates with DAPI via gRPC only; ZMQ is DAPI's internal implementation detail.)
 
-However, periodic reconnection **conflicts with IS proof delivery**: when the stream has found
-an asset lock transaction, the SDK needs the raw InstantLock proof bytes that arrive ~1-2s later.
-If the periodic reconnect kills the stream before those bytes arrive, the SDK falls back to the
-slow ChainLock path (~30-60s instead of ~2s).
+To catch missed transactions, the stream reconnects periodically (every 60s by default). However,
+periodic reconnection **conflicts with IS proof delivery**: the SDK needs raw InstantLock proof
+bytes that arrive ~1-2s after the stream detects a transaction. If a reconnect kills the stream
+before those bytes arrive, the SDK falls back to the slow ChainLock path (~30-60s instead of ~2s).
 
-### The Fix: Two-Phase Grace Period
+### The Fix: Immediate Reconnect on preRegister
 
-**Phase 1 — HUNT:** After `preRegisterTransaction()`, reconnection **continues normally** (every
-10s). Each reconnect forces DAPI to re-scan mempool. This is necessary because a single reconnect
-may miss the tx due to P2P propagation delay.
+When `preRegisterTransaction()` is called:
+1. **Immediate reconnect** (default, `reconnectOnPreRegister: true`): Fresh stream with new emitter
+2. **Grace period**: Periodic reconnection paused for `reconnectGracePeriod` (default 15s)
 
-**Phase 2 — WAIT:** When the stream detects a pre-registered txid, the grace period **starts now**
-(default 15s). Reconnection pauses. IS proof bytes arrive ~1-2s later. Grace clears when all
-pre-registered txids have IS proof, or on expiry.
+DAPI streams stall after the initial historical + mempool scan — no new ZMQ events are delivered
+(empirically confirmed: 30+ seconds of silence). A fresh stream registers a new bloom filter
+emitter on the DAPI server BEFORE historical blocks are sent. IS events arriving via ZMQ during
+the scan phase are cached in the server's `unretrievedInstantLocks` map and flushed after
+MEMPOOL_DATA_SENT. The 0ms delay (default) starts the reconnect before broadcast, maximizing
+the window for IS event capture.
 
 After `preRegisterTransaction()`:
-1. Immediate reconnect triggers (DAPI mempool scan tries to pick up the tx)
-2. HUNT: periodic reconnection **continues** — each reconnect re-scans mempool
-3. Stream finds the pre-registered tx → WAIT phase starts
-4. Reconnection **paused** for `reconnectGracePeriod` (default 15s)
+1. Stream reconnects immediately from current tip (fresh emitter registered on DAPI server)
+2. Periodic reconnection **paused** for `reconnectGracePeriod` (default 15s)
+3. Caller broadcasts transaction → IS fires ~1-2s later → captured by fresh emitter
+4. Grace period extended when pre-registered tx found on stream
 5. IS proof bytes arrive → `onInstantLock` fires with `instantLockHex`
 6. Grace period ends early when all pre-registered txids have IS proof
-7. Periodic reconnection resumes
+7. If IS detected without hex → hex wait: stream given time to deliver proof bytes
+8. Periodic reconnection resumes after grace period
 
 ### Duplicate Prevention
 
@@ -369,6 +383,106 @@ txid, the callback is skipped. This ensures `onTransaction` fires exactly once p
 - `src/finders/RealtimeFinder.ts` — Grace period logic, duplicate prevention, reconnection
 - `src/types/finder-types.ts` — `reconnectGracePeriod`, `instantLockHexWaitMs` config fields
 - `src/monitoring/TransactionTracker.ts` — Transaction state tracking and deduplication
+
+## Multi-Node IS Hex Hunting (NEW - 2026-02)
+
+This section documents the multi-node InstantSend hex hunting system that increases the odds of receiving IS proof bytes from DAPI nodes.
+
+### The Problem
+
+Most DAPI testnet nodes don't have ZMQ `rawtxlocksig` enabled in their Dash Core configuration. When connected to a node WITHOUT this enabled, IS hex is never delivered — even though the transaction is InstantSend-locked. The poller detects `isInstantLocked: true` but without raw proof bytes, the SDK must fall back to the slow ChainLock path.
+
+### The Solution: Multi-Node IS Hunting
+
+When `preRegisterTransaction()` is called, the system:
+1. Opens parallel gRPC streams to multiple DAPI nodes (default: 3)
+2. Races all streams for IS hex delivery (first valid hex wins)
+3. Tracks node health — blacklists nodes that fail IS hex delivery
+4. Falls back to ChainLock after timeout (default: 3 seconds)
+
+### How It Works
+
+```
+preRegisterTransaction(txid)
+    │
+    ├─► Open 3 parallel streams to different DAPI nodes (via address provider)
+    │   Each stream: subscribeToTransactionsWithProofs(bloomFilter, fromHeight)
+    │
+    ├─► Broadcast transaction (by caller, after preRegister returns)
+    │
+    ├─► Race: wait for IS hex from ANY of the 3 streams
+    │   ├─ Node A delivers IS hex ─► USE IT, close other streams
+    │   ├─ Node B delivers IS hex ─► USE IT, close other streams
+    │   ├─ Node C delivers IS hex ─► USE IT, close other streams
+    │   └─ 3s timeout, no hex ─► fall back to ChainLock
+    │
+    └─► Track node health:
+        - Node delivered IS hex ─► mark as "good" (success)
+        - Node in race but didn't win ─► increment failure count
+        - Timeout (no winner) ─► no blacklisting (could be tx propagation issue)
+```
+
+### Configuration Options
+
+```typescript
+const finder = new TransactionFinder({
+  mode: FinderMode.REALTIME,
+  network: 'testnet',
+  addresses: [myAddress],
+  dapiClient: dapiClient,
+
+  // Multi-node IS hunting (all enabled by default)
+  multiNodeIsHunting: true,           // Enable parallel IS hunting
+  isHuntingNodes: 3,                  // Number of nodes to connect to
+  isHuntingTimeoutMs: 3000,           // Timeout before ChainLock fallback
+  isHuntingBlacklistThreshold: 1,     // Blacklist after N consecutive failures
+});
+```
+
+### Node Health API
+
+```typescript
+// Get node health statistics
+const health = finder.getNodeHealth();
+
+console.log('Total tracked:', health.totalTracked);
+console.log('Healthy nodes:', health.healthy);
+console.log('Blacklisted:', health.blacklisted);
+
+// Per-node statistics
+for (const [addr, stats] of health.nodeStats) {
+  console.log(`${addr}: ${stats.successes} successes, ${stats.failures} failures`);
+}
+```
+
+### Why This Design?
+
+**Why 3 nodes?**
+- Provides redundancy without excessive resource usage
+- If 1 in 3 testnet nodes has rawtxlocksig enabled, we have good odds
+- Parallel connections are cheap (just gRPC streams)
+
+**Why first-wins (no consensus)?**
+- IS hex is cryptographically signed by LLMQ — can't be faked
+- All nodes should return the same hex for a given txid
+- Speed matters more than consensus for this use case
+
+**Why immediate blacklist?**
+- Nodes without rawtxlocksig are deterministically broken
+- No point retrying — they will never deliver IS hex
+- Fast learning = better experience for subsequent transactions
+
+**Why in-memory only?**
+- Session-scoped blacklist resets on restart
+- Node configuration may change between sessions
+- Simple, no persistence complexity
+
+### Key Files
+
+- `src/monitoring/NodeHealthTracker.ts` — Tracks node health/blacklist
+- `src/monitoring/MultiNodeIsHunter.ts` — Parallel stream management
+- `src/finders/RealtimeFinder.ts` — Integration with main finder
+- `src/types/finder-types.ts` — Configuration options
 
 ## InstantLock Hex Race Condition (CRITICAL KNOWLEDGE)
 

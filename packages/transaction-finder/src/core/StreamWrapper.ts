@@ -20,13 +20,11 @@ export class StreamWrapper {
    * @returns An async iterable that yields stream messages
    */
   static makeAsyncIterable<T>(stream: any): AsyncIterable<T> {
-  // Check if stream is already an async iterable (has Symbol.asyncIterator)
-  if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
-    return stream as AsyncIterable<T>;
-  }
-
-  // Check if stream has .on method (EventEmitter/Node.js Readable pattern)
-  // This includes both EventEmitters and Node.js Readable streams
+  // IMPORTANT: Prefer EventEmitter-based wrapping over native async iterator.
+  // @grpc/grpc-js ClientReadableStreamImpl exposes both Symbol.asyncIterator
+  // and EventEmitter (.on), but its native async iterator can stall after the
+  // initial batch. The EventEmitter path with explicit queuing is more reliable
+  // for long-lived streaming subscriptions.
   if (stream && typeof stream.on === 'function' && typeof stream.removeListener === 'function') {
     return {
       [Symbol.asyncIterator]() {
@@ -114,6 +112,11 @@ export class StreamWrapper {
     };
   }
 
+  // Fallback: check if stream is an async iterable without EventEmitter
+  if (stream && typeof stream[Symbol.asyncIterator] === 'function') {
+    return stream as AsyncIterable<T>;
+  }
+
   // Log stream properties for debugging
   if (stream) {
     const streamType = Object.prototype.toString.call(stream);
@@ -124,7 +127,7 @@ export class StreamWrapper {
     );
   }
 
-  // Fallback: treat as async iterable or throw error
+  // No supported stream interface found
   throw new TypeError(
     'Stream must be either an async iterable or an EventEmitter/Readable stream with .on() method'
   );

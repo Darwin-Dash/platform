@@ -193,11 +193,11 @@ console.log('Total latency:', result.totalLatencyMs, 'ms');
 Pre-register a txid for InstantLock monitoring. Call this BEFORE broadcasting
 a transaction to ensure InstantLock proof bytes are captured.
 
-Triggers an immediate stream reconnection (if `reconnectOnPreRegister` is true)
-so DAPI's mempool scan picks up the newly broadcast transaction. Reconnection
-continues normally (HUNT phase) until the stream finds the pre-registered tx,
-at which point a grace period starts (WAIT phase, default 15s) to keep the
-stream alive for IS proof byte delivery from the LLMQ quorum.
+Reconnects the stream immediately (0ms delay) for a fresh bloom filter emitter
+on the DAPI server. DAPI streams stall after their initial scan — a fresh stream
+captures IS events during its scan phase. Also pauses periodic reconnection
+(grace period, default 15s). Call preRegister BEFORE broadcasting the transaction
+to maximize the IS capture window.
 
 The grace period ends early if all pre-registered txids receive IS proof bytes.
 
@@ -276,6 +276,51 @@ setInterval(() => {
 }, 60000);
 ```
 
+#### getNodeHealth()
+
+Get health statistics for DAPI nodes used in multi-node IS hex hunting.
+
+```typescript
+getNodeHealth(): NodeHealthSummary
+```
+
+**Returns:**
+```typescript
+interface NodeHealthSummary {
+  /** Total number of nodes tracked */
+  totalTracked: number;
+  /** Number of healthy (non-blacklisted) nodes */
+  healthy: number;
+  /** Number of blacklisted nodes */
+  blacklisted: number;
+  /** Per-node statistics */
+  nodeStats: Map<string, NodeStats>;
+}
+
+interface NodeStats {
+  address: string;
+  successes: number;           // Successful IS hex deliveries
+  failures: number;            // Failed IS hex deliveries
+  blacklisted: boolean;        // Whether node is blacklisted
+  lastSuccessTime: number | null;
+  blacklistedAt: number | null;
+}
+```
+
+**Example:**
+```typescript
+const health = finder.getNodeHealth();
+
+console.log(`Tracking ${health.totalTracked} nodes`);
+console.log(`Healthy: ${health.healthy}, Blacklisted: ${health.blacklisted}`);
+
+// Show per-node stats
+for (const [addr, stats] of health.nodeStats) {
+  const status = stats.blacklisted ? '❌' : '✅';
+  console.log(`${status} ${addr}: ${stats.successes} successes, ${stats.failures} failures`);
+}
+```
+
 ## Configuration Types
 
 ### TransactionFinderConfig
@@ -332,14 +377,25 @@ interface RealtimeFinderConfig {
   streamReconnectInterval?: number;     // Periodic stream reconnection interval in ms. Forces DAPI to
                                         // re-run historical + mempool scan to catch missed txs.
                                         // Default: 10000 (10s). Set to 0 to disable.
-  reconnectOnPreRegister?: boolean;     // Immediately reconnect stream when preRegisterTransaction() is called.
-                                        // Ensures mempool scan picks up newly broadcast tx. Default: true
+  reconnectOnPreRegister?: boolean;     // Reconnect stream when preRegisterTransaction() is called.
+                                        // Default: true (immediate reconnect for fresh IS emitter)
   reconnectGracePeriod?: number;        // Grace period (ms) after pre-registered tx is found on stream
                                         // (WAIT phase). Periodic reconnection is paused so IS proof
                                         // bytes can arrive. Default: 15000 (15s).
   instantLockHexWaitMs?: number;        // How long to wait (ms) for stream to deliver IS proof bytes
                                         // after the poller detects IS (boolean only). Only applies to
                                         // pre-registered txids. Default: 5000 (5s). Set to 0 to disable.
+
+  // Multi-Node IS Hex Hunting Configuration
+  multiNodeIsHunting?: boolean;         // Enable parallel IS hex hunting from multiple DAPI nodes.
+                                        // Connects to multiple nodes simultaneously and races for
+                                        // IS hex delivery. First valid hex wins. Default: true
+  isHuntingNodes?: number;              // Number of DAPI nodes to connect to for IS hunting.
+                                        // More nodes = higher chance of success. Default: 3
+  isHuntingTimeoutMs?: number;          // Timeout (ms) for IS hex hunting before ChainLock fallback.
+                                        // Speed priority: keep short. Default: 3000 (3 seconds)
+  isHuntingBlacklistThreshold?: number; // Blacklist nodes after this many consecutive failures.
+                                        // Default: 1 (immediate blacklist on first failure)
 }
 ```
 
