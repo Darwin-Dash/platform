@@ -244,7 +244,7 @@ export class UTXOFinder {
       dapiClient: dapiClient as any,
       fromHeight: startHeight,
       toHeight: actualToHeight,
-      requiredAmount: minAmount,
+      requiredAmount: minAmount + IDENTITY_CONFIG.FEE_BUFFER,
       onProgress: (progress) => {
         if (onProgress) {
           const progressPercent = 20 + (progress.progress * 0.7); // Scale 0-100 to 20-90
@@ -466,7 +466,7 @@ export class UTXOFinder {
         i  // index
       );
 
-      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coinType}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath({
         mnemonic,
@@ -475,7 +475,7 @@ export class UTXOFinder {
         network
       });
 
-      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
+      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKeyWif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 
@@ -496,7 +496,7 @@ export class UTXOFinder {
         i  // index
       );
 
-      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coinType}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath({
         mnemonic,
@@ -505,7 +505,7 @@ export class UTXOFinder {
         network
       });
 
-      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
+      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKeyWif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 

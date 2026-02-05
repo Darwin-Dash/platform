@@ -312,6 +312,55 @@ describe('IdentitiesFacade', () => {
     expect(call[3]).toBe('w');
   });
 
+  describe('getNextFreeIndex gap logic', () => {
+    /**
+     * Test the gap-aware index finding algorithm in isolation.
+     * The real getNextFreeIndex calls getIdentityIds (network call),
+     * so we test the pure logic here.
+     */
+    function findNextFreeIndex(usedIndexes: number[]): number {
+      if (usedIndexes.length === 0) return 0;
+      const usedSet = new Set(usedIndexes);
+      const maxIndex = Math.max(...usedSet);
+      for (let i = 0; i <= maxIndex; i++) {
+        if (!usedSet.has(i)) return i;
+      }
+      return maxIndex + 1;
+    }
+
+    it('returns 0 when no identities exist', () => {
+      expect(findNextFreeIndex([])).toBe(0);
+    });
+
+    it('returns next after max when no gaps', () => {
+      expect(findNextFreeIndex([0, 1, 2])).toBe(3);
+    });
+
+    it('fills a gap at the beginning', () => {
+      expect(findNextFreeIndex([1, 2, 3])).toBe(0);
+    });
+
+    it('fills a gap in the middle', () => {
+      expect(findNextFreeIndex([0, 1, 3])).toBe(2);
+    });
+
+    it('fills the first of multiple gaps', () => {
+      expect(findNextFreeIndex([0, 2, 5])).toBe(1);
+    });
+
+    it('handles single identity at index 0', () => {
+      expect(findNextFreeIndex([0])).toBe(1);
+    });
+
+    it('handles single identity at index 3', () => {
+      expect(findNextFreeIndex([3])).toBe(0);
+    });
+
+    it('handles duplicates in input', () => {
+      expect(findNextFreeIndex([0, 0, 1, 1, 3])).toBe(2);
+    });
+  });
+
   describe('Error Handling', () => {
     it('handles identity not found error on get()', async () => {
       const errorMessage = 'Identity not found';

@@ -5,11 +5,13 @@
  * Validates login flow, progress feedback, error handling, and state management.
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
 import { test, expect } from '@playwright/test';
 import { setupMockMode, setupTestnetMode, handleLoginIfNeeded, setupReturningUser, setupStaleSession } from './helpers/test-setup.js';
 
-// The demo app uses this test mnemonic (from mock-data.js)
-const APP_TEST_MNEMONIC = 'lamp truck drip furnace now swing income victory leisure popular jeans vehicle';
+// Use MNEMONIC from .env file
+const MNEMONIC = process.env.MNEMONIC;
 
 test.describe('Identity Discovery - Mock Mode', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,8 +42,8 @@ test.describe('Identity Discovery - Mock Mode', () => {
     const mnemonicInput = page.locator('#login-mnemonic');
     const value = await mnemonicInput.inputValue();
 
-    // Should have test mnemonic pre-filled (the app pre-fills with its own test mnemonic)
-    expect(value).toBe(APP_TEST_MNEMONIC);
+    // Should have mnemonic pre-filled (from MNEMONIC env var)
+    expect(value).toBe(MNEMONIC);
   });
 
   test('shows discovery progress during login', async ({ page }) => {

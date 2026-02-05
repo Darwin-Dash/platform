@@ -2,6 +2,44 @@
  * Shared test setup helpers for E2E tests
  */
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory of this file for cache storage
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const CACHE_FILE = path.join(__dirname, '.identity-cache.json');
+
+// File-based cache for identity state across tests
+// This persists across Playwright worker processes
+function readCache() {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
+      // Check if cache is fresh (less than 30 minutes old)
+      if (data.timestamp && (Date.now() - data.timestamp) < 30 * 60 * 1000) {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.log('[test-setup] Cache read error:', e.message);
+  }
+  return null;
+}
+
+function writeCache(identityState, loggedIn) {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify({
+      identityState,
+      loggedIn,
+      timestamp: Date.now()
+    }));
+  } catch (e) {
+    console.log('[test-setup] Cache write error:', e.message);
+  }
+}
+
 /**
  * Clear all localStorage and set up mock mode
  * Should be called at the start of beforeEach
@@ -38,6 +76,98 @@ export async function setupTestnetMode(page) {
 }
 
 /**
+ * Set up test environment for testnet with caching support.
+ *
+ * First call: clears localStorage, sets testnet mode (will trigger discovery)
+ * Subsequent calls: restores cached identity state (skips rediscovery)
+ *
+ * This dramatically speeds up test suites that need discovered identities,
+ * since identity discovery can take 7+ minutes on testnet.
+ */
+export async function setupTestnetModeWithCache(page) {
+  const cache = readCache();
+
+  if (cache && cache.identityState) {
+    console.log('[test-setup] Restoring cached identity state');
+    // CRITICAL: Use addInitScript to set localStorage BEFORE any page JS runs
+    // This avoids race conditions where app.js init() runs before localStorage is set
+    await page.addInitScript(({ identityState, loggedIn }) => {
+      localStorage.clear();
+      localStorage.setItem('useMockMode', 'false');
+      localStorage.setItem('network', 'testnet');
+      localStorage.setItem('dash-identity-state', identityState);
+      localStorage.setItem('dash-logged-in', loggedIn);
+    }, { identityState: cache.identityState, loggedIn: cache.loggedIn });
+  } else {
+    console.log('[test-setup] No cache found, will discover identities');
+    // First time: clear and set testnet mode (will discover)
+    await page.addInitScript(() => {
+      localStorage.clear();
+      localStorage.setItem('useMockMode', 'false');
+      localStorage.setItem('network', 'testnet');
+    });
+  }
+
+  // Navigate to page - localStorage will be set before app.js runs
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Cache the current identity state from localStorage.
+ * Call this after identity discovery completes to preserve state for subsequent tests.
+ * Uses file-based storage to persist across Playwright worker processes.
+ */
+export async function cacheCurrentState(page) {
+  const state = await page.evaluate(() => ({
+    identityState: localStorage.getItem('dash-identity-state'),
+    loggedIn: localStorage.getItem('dash-logged-in'),
+  }));
+  if (state.identityState) {
+    writeCache(state.identityState, state.loggedIn);
+    console.log('[test-setup] Identity state cached to file');
+  }
+}
+
+/**
+ * Clear the cached identity state.
+ * Use this if you need to force rediscovery in a test.
+ */
+export function clearStateCache() {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      fs.unlinkSync(CACHE_FILE);
+    }
+  } catch (e) {
+    console.log('[test-setup] Cache clear error:', e.message);
+  }
+}
+
+/**
+ * Check if identity state is currently cached.
+ */
+export function hasStateCache() {
+  const cache = readCache();
+  return cache !== null && cache.identityState !== null;
+}
+
+/**
+ * Fill the mnemonic field (handles readonly textarea)
+ * @param {Page} page - Playwright page
+ * @param {string} mnemonic - The mnemonic phrase to fill
+ */
+export async function fillMnemonicField(page, mnemonic) {
+  await page.evaluate((m) => {
+    const field = document.getElementById('login-mnemonic') || document.querySelector('#login-form textarea');
+    if (field) {
+      field.removeAttribute('readonly');
+      field.value = m;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }, mnemonic);
+}
+
+/**
  * Handle login flow if login screen is visible
  * @returns {Promise<boolean>} true if login was performed
  */
@@ -51,7 +181,7 @@ export async function handleLoginIfNeeded(page, options = {}) {
   }
 
   // Click login button (mnemonic is pre-filled in mock mode)
-  await page.locator('#login-form button[type="submit"]').click();
+  await page.locator('#login-form button[type="submit"], button:has-text("Connect Wallet"), button:has-text("Login")').click();
 
   if (waitForDashboard) {
     // Wait for mock discovery to complete
@@ -96,14 +226,27 @@ export async function navigateToWelcomeScreen(page) {
 }
 
 /**
- * Wait for dashboard to be visible (not hidden)
+ * Wait for the main content area to be visible (not hidden)
+ * This includes either dashboard-view (no identity selected) or identity-view (identity selected)
  * Uses waitForFunction to check hidden attribute directly
  */
 export async function waitForDashboard(page, timeout = 15000) {
   await page.waitForFunction(
     () => {
+      // Check if login view is hidden (meaning we're logged in)
+      const loginView = document.getElementById('login-view');
+      const isLoginHidden = loginView && loginView.hasAttribute('hidden');
+
+      // Dashboard view (when no identity is selected)
       const dashboard = document.getElementById('dashboard-view');
-      return dashboard && !dashboard.hasAttribute('hidden');
+      const isDashboardVisible = dashboard && !dashboard.hasAttribute('hidden');
+
+      // Identity view (when an identity is selected)
+      const identityView = document.getElementById('identity-view');
+      const isIdentityViewVisible = identityView && !identityView.hasAttribute('hidden');
+
+      // Success: logged in AND (dashboard OR identity view is visible)
+      return isLoginHidden && (isDashboardVisible || isIdentityViewVisible);
     },
     { timeout }
   );
@@ -314,76 +457,98 @@ export async function takeScreenshot(page, name) {
 export async function setupReturningUser(page, options = {}) {
   const { identityCount = 3, includeIndexes = true } = options;
 
-  // Navigate first to be able to access localStorage
-  await page.goto('/');
+  // Build the mock identity state data
+  const mockIdentities = Array.from({ length: identityCount }, (_, i) => {
+    const id = `mock-returning-identity-${i}`;
+    const identity = {
+      id: id,
+      balance: 1000000 * (i + 1),
+      revision: 1,
+      publicKeysCount: 2,
+      label: `Returning Identity ${i + 1}`,
+      dpnsNames: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      keys: [],
+      lastUpdated: Date.now()
+    };
+    // Include index if requested (for testing index preservation)
+    if (includeIndexes) {
+      identity.index = i;
+    }
+    return [id, identity];
+  });
 
-  // Wait for the page to be ready (DOM loaded)
-  await page.waitForLoadState('domcontentloaded');
+  const stateToStore = {
+    identities: mockIdentities,
+    transactions: [],
+    operations: [],
+    network: 'testnet',
+    ui: {
+      selectedIdentityId: mockIdentities[0]?.[0] || null,
+      activePanel: null,
+      isCreating: false,
+      isLoading: false,
+      loadingMessage: '',
+      modalOpen: false
+    }
+  };
 
-  // Set localStorage - this happens AFTER the first page load
-  await page.evaluate((opts) => {
-    // Clear everything first
-    localStorage.clear();
+  const identityStateJson = JSON.stringify(stateToStore);
 
-    // Set mock mode and logged-in flag
+  // CRITICAL FIX: Use addInitScript to set localStorage BEFORE any page JS runs
+  // This avoids the race condition where beforeunload handler overwrites our values
+  // The init script runs before any page scripts, so our localStorage is set first
+  await page.addInitScript((stateJson) => {
+    // This runs before any page JavaScript
     localStorage.setItem('useMockMode', 'true');
     localStorage.setItem('dash-logged-in', 'true');
+    localStorage.setItem('dash-identity-state', stateJson);
+  }, identityStateJson);
 
-    // Create mock cached identity state - format must match StateManager's persist() output
-    // StateManager stores identities as: Array.from(Map.entries()) => [[id, data], [id, data], ...]
-    const mockIdentities = Array.from({ length: opts.identityCount }, (_, i) => {
-      const id = `mock-returning-identity-${i}`;
-      const identity = {
-        id: id,
-        balance: 1000000 * (i + 1),
-        revision: 1,
-        publicKeysCount: 2,
-        label: `Returning Identity ${i + 1}`,
-        dpnsNames: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        keys: [],
-        lastUpdated: Date.now()
-      };
-      // Include index if requested (for testing index preservation)
-      if (opts.includeIndexes) {
-        identity.index = i;
-      }
-      return [id, identity];
-    });
-
-    const stateToStore = {
-      identities: mockIdentities,
-      transactions: [],
-      operations: [],
-      network: 'testnet',
-      ui: {
-        selectedIdentityId: mockIdentities[0]?.[0] || null,
-        activePanel: null,
-        isCreating: false,
-        isLoading: false,
-        loadingMessage: '',
-        modalOpen: false
-      }
-    };
-
-    localStorage.setItem('dash-identity-state', JSON.stringify(stateToStore));
-  }, { identityCount, includeIndexes });
-
-  // Verify localStorage was set correctly before reload
-  const verifyResult = await page.evaluate(() => ({
-    loggedIn: localStorage.getItem('dash-logged-in'),
-    mockMode: localStorage.getItem('useMockMode'),
-    identityState: localStorage.getItem('dash-identity-state')
-  }));
-
-  if (verifyResult.loggedIn !== 'true') {
-    throw new Error('setupReturningUser: Failed to set dash-logged-in');
-  }
-
-  // Reload the page so the app initializes fresh with the new localStorage values
-  await page.reload();
+  // Navigate to the page - localStorage will be set before app.js runs
+  await page.goto('/');
   await page.waitForLoadState('networkidle');
+
+  // Wait for the app's JavaScript init() to complete and show the identity view
+  // When an identity is selected (which it is from our mock state), identity-view is shown
+  // When no identity is selected, dashboard-view (with welcome-state) is shown
+  await page.waitForFunction(
+    () => {
+      // Check if login view is hidden (meaning we're logged in)
+      const loginView = document.getElementById('login-view');
+      const isLoginHidden = loginView && loginView.hasAttribute('hidden');
+
+      // Check if identity view is visible (since we have a selected identity)
+      const identityView = document.getElementById('identity-view');
+      const isIdentityViewVisible = identityView && !identityView.hasAttribute('hidden');
+
+      // Alternative: dashboard view is visible (when no identity selected)
+      const dashboard = document.getElementById('dashboard-view');
+      const isDashboardVisible = dashboard && !dashboard.hasAttribute('hidden');
+
+      // Success: logged in AND either identity view or dashboard is visible
+      return isLoginHidden && (isIdentityViewVisible || isDashboardVisible);
+    },
+    { timeout: 15000 }
+  ).catch(async (error) => {
+    // If appropriate view doesn't appear, log diagnostic info
+    const diagnostics = await page.evaluate(() => {
+      const loginView = document.getElementById('login-view');
+      const dashboard = document.getElementById('dashboard-view');
+      const identityView = document.getElementById('identity-view');
+      return {
+        loginHidden: loginView?.hidden,
+        dashboardHidden: dashboard?.hidden,
+        identityViewHidden: identityView?.hidden,
+        loggedIn: localStorage.getItem('dash-logged-in'),
+        hasIdentityState: !!localStorage.getItem('dash-identity-state'),
+        identityStatePreview: localStorage.getItem('dash-identity-state')?.substring(0, 200)
+      };
+    });
+    console.error('setupReturningUser: Main view did not appear', diagnostics);
+    throw new Error(`setupReturningUser failed: Main view not visible. Diagnostics: ${JSON.stringify(diagnostics)}`);
+  });
 }
 
 /**

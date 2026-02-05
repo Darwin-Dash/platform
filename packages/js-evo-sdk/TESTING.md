@@ -1,4 +1,4 @@
-# WASM SDK Integration Testing Guide
+# js-evo-sdk Testing Guide
 
 ## Overview
 
@@ -9,10 +9,11 @@ This document provides comprehensive guidance for testing the js-evo-sdk package
 The js-evo-sdk uses a multi-tier testing strategy:
 
 ### Tier 1: Unit Tests (Mocked WASM)
-- **Location**: `tests/unit/facades/**/*.spec.mjs`
-- **Speed**: <2 seconds total
+- **Location**: `tests/unit/facades/**/*.spec.ts`
+- **Framework**: Vitest
+- **Speed**: <10 seconds total
 - **Network**: No network required
-- **WASM SDK**: Fully mocked using Sinon stubs
+- **WASM SDK**: Fully mocked
 - **Purpose**: Fast feedback for input validation, parameter conversion, error handling
 - **Run**: `yarn test:unit`
 
@@ -27,335 +28,395 @@ The js-evo-sdk uses a multi-tier testing strategy:
 - Parameter conversion (string to BigInt, etc.)
 - Error handling and wrapping
 - Options handling and defaults
-- Deprecation warnings
+- API method signatures
 
 ### Tier 2: Integration Tests (Real WASM + Testnet)
 - **Location**: `tests/integration/**/*.spec.ts`
+- **Framework**: Vitest
 - **Speed**: 1-5 minutes total
 - **Network**: Requires Dash Platform testnet connection
-- **WASM SDK**: Real WASM operations with worker isolation
+- **WASM SDK**: Real WASM operations
 - **Purpose**: End-to-end validation with real platform data
 - **Run**: `yarn test:integration`
 
 ### Tier 3: E2E Tests (Browser Automation)
-- **Location**: `demo/tests/e2e/**/*.spec.js` (for demo app tests)
+- **Location**: `demo/tests/e2e/**/*.spec.js`
+- **Framework**: Playwright
 - **Speed**: 5-15 minutes
 - **Network**: Requires running demo app and testnet
-- **Framework**: Playwright
 - **Purpose**: Full browser automation testing
 - **Run**: `yarn test:e2e`
 
 ## Running Tests
 
-### Run All Unit Tests (Recommended for Development)
+### Quick Start
+
 ```bash
+# Run all unit tests (recommended for development)
 yarn test:unit
-```
 
-Expected output: `350 passing`
-
-### Run Only Mocha Unit Tests (Skip Karma browser tests)
-```bash
-npx mocha 'tests/unit/**/*.spec.mjs'
-```
-
-### Run Specific Test Suite
-```bash
-npx mocha 'tests/unit/facades/identity-creator.spec.mjs'
-npx mocha 'tests/unit/facades/identity-fetcher.spec.mjs'
-npx mocha 'tests/unit/facades/credit-operations.spec.mjs'
-npx mocha 'tests/unit/facades/identity-updater.spec.mjs'
-```
-
-### Run Integration Tests (Requires Testnet)
-```bash
+# Run integration tests (requires testnet)
 yarn test:integration
-```
 
-### Run E2E Tests
-```bash
+# Run E2E tests (requires demo app)
 yarn test:e2e
+
+# Run all tests
+yarn test
 ```
 
-### Run All Tests
+### Specific Test Commands
+
 ```bash
-yarn test:all
+# Run single test file
+yarn vitest run tests/unit/facades/identity-fetcher.spec.ts
+
+# Run tests in watch mode
+yarn vitest watch
+
+# Run tests with coverage
+yarn test:coverage
+
+# Run tests matching pattern
+yarn vitest run -t "should fetch identity"
+```
+
+### E2E Test Commands
+
+```bash
+# Run E2E tests with chromium
+yarn playwright test --project=chromium
+
+# Run E2E tests with firefox
+yarn playwright test --project=firefox
+
+# Run real testnet E2E tests
+yarn playwright test --project=testnet
+
+# Run specific E2E test file
+yarn playwright test tests/e2e/wallet.spec.js
 ```
 
 ## Test Suites Overview
 
-### Unit Tests (Fully Passing)
+### Unit Tests
 
-#### 1. SDK Core Tests
-- `tests/unit/sdk.spec.mjs` - SDK factory methods and configuration
-- `tests/unit/wallet.spec.mjs` - Wallet helper functions (mnemonic generation, key derivation)
+#### SDK Core Tests
+- `tests/unit/sdk.spec.ts` - SDK factory methods and configuration
+- `tests/unit/wallet.spec.ts` - Wallet helper functions
 
-#### 2. Facade Input Validation Tests
-- `tests/unit/facades/identity-creator.spec.mjs` - Identity creation validation
-  - Mnemonic format validation
-  - Amount range validation (200000 - 100000000000 duffs)
-  - Start height validation (1 - 10000000)
-  - Options handling
-
-- `tests/unit/facades/identity-fetcher.spec.mjs` - Identity fetching
-  - Parameter validation
-  - Error wrapping for network and proof errors
-  - Methods: fetch, getKeys, balance, nonce, etc.
-
-- `tests/unit/facades/identity-updater.spec.mjs` - Identity top-up
-  - topUpWithWallet validation
-  - topUpWithAccount (deprecated) testing
-  - Amount minimum is lower than create (100000 duffs)
-
-- `tests/unit/facades/credit-operations.spec.mjs` - Credit operations
-  - creditTransfer parameter handling
-  - creditWithdrawal parameter handling
-  - Amount type conversion (string, number, BigInt)
-
-#### 3. Other Facade Tests
-- `tests/unit/facades/contracts.spec.mjs` - Data contract operations
-- `tests/unit/facades/documents.spec.mjs` - Document querying
-- `tests/unit/facades/tokens.spec.mjs` - Token operations
-- `tests/unit/facades/system.spec.mjs` - System information
-- `tests/unit/facades/dpns.spec.mjs` - DPNS operations
-- `tests/unit/facades/group.spec.mjs` - Group operations
-- `tests/unit/facades/voting.spec.mjs` - Voting operations
-- `tests/unit/facades/epoch.spec.mjs` - Epoch information
-- `tests/unit/facades/protocol.spec.mjs` - Protocol information
-- `tests/unit/facades/dashpay.spec.mjs` - DashPay profiles and contacts
-- `tests/unit/facades/addresses.spec.mjs` - Address-based operations
-
-#### 4. Test Statistics
-- **Total Unit Tests**: 350+
-- **Time**: <2 seconds
-- **Framework**: Mocha + Chai + Sinon (Node.js) + Karma (Browser)
-- **Pass Rate**: 100%
+#### Facade Tests
+| Test File | Coverage |
+|-----------|----------|
+| `identity-fetcher.spec.ts` | Identity fetching, keys, balance, nonce |
+| `identity-creator.spec.ts` | Identity creation with wallet |
+| `identity-updater.spec.ts` | Identity top-up operations |
+| `identity-discovery.spec.ts` | Identity discovery by hash |
+| `credit-operations.spec.ts` | Credit transfers and withdrawals |
+| `contracts.spec.ts` | Data contract operations |
+| `documents.spec.ts` | Document CRUD operations |
+| `tokens.spec.ts` | Token operations |
+| `dpns.spec.ts` | DPNS name registration/resolution |
+| `dashpay.spec.ts` | DashPay profiles and contacts |
+| `addresses.spec.ts` | Address-based operations |
+| `system.spec.ts` | System information |
+| `epoch.spec.ts` | Epoch information |
+| `protocol.spec.ts` | Protocol version info |
+| `group.spec.ts` | Group operations |
+| `voting.spec.ts` | Voting operations |
+| `utxo-operations.spec.ts` | UTXO management |
 
 ### Integration Tests
 
-#### Identity Operations
-- `tests/integration/identity-operations.spec.ts`
-  - fetch/getWithProof/fetchUnproved
-  - getKeys methods
-  - balance and nonce queries
-  - identity discovery by hash
+| Test File | Coverage |
+|-----------|----------|
+| `identity.spec.ts` | Identity fetch, keys, balance |
+| `dpns.spec.ts` | DPNS resolution on testnet |
+| `documents.spec.ts` | Document queries on testnet |
+| `tokens.spec.ts` | Token operations on testnet |
+| `wasm-concurrency.spec.ts` | WASM concurrency handling |
 
-#### Platform Data
-- `tests/integration/documents.spec.ts`
-- `tests/integration/contracts.spec.ts`
-- `tests/integration/tokens.spec.ts`
-- `tests/integration/dpns.spec.ts`
+### E2E Tests
 
-#### Worker Isolation
-- `tests/integration/worker-isolation.spec.ts`
-  - Concurrent operation testing
-  - Memory isolation validation
-  - Stress testing
+| Test File | Coverage |
+|-----------|----------|
+| `identity-creation.spec.js` | Identity creation flow |
+| `identity-topup.spec.js` | Top-up flow |
+| `dpns-operations.spec.js` | DPNS UI operations |
+| `wallet.spec.js` | Wallet operations |
+| `network-switcher.spec.js` | Network switching |
+| `error-handling.spec.js` | Error states |
+| `visual-regression.spec.js` | Screenshot comparisons |
+| `performance.spec.js` | Performance metrics |
+| `responsive.spec.js` | Mobile/tablet views |
 
-## Known Limitations
+### Real Network E2E Tests
 
-### WASM SDK Concurrency Issue
+Located in `demo/tests/e2e/real-network/`:
+- `write-identity-create.spec.js` - Identity creation on testnet
+- `write-dpns-register.spec.js` - DPNS registration on testnet
+- `write-identity-topup.spec.js` - Top-up on testnet
 
-**Problem**: Direct WASM SDK calls can fail with "already locked to a reader" error.
+These require `MNEMONIC` environment variable:
+```bash
+MNEMONIC="your twelve word mnemonic" yarn playwright test --project=testnet
+```
 
-**Root Cause**: The WASM SDK uses a Rust mutex that enforces exclusive reader locking. When multiple async operations try to access the WASM SDK simultaneously, the Rust error propagates.
+## Writing New Tests
 
-**Solution**: The `wasm-worker-runner.ts` utility spawns child processes (Node.js) or Web Workers (browser) to isolate WASM operations:
+### Unit Test Template (Vitest)
+
 ```typescript
-// Isolated operation - safe from concurrency issues
-const result = await runWasmOperation('identity-fetch', { identityId }, {});
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
+import { SomeFacade } from '../../../src/some/facade';
+
+describe('SomeFacade', () => {
+  let mockWasmSdk: any;
+  let facade: SomeFacade;
+
+  beforeEach(() => {
+    mockWasmSdk = {
+      someMethod: vi.fn(),
+    };
+    facade = new SomeFacade(mockWasmSdk);
+  });
+
+  describe('someOperation', () => {
+    it('should validate input', async () => {
+      await expect(facade.someMethod(null as any))
+        .rejects.toThrow('Parameter is required');
+    });
+
+    it('should call WASM SDK with correct args', async () => {
+      mockWasmSdk.someMethod.mockResolvedValue({ result: 'test' });
+
+      const result = await facade.someMethod('valid-input');
+
+      expect(mockWasmSdk.someMethod).toHaveBeenCalledOnce();
+      expect(mockWasmSdk.someMethod).toHaveBeenCalledWith('valid-input');
+      expect(result).toEqual({ result: 'test' });
+    });
+
+    it('should handle errors', async () => {
+      mockWasmSdk.someMethod.mockRejectedValue(new Error('WASM error'));
+
+      await expect(facade.someMethod('input'))
+        .rejects.toThrow('WASM error');
+    });
+  });
+});
+```
+
+### Integration Test Template
+
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createTestnetSDK } from '../lib/helpers';
+import { TEST_TIMEOUTS, TESTNET_IDENTITIES } from '../lib/fixtures';
+
+describe('Integration: SomeFeature', () => {
+  let sdk: EvoSDK;
+
+  beforeAll(async () => {
+    sdk = await createTestnetSDK();
+  }, TEST_TIMEOUTS.SDK_INIT);
+
+  afterAll(async () => {
+    await sdk?.disconnect();
+  });
+
+  it('should work with real testnet', async () => {
+    const result = await sdk.someOperation(TESTNET_IDENTITIES.SAMPLE);
+    expect(result).toBeDefined();
+  }, TEST_TIMEOUTS.NETWORK_OPERATION);
+});
+```
+
+### E2E Test Template (Playwright)
+
+```javascript
+import { test, expect } from '@playwright/test';
+import { setupMockMode, handleLoginIfNeeded, waitForDashboard } from './helpers/test-setup.js';
+
+test.describe('Feature Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMockMode(page);
+    await handleLoginIfNeeded(page);
+    await page.waitForTimeout(500);
+  });
+
+  test('should display feature', async ({ page }) => {
+    await waitForDashboard(page);
+
+    const element = page.locator('.feature-element');
+    await expect(element).toBeVisible();
+  });
+
+  test('should handle user interaction', async ({ page }) => {
+    await waitForDashboard(page);
+
+    await page.getByRole('button', { name: /action/i }).click();
+    await page.waitForTimeout(300);
+
+    const result = page.locator('.result');
+    await expect(result).toBeVisible();
+  });
+});
 ```
 
 ## Test Configuration
 
-### TypeScript Configuration
-- **File**: `tsconfig.json`
-- **Target**: ES2022
-- **Module**: ESNext
-- **Strict**: true
+### Vitest Configuration (`vitest.config.ts`)
 
-### Test Frameworks
-- **Unit Tests (Node.js)**: Mocha 11.1.0 + Chai 4.3.10 + Sinon 17.0.1
-- **Unit Tests (Browser)**: Karma + Mocha
-- **Integration Tests**: Vitest 1.0.0
-- **E2E Tests**: Playwright 1.40.0
-
-## Writing New Tests
-
-### Unit Test Template
-```javascript
-import { expect } from 'chai';
-import sinon from 'sinon';
-import init, * as wasmSDKPackage from '@dashevo/wasm-sdk';
-import { EvoSDK } from '../../../dist/sdk.js';
-
-describe('NewFeature', () => {
-  let wasmSdk;
-  let client;
-  let sandbox;
-
-  beforeEach(async function setup() {
-    // Initialize real WASM SDK for initialization tests
-    await init();
-    const builder = wasmSDKPackage.WasmSdkBuilder.testnetTrusted();
-    wasmSdk = builder.build();
-    client = EvoSDK.fromWasm(wasmSdk);
-    sandbox = sinon.createSandbox();
-
-    // Mock specific methods
-    sandbox.stub(wasmSdk, 'identityFetch');
-  });
-
-  afterEach(() => {
-    sandbox.restore();
-  });
-
-  it('should validate input', async () => {
-    await expect(client.someMethod(null))
-      .to.be.rejectedWith('Parameter is required');
-  });
-
-  it('should convert types correctly', async () => {
-    wasmSdk.identityFetch.resolves({ id: 'test-id' });
-
-    const result = await client.identities.fetch('test-id');
-
-    expect(wasmSdk.identityFetch).to.have.been.calledOnce;
-    expect(result.id).to.equal('test-id');
-  });
+```typescript
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: [
+      'tests/unit/**/*.spec.ts',
+      'tests/integration/**/*.spec.ts',
+    ],
+    testTimeout: 30000,
+    hookTimeout: 30000,
+  },
 });
 ```
 
-### Key Testing Patterns
+### Playwright Configuration (`playwright.config.ts`)
 
-**Testing async rejections:**
-```javascript
-await expect(myAsyncFunction()).to.be.rejectedWith('Error message');
-```
-
-**Testing error types:**
-```javascript
-expect(() => { ... }).to.throw(ValidationError);
-```
-
-**Stubbing WASM methods:**
-```javascript
-sandbox.stub(wasmSdk, 'methodName').resolves(mockValue);
-sandbox.stub(wasmSdk, 'methodName').rejects(new Error('Failed'));
-```
-
-**Checking call arguments:**
-```javascript
-const callArgs = stub.firstCall.args;
-expect(callArgs[0]).to.equal(expectedValue);
+```typescript
+export default defineConfig({
+  testDir: './demo/tests/e2e',
+  timeout: 120000,
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'testnet', testDir: './demo/tests/e2e/real-network', timeout: 300000 },
+  ],
+});
 ```
 
 ## Debugging Tests
 
-### Run Tests with Debug Output
+### Vitest Debugging
+
 ```bash
-LOG_LEVEL=debug yarn test:unit
+# Run with verbose output
+yarn vitest run --reporter=verbose
+
+# Run single test with debug logs
+LOG_LEVEL=debug yarn vitest run -t "test name"
+
+# Run in UI mode
+yarn vitest --ui
 ```
 
-### Run Single Test
-```bash
-npx mocha 'tests/unit/facades/identity-creator.spec.mjs' --grep "should reject"
-```
+### Playwright Debugging
 
-### Run Tests with Detailed Output
 ```bash
-npx mocha 'tests/unit/**/*.spec.mjs' --reporter spec
-```
+# Run with headed browser
+yarn playwright test --headed
 
-### Increase Mocha Timeout
-```bash
-npx mocha 'tests/unit/**/*.spec.mjs' --timeout 10000
+# Run with debug mode
+PWDEBUG=1 yarn playwright test
+
+# Generate test report
+yarn playwright test && yarn playwright show-report
 ```
 
 ## CI/CD Integration
 
-### GitHub Actions
-The unit tests are suitable for CI/CD pipelines:
+### GitHub Actions Workflows
 
-```yaml
-- name: Run Unit Tests
-  run: yarn test:unit
-  timeout-minutes: 5
-```
+- **Unit Tests**: `.github/workflows/ci.yml`
+- **E2E Tests**: `.github/workflows/e2e.yml`
+- **Coverage**: `.github/workflows/coverage.yml`
 
 ### Performance Expectations
-- Unit tests: <2 seconds
-- Full test suite with Karma: ~20 seconds
-- Integration tests: ~2-5 minutes
-- E2E tests: ~5-15 minutes
+
+| Test Type | Duration |
+|-----------|----------|
+| Unit tests | <10 seconds |
+| Integration tests | 2-5 minutes |
+| E2E tests (mock) | 5-10 minutes |
+| E2E tests (testnet) | 10-20 minutes |
 
 ## Troubleshooting
 
 ### Issue: "Cannot find module @dashevo/wasm-sdk"
-**Solution**: Rebuild the project
-```bash
-yarn build
-```
-
-### Issue: "dashcore-lib multiple instances found"
-**This is a warning**, not an error. It occurs when multiple packages require dashcore-lib. The tests still pass.
+**Solution**: The package should resolve from the workspace. Check yarn.lock.
 
 ### Issue: Integration tests timeout
-**Expected behavior** - Integration tests hit testnet and may timeout on slow connections. Increase timeout or check network.
+**Cause**: Testnet may be slow or unreachable.
+**Solution**: Increase timeout or check network connectivity.
 
-### Issue: Karma tests fail to run
-**Solution**: Ensure dist/ directory exists
+### Issue: E2E tests fail with "Cannot navigate to invalid URL"
+**Cause**: Web server not running.
+**Solution**: Ensure `yarn demo:web:dev` is running or let Playwright start it.
+
+### Issue: Visual regression tests fail
+**Cause**: UI changed, screenshots need updating.
+**Solution**: Review changes and update baselines:
 ```bash
-yarn build
+yarn playwright test --update-snapshots
 ```
 
-## Performance Baseline
+## Test Coverage
 
-- Unit tests: 350 tests in <2 seconds
-- Mocha only (no Karma): <500ms
-- Full unit test suite with Karma: ~20 seconds
-- Integration tests: 2-5 minutes
+Target coverage for new code: >80%
+
+View coverage report:
+```bash
+yarn test:coverage
+open coverage/index.html
+```
+
+## Contact Request Lifecycle Test
+
+The full contact lifecycle test verifies the complete DashPay contact flow:
+1. Login with wallet containing 2+ identities with DPNS names
+2. Send contact request from identity A to identity B
+3. Switch to identity B
+4. Accept the incoming contact request
+5. Verify contact appears in contacts list
+
+### Running the Test
+
+The tests use the `MNEMONIC` environment variable from `.env` file (loaded automatically via dotenv).
+You can also set it explicitly:
+
+```bash
+# Using the dedicated script (uses .env automatically)
+yarn test:e2e:lifecycle
+
+# Or with explicit mnemonic
+MNEMONIC="your wallet mnemonic" TEST_CONTACT_LIFECYCLE=true yarn test:e2e:lifecycle
+```
+
+### Requirements
+- Wallet with at least 2 identities that have DPNS names registered
+- Sufficient credits on both identities for document operations
+- No existing contact relationship between the identities (test finds available pair automatically)
+
+### DPNS Regression Test
+
+A narrower regression test is also available to verify DPNS resolution works after SDK initialization:
+
+```bash
+# Using .env automatically
+yarn test:e2e:dpns
+
+# Or explicitly
+yarn test:e2e -- --grep "DPNS resolution"
+```
+
+This test catches the "Contract Not Found" error that occurs when the SDK is not properly connected.
 
 ## Related Documentation
 
-- **INTEGRATION_TESTS.md** - Detailed integration test documentation
+- **CLAUDE.md** - Package overview and commands
 - **IDENTITY_ARCHITECTURE.md** - Identity operations architecture
-- **wasm-worker-runner.ts** - Worker isolation implementation
 - **vitest.config.ts** - Vitest configuration
 - **playwright.config.ts** - Playwright E2E configuration
-
-## Contributing Tests
-
-When adding new features:
-
-1. **Create unit tests first** - Test with mocked WASM
-2. **Test validation logic** - Input validation, parameter conversion
-3. **Test error cases** - Both expected errors and edge cases
-4. **Add to coverage** - Aim for >90% coverage in new code
-5. **Document patterns** - Use consistent test structure
-
-Example:
-```javascript
-describe('NewFeature', () => {
-  describe('Validation', () => {
-    it('should reject invalid input');
-    it('should accept valid input');
-  });
-
-  describe('Type Conversion', () => {
-    it('should convert string to BigInt');
-  });
-
-  describe('Error Handling', () => {
-    it('should wrap WASM errors');
-    it('should handle network failures');
-  });
-});
-```
-
-## Future Improvements
-
-1. **Performance Tests** - Add benchmarks for common operations
-2. **Snapshot Tests** - Validate complex response structures
-3. **Property-Based Tests** - Use generative testing for validation logic
-4. **Visual Regression** - For demo app E2E tests

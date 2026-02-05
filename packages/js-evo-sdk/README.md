@@ -119,9 +119,11 @@ await sdk.dashpay.createProfile({
 | `sdk.group` | Group operations |
 | `sdk.voting` | Voting operations |
 
-## CLI Demo
+## Demos
 
-The SDK includes a command-line demo:
+The SDK includes multiple demos:
+
+### CLI Demo
 
 ```bash
 # Show help
@@ -135,6 +137,27 @@ yarn demo:cli dpns resolve --name alice.dash
 
 # Full onboarding (create identity + register name + create profile)
 yarn demo:cli onboard --mnemonic "your mnemonic" --name myname --amount 200000
+```
+
+### TUI Demo
+
+Interactive terminal interface for exploring Dash Platform:
+
+```bash
+yarn demo:tui
+```
+
+### Web Demo
+
+Browser-based demo application:
+
+```bash
+# Development server
+yarn demo:web:dev
+
+# Production build
+yarn demo:web:build
+yarn demo:web:serve
 ```
 
 ## Configuration
@@ -192,20 +215,17 @@ yarn build
 ### Test
 
 ```bash
-# Unit tests
+# Unit tests (fast, mocked WASM)
 yarn test:unit
 
 # Integration tests (requires testnet)
 yarn test:integration
 
+# E2E tests (browser automation)
+yarn test:e2e
+
 # All tests
-yarn test:all
-```
-
-### CLI Demo
-
-```bash
-yarn demo:cli --help
+yarn test
 ```
 
 ## Requirements

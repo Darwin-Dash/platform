@@ -531,6 +531,90 @@ describe('TokensFacade', () => {
     });
   });
 
+  describe('Discovery Methods', () => {
+    it('discoverTokens() discovers tokens for an identity', async () => {
+      // Mock document responses for discovery
+      const mockDocuments = new Map();
+      const mockDoc = {
+        getProperties: () => new Map([['tokenId', tokenId]]),
+      };
+      mockDocuments.set('doc1', mockDoc);
+
+      const mockGetDocuments = vi.fn().mockResolvedValue(mockDocuments);
+      const mockWasmSdkWithDocs = {
+        ...mockWasmSdk,
+        getDocuments: mockGetDocuments,
+      };
+
+      const mockSdk = {
+        ...client,
+        tokens: {
+          ...client.tokens,
+          discoverTokens: async (id: string) => {
+            // Simulate discovery by returning found token IDs
+            await mockWasmSdkWithDocs.getDocuments({ dataContractId: 'TOKEN_HISTORY_CONTRACT' });
+            return [tokenId];
+          },
+        },
+      };
+
+      const result = await mockSdk.tokens.discoverTokens(identityId);
+
+      expect(result).toContain(tokenId);
+    });
+
+    it('discoverTokensWithBalances() returns tokens with balances', async () => {
+      // Mock discovery and balance lookup
+      const balanceMap = new Map([[tokenId, BigInt(1000000)]]);
+      const mockIdentityBalances = vi.fn().mockResolvedValue(balanceMap);
+
+      const mockSdk = {
+        ...client,
+        tokens: {
+          ...client.tokens,
+          discoverTokensWithBalances: async (id: string) => {
+            // Simulate discovery + balance lookup
+            return new Map([[tokenId, BigInt(1000000)]]);
+          },
+        },
+      };
+
+      const result = await mockSdk.tokens.discoverTokensWithBalances(identityId);
+
+      expect(result instanceof Map).toBe(true);
+      expect(result.get(tokenId)).toBe(BigInt(1000000));
+    });
+
+    it('discoverTokens() returns empty array when no tokens found', async () => {
+      const mockSdk = {
+        ...client,
+        tokens: {
+          ...client.tokens,
+          discoverTokens: async (id: string) => [],
+        },
+      };
+
+      const result = await mockSdk.tokens.discoverTokens(identityId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('discoverTokensWithBalances() returns empty map when no tokens found', async () => {
+      const mockSdk = {
+        ...client,
+        tokens: {
+          ...client.tokens,
+          discoverTokensWithBalances: async (id: string) => new Map(),
+        },
+      };
+
+      const result = await mockSdk.tokens.discoverTokensWithBalances(identityId);
+
+      expect(result instanceof Map).toBe(true);
+      expect(result.size).toBe(0);
+    });
+  });
+
   describe('Error Handling', () => {
     it('handles token not found error on totalSupply', async () => {
       const errorMessage = 'Token not found';

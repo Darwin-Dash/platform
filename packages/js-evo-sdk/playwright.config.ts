@@ -1,3 +1,5 @@
+// Load environment variables first, before any imports
+import 'dotenv/config';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -82,7 +84,7 @@ export default defineConfig({
       timeout: 300000, // 5 minutes for testnet operations
     },
     // Testnet-funded project for write operations requiring pre-funded wallet
-    // Uses TEST_MNEMONIC env var for wallet with funds
+    // Uses MNEMONIC env var for wallet with funds
     {
       name: 'testnet-funded',
       testDir: './demo/tests/e2e/real-network',

@@ -10,7 +10,7 @@
  * - Error handling
  *
  * Read operations require no wallet funding.
- * Write operations require TEST_MNEMONIC environment variable with funded wallet.
+ * Write operations require MNEMONIC environment variable with funded wallet.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';

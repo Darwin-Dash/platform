@@ -73,7 +73,8 @@
     "packages/wasm-drive-verify",
     "packages/wasm-sdk",
     "packages/js-evo-sdk",
-    "packages/transaction-finder"
+    "packages/transaction-finder",
+    "packages/dash-rpc-client"
   ],
   "resolutions": {
     "pbkdf2": "^3.1.3",

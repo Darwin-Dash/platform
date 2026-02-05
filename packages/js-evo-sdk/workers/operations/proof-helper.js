@@ -14,11 +14,11 @@
  * @param {string|null} transactionData.instantLockHex - InstantLock hex (if available)
  * @param {number|null} transactionData.coreChainLockedHeight - Core height (for chain proof)
  * @param {string} transactionData.proofType - 'instant' or 'chain'
- * @param {Object} wasmModule - WASM module with WasmSdk class
+ * @param {Object} wasmModule - WASM module with AssetLockProof class
  * @returns {Object} Asset lock proof object
  */
 export function createAssetLockProof(transactionData, wasmModule) {
-  const { WasmSdk } = wasmModule;
+  const { AssetLockProof } = wasmModule;
 
   if (transactionData.proofType === 'instant' && transactionData.instantLockHex) {
     if (process.env.LOG_LEVEL === 'debug') {
@@ -30,7 +30,7 @@ export function createAssetLockProof(transactionData, wasmModule) {
     const transactionBuffer = Buffer.from(transactionData.transactionHex, 'hex');
 
     // Create instant asset lock proof
-    return WasmSdk.createInstantAssetLockProof(
+    return AssetLockProof.createInstantAssetLockProof(
       instantLockBuffer,
       transactionBuffer,
       0 // outputIndex - always 0 for asset lock credit output
@@ -50,7 +50,7 @@ export function createAssetLockProof(transactionData, wasmModule) {
     const outPoint = Buffer.concat([txidBuffer, indexBuffer]);
 
     // Create chain asset lock proof
-    return WasmSdk.createChainAssetLockProof(
+    return AssetLockProof.createChainAssetLockProof(
       transactionData.coreChainLockedHeight,
       outPoint
     );

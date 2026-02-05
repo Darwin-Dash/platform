@@ -5,6 +5,25 @@
  * to avoid WASM mutex lock issues.
  */
 
+import DAPIClient from '@dashevo/dapi-client';
+import bs58 from 'bs58';
+
+/**
+ * Token History Contract ID (system contract)
+ * Base58: 3o6X4bq4UTLS6YZqDxMVTasTJ3u1dNH9B61L9HxH3wE3
+ */
+const TOKEN_HISTORY_CONTRACT_ID = '3o6X4bq4UTLS6YZqDxMVTasTJ3u1dNH9B61L9HxH3wE3';
+
+/**
+ * Token History document types
+ */
+const TOKEN_HISTORY_DOCUMENT_TYPES = {
+  TRANSFER: 'transfer',
+  MINT: 'mint',
+  CLAIM: 'claim',
+  DIRECT_PURCHASE: 'directPurchase',
+};
+
 /**
  * Get token balances for identities
  *
@@ -291,4 +310,280 @@ export async function tokenCalculateIdOperation(params, sdk) {
     tokenPosition,
     tokenId,
   };
+}
+
+/**
+ * Discover tokens for an identity by querying Token History Contract
+ *
+ * Uses direct DAPI calls to bypass WASM RwLock issues.
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.identityId - Identity ID to discover tokens for
+ * @param {number} [params.limit=100] - Max documents to query per type
+ * @param {EvoSDK} sdk - SDK instance (used for network config only)
+ * @param {object} wasmModule - WASM module (not used)
+ * @param {string} network - Network name
+ * @returns {Promise<object>} Discovery result with tokenIds array
+ */
+export async function tokenDiscoverOperation(params, sdk, wasmModule, network = 'testnet') {
+  const { identityId, limit = 100 } = params;
+
+  if (!identityId) {
+    throw new Error('Missing required parameter: identityId');
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Discovering tokens for identity: ${identityId}`);
+    console.log(`[Tokens] Using JavaScript DAPI client (bypassing WASM)`);
+  }
+
+  const tokenIds = new Set();
+
+  // Create JavaScript DAPI client
+  const dapiClient = new DAPIClient({ network });
+  const contractIdBuffer = Buffer.from(bs58.decode(TOKEN_HISTORY_CONTRACT_ID));
+  const identityIdBuffer = Buffer.from(bs58.decode(identityId));
+
+  // Query transfers where this identity received tokens
+  try {
+    const transfers = await dapiClient.platform.getDocuments(
+      contractIdBuffer,
+      TOKEN_HISTORY_DOCUMENT_TYPES.TRANSFER,
+      {
+        where: [['toIdentityId', '==', identityIdBuffer]],
+        orderBy: [['$createdAt', 'desc']],
+        limit,
+      }
+    );
+
+    if (transfers?.documents) {
+      for (const docBuffer of transfers.documents) {
+        const tokenId = extractTokenIdFromDocument(docBuffer);
+        if (tokenId) tokenIds.add(tokenId);
+      }
+    }
+
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Found ${transfers?.documents?.length || 0} transfer documents`);
+    }
+  } catch (error) {
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Transfer query failed: ${error.message}`);
+    }
+  }
+
+  // Query mints where this identity received tokens
+  try {
+    const mints = await dapiClient.platform.getDocuments(
+      contractIdBuffer,
+      TOKEN_HISTORY_DOCUMENT_TYPES.MINT,
+      {
+        where: [['recipientId', '==', identityIdBuffer]],
+        orderBy: [['$createdAt', 'desc']],
+        limit,
+      }
+    );
+
+    if (mints?.documents) {
+      for (const docBuffer of mints.documents) {
+        const tokenId = extractTokenIdFromDocument(docBuffer);
+        if (tokenId) tokenIds.add(tokenId);
+      }
+    }
+
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Found ${mints?.documents?.length || 0} mint documents`);
+    }
+  } catch (error) {
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Mint query failed: ${error.message}`);
+    }
+  }
+
+  // Query claims by this identity
+  try {
+    const claims = await dapiClient.platform.getDocuments(
+      contractIdBuffer,
+      TOKEN_HISTORY_DOCUMENT_TYPES.CLAIM,
+      {
+        where: [['recipientId', '==', identityIdBuffer]],
+        orderBy: [['$createdAt', 'desc']],
+        limit,
+      }
+    );
+
+    if (claims?.documents) {
+      for (const docBuffer of claims.documents) {
+        const tokenId = extractTokenIdFromDocument(docBuffer);
+        if (tokenId) tokenIds.add(tokenId);
+      }
+    }
+
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Found ${claims?.documents?.length || 0} claim documents`);
+    }
+  } catch (error) {
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Claim query failed: ${error.message}`);
+    }
+  }
+
+  // Query direct purchases by this identity
+  try {
+    const purchases = await dapiClient.platform.getDocuments(
+      contractIdBuffer,
+      TOKEN_HISTORY_DOCUMENT_TYPES.DIRECT_PURCHASE,
+      {
+        where: [['$ownerId', '==', identityIdBuffer]],
+        orderBy: [['$createdAt', 'desc']],
+        limit,
+      }
+    );
+
+    if (purchases?.documents) {
+      for (const docBuffer of purchases.documents) {
+        const tokenId = extractTokenIdFromDocument(docBuffer);
+        if (tokenId) tokenIds.add(tokenId);
+      }
+    }
+
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Found ${purchases?.documents?.length || 0} direct purchase documents`);
+    }
+  } catch (error) {
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Direct purchase query failed: ${error.message}`);
+    }
+  }
+
+  const result = Array.from(tokenIds);
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Discovered ${result.length} unique tokens`);
+  }
+
+  return {
+    identityId,
+    tokenIds: result,
+    count: result.length,
+  };
+}
+
+/**
+ * Discover tokens and fetch their balances for an identity
+ *
+ * @param {object} params - Operation parameters
+ * @param {string} params.identityId - Identity ID to discover tokens for
+ * @param {number} [params.limit=100] - Max documents to query per type
+ * @param {EvoSDK} sdk - Connected SDK instance
+ * @param {object} wasmModule - WASM module
+ * @param {string} network - Network name
+ * @returns {Promise<object>} Discovery result with tokens array (id + balance)
+ */
+export async function tokenDiscoverWithBalancesOperation(params, sdk, wasmModule, network = 'testnet') {
+  const { identityId, limit = 100 } = params;
+
+  if (!identityId) {
+    throw new Error('Missing required parameter: identityId');
+  }
+
+  // First discover tokens
+  const discovery = await tokenDiscoverOperation(params, sdk, wasmModule, network);
+  const tokenIds = discovery.tokenIds;
+
+  if (tokenIds.length === 0) {
+    return {
+      identityId,
+      tokens: [],
+      count: 0,
+    };
+  }
+
+  if (process.env.LOG_LEVEL === 'debug') {
+    console.log(`[Tokens] Fetching balances for ${tokenIds.length} discovered tokens`);
+  }
+
+  // Fetch balances for all discovered tokens
+  const balances = await sdk.tokens.identityBalances(identityId, tokenIds);
+
+  // Convert Map to array of objects
+  const tokens = [];
+  if (balances instanceof Map) {
+    for (const [tokenId, balance] of balances) {
+      const id = tokenId.toString ? tokenId.toString() : tokenId;
+      tokens.push({
+        tokenId: id,
+        balance: balance.toString(),
+      });
+    }
+  }
+
+  return {
+    identityId,
+    tokens,
+    count: tokens.length,
+  };
+}
+
+/**
+ * Extract token ID from a document buffer
+ * Documents are in platform versioned bincode format
+ *
+ * @param {Buffer} docBuffer - Raw document buffer from DAPI
+ * @returns {string|null} Token ID as base58 string, or null if not found
+ */
+function extractTokenIdFromDocument(docBuffer) {
+  const bytes = Buffer.from(docBuffer);
+
+  try {
+    // Skip version byte if present
+    let offset = bytes[0] === 0x00 ? 1 : 0;
+
+    // Search for 32-byte identifiers that could be tokenId
+    // Token history documents typically have tokenId early in the structure
+    // after the standard document fields (id, ownerId)
+
+    // Look for potential 32-byte identifiers
+    const identifiersFound = [];
+
+    for (let i = offset; i < Math.min(bytes.length - 32, 300); i++) {
+      const potentialId = bytes.slice(i, i + 32);
+
+      // Skip if all zeros or all 0xFF
+      const allZeros = potentialId.every((b) => b === 0);
+      const allOnes = potentialId.every((b) => b === 255);
+
+      if (!allZeros && !allOnes) {
+        identifiersFound.push({
+          offset: i,
+          id: bs58.encode(potentialId),
+        });
+
+        // Skip past this identifier
+        i += 31;
+
+        // We need at most 4 identifiers (doc ID, owner ID, contract ID, token ID)
+        if (identifiersFound.length >= 4) break;
+      }
+    }
+
+    // Token ID is typically the 4th identifier in token history documents
+    // after: document ID, owner ID, data contract ID
+    // This is a heuristic - actual position may vary by document type
+    if (identifiersFound.length >= 4) {
+      return identifiersFound[3].id;
+    }
+
+    // Fallback: if we found at least 3 identifiers, try the 3rd
+    if (identifiersFound.length >= 3) {
+      return identifiersFound[2].id;
+    }
+
+    return null;
+  } catch (error) {
+    if (process.env.LOG_LEVEL === 'debug') {
+      console.log(`[Tokens] Failed to extract tokenId: ${error.message}`);
+    }
+    return null;
+  }
 }

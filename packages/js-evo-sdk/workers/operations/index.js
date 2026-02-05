@@ -43,6 +43,8 @@ import {
   tokenIdentityTokenInfosOperation,
   tokenPriceByContractOperation,
   tokenCalculateIdOperation,
+  tokenDiscoverOperation,
+  tokenDiscoverWithBalancesOperation,
 } from './tokens.js';
 
 // Contract operations
@@ -103,6 +105,8 @@ export const operations = {
   'token-identity-token-infos': tokenIdentityTokenInfosOperation,
   'token-price-by-contract': tokenPriceByContractOperation,
   'token-calculate-id': tokenCalculateIdOperation,
+  'token-discover': tokenDiscoverOperation,
+  'token-discover-with-balances': tokenDiscoverWithBalancesOperation,
 
   // Contract operations
   'contract-get': contractGetOperation,

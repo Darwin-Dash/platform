@@ -78,10 +78,10 @@ export const TEST_CONFIG = {
   stPropagationInterval: parseInt(process.env.ST_EXECUTION_INTERVAL || '3000', 10),
 
   /** Default mnemonic for tests (DO NOT use with real funds!) */
-  mnemonic: process.env.TEST_MNEMONIC || '',
+  mnemonic: process.env.MNEMONIC || '',
 
   /** Whether a test mnemonic is available */
-  hasMnemonic: !!process.env.TEST_MNEMONIC,
+  hasMnemonic: !!process.env.MNEMONIC,
 
   /** DAPI addresses: env var takes priority, then healthy nodes from JSON, then empty (network defaults) */
   dapiAddresses: process.env.DAPI_ADDRESSES?.split(',').map((a) => a.trim()).filter(Boolean)
@@ -89,6 +89,7 @@ export const TEST_CONFIG = {
 
   /** SDK connection settings for tests (imported from centralized config) */
   sdkSettings: {
+    connectTimeoutMs: 10000,                          // Fail fast on TLS handshake
     timeoutMs: DAPI_CONFIG.TIMEOUT_MS,
     retries: DAPI_CONFIG.MAX_RETRIES,
     banFailedAddress: DAPI_CONFIG.BAN_FAILED_ADDRESS,
@@ -272,7 +273,7 @@ export async function createEvoSDKWithWallet(
  * Create a test SDK instance with default test configuration
  *
  * Convenience wrapper that uses TEST_CONFIG values.
- * Uses TEST_MNEMONIC environment variable if available.
+ * Uses MNEMONIC environment variable if available.
  *
  * @param autoConnect Whether to connect immediately
  * @returns SDK with wallet result
@@ -508,7 +509,7 @@ export function wait(ms: number): Promise<void> {
  */
 export async function skipIfNoMnemonic<T>(testFn: () => T | Promise<T>): Promise<T | undefined> {
   if (!TEST_CONFIG.hasMnemonic) {
-    console.log('  [SKIP] No TEST_MNEMONIC provided');
+    console.log('  [SKIP] No MNEMONIC provided');
     return undefined;
   }
   return testFn();

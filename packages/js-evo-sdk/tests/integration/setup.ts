@@ -54,7 +54,7 @@ export {
 };
 
 // Legacy exports for backward compatibility
-export const TEST_MNEMONIC = TEST_CONFIG.mnemonic;
+export const MNEMONIC = TEST_CONFIG.mnemonic;
 export const testConfig = {
   network: TEST_CONFIG.network,
   timeout: TEST_CONFIG.timeout,

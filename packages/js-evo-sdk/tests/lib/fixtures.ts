@@ -192,7 +192,7 @@ export const TEST_AMOUNTS = {
  */
 export const TEST_TIMEOUTS = {
   SDK_CONNECT: 30000,
-  IDENTITY_FETCH: 30000,        // Increased for testnet latency
+  IDENTITY_FETCH: 60000,        // WASM SDK may retry 2-3 nodes (20s timeout each)
   IDENTITY_CREATE: 120000,      // Identity creation is slow
   IDENTITY_TOPUP: 90000,
   STATE_TRANSITION: 60000,
@@ -223,7 +223,7 @@ export const NETWORK_CONFIG = {
  * Get a test mnemonic from environment or use a default for read-only tests
  */
 export function getTestMnemonic(): string | undefined {
-  return process.env.TESTNET_MNEMONIC || process.env.TEST_MNEMONIC;
+  return process.env.MNEMONIC || process.env.TESTNET_MNEMONIC;
 }
 
 /**

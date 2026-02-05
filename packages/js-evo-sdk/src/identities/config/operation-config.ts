@@ -92,7 +92,11 @@ export const IDENTITY_CONFIG = {
   TOPUP_MIN_AMOUNT: 50000,
 
   /** Maximum amount for identity operations in duffs (1000 DASH) */
-  MAX_AMOUNT: 100000000000
+  MAX_AMOUNT: 100000000000,
+
+  /** Fee buffer in duffs to add when searching for spendable UTXOs.
+   *  Ensures the UTXO has enough for amount + relay fee. */
+  FEE_BUFFER: 1000,
 } as const;
 
 /**

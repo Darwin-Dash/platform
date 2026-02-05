@@ -245,12 +245,13 @@ impl ContextProvider for GrpcContextProvider {
 ///
 /// This is used to cache objects that are expensive to fetch from Platform, like data contracts.
 ///
-/// Note: We use Mutex instead of RwLock because LRU cache updates access order on reads,
-/// so even read operations require mutable access. Using RwLock would be misleading and
-/// could cause issues in WASM where we always need write locks anyway.
+/// NOTE: Uses Mutex instead of RwLock to avoid "already locked to a reader" errors in single-threaded
+/// WASM environments. Since all operations modify the LRU cache (even reads update access order),
+/// we need exclusive access anyway.
 pub struct Cache<K: Hash + Eq, V> {
     // We use a Mutex to allow access to the cache when we don't have mutable &self
     // And we use Arc to allow multiple threads to access the cache without having to clone it
+    // Note: RwLock causes "already locked to a reader" errors in WASM single-threaded async context
     inner: std::sync::Mutex<lru::LruCache<K, Arc<V>>>,
 }
 

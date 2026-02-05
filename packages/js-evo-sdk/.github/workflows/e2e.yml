@@ -203,7 +203,7 @@ jobs:
           CI: true
           DEMO_URL: http://localhost:8080
           DASH_NETWORK: testnet
-          TEST_MNEMONIC: ${{ secrets.TESTNET_WALLET_MNEMONIC }}
+          MNEMONIC: ${{ secrets.TESTNET_WALLET_MNEMONIC }}
           UTXO_TIMEOUT_MS: 300000
           OPERATION_TIMEOUT_MS: 120000
 

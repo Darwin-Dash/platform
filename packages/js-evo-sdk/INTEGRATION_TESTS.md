@@ -42,13 +42,13 @@ Tests identity creation and top-up operations.
 - Error recovery
 
 **Requirements**:
-- `TEST_MNEMONIC` - Funded testnet wallet (optional, tests skip if missing)
+- `MNEMONIC` - Funded testnet wallet (optional, tests skip if missing)
 - `EVO_IDENTITY_ID` - Existing testnet identity (optional, for top-up tests)
 
 **Execution Time**: ~2-5 minutes per test (includes blockchain confirmation)
 **Run**:
 ```bash
-TEST_MNEMONIC="your-12-word-mnemonic" \
+MNEMONIC="your-12-word-mnemonic" \
 EVO_IDENTITY_ID="existing-identity-id" \
 npx vitest run tests/integration/identity-lifecycle.spec.ts
 ```
@@ -85,7 +85,7 @@ yarn test:integration
 
 ### Run With Wallet Funding
 ```bash
-TEST_MNEMONIC="your-12-word-mnemonic" \
+MNEMONIC="your-12-word-mnemonic" \
 EVO_IDENTITY_ID="your-identity-id" \
 yarn test:integration
 ```
@@ -122,7 +122,7 @@ npx vitest run --coverage tests/integration/
 ### Required for Full Testing
 ```bash
 # Funded testnet wallet mnemonic (for creation/topup tests)
-TEST_MNEMONIC="word1 word2 word3 ... word12"
+MNEMONIC="word1 word2 word3 ... word12"
 
 # Existing testnet identity ID (for topup tests)
 EVO_IDENTITY_ID="5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"

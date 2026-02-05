@@ -10,7 +10,7 @@
  * - Error handling
  *
  * Read operations require no wallet funding.
- * Write operations require TEST_MNEMONIC environment variable with funded wallet.
+ * Write operations require MNEMONIC environment variable with funded wallet.
  *
  * IMPORTANT: Token query operations (balances, totalSupply, statuses) are SKIPPED on testnet.
  * Reason: WASM SDK's own token tests only run against LOCAL network (not testnet).

@@ -99,9 +99,9 @@ export class IdentityKeyGenerator {
           network
         });
 
-        // childKey contains: private_key_wif, public_key, etc.
-        const privateKeyWif = childKey.private_key_wif;
-        const publicKeyHex = childKey.public_key;
+        // childKey contains: privateKeyWif, publicKey, etc. (camelCase from WASM)
+        const privateKeyWif = childKey.privateKeyWif;
+        const publicKeyHex = childKey.publicKey;
 
         // Validate the public key data
         this.validatePublicKey(publicKeyHex, config.id);

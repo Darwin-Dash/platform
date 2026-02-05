@@ -11,8 +11,8 @@
 
 import '@dashevo/wasm-sdk';
 
-// Test mnemonic (use your own funded wallet for real tests)
-const TEST_MNEMONIC = process.env.TEST_MNEMONIC || 'lamp truck drip furnace now swing income victory leisure popular jeans vehicle';
+// Mnemonic (use your own funded wallet for real tests)
+const MNEMONIC = process.env.MNEMONIC || 'lamp truck drip furnace now swing income victory leisure popular jeans vehicle';
 const IDENTITY_ID = process.env.IDENTITY_ID || '';
 const IDENTITY_INDEX = parseInt(process.env.IDENTITY_INDEX || '0', 10);
 const NETWORK = process.env.NETWORK || 'testnet';
@@ -28,7 +28,7 @@ async function main() {
 
   // Derive keys using WASM SDK
   console.log('Deriving keys with WASM SDK...');
-  console.log(`  Mnemonic: ${TEST_MNEMONIC.substring(0, 20)}...`);
+  console.log(`  Mnemonic: ${MNEMONIC.substring(0, 20)}...`);
   console.log(`  Identity Index: ${IDENTITY_INDEX}`);
   console.log(`  Network: ${NETWORK}`);
   console.log('');
@@ -42,7 +42,7 @@ async function main() {
 
     try {
       const childKey = await WasmSdk.deriveKeyFromSeedWithPath({
-        mnemonic: TEST_MNEMONIC,
+        mnemonic: MNEMONIC,
         passphrase: null,
         path,
         network: NETWORK

@@ -13,6 +13,81 @@ import {
 import { runWasmOperation } from '../../../dist/identities/utils/wasm-worker-runner.js';
 
 /**
+ * Discover tokens for an identity
+ */
+export async function tokensDiscover(identityId, options, globalOpts) {
+  const { withBalances = true } = options;
+
+  const spinner = ora('Discovering tokens...').start();
+
+  try {
+    if (withBalances) {
+      // Use token-discover-with-balances to get tokens and their balances
+      const result = await runWasmOperation(
+        'token-discover-with-balances',
+        { identityId, limit: 100 },
+        { network: globalOpts.network || 'testnet' }
+      );
+
+      spinner.succeed('Tokens discovered');
+
+      const tokens = result.tokens || [];
+
+      if (tokens.length === 0) {
+        console.log(chalk.yellow('\nNo tokens found for this identity.'));
+        console.log(chalk.gray('Tokens will appear here when you receive them via transfer, mint, claim, or purchase.'));
+        return;
+      }
+
+      console.log(chalk.cyan(`\nDiscovered ${tokens.length} Token(s):`));
+      console.log(chalk.gray('─'.repeat(60)));
+
+      for (const token of tokens) {
+        printTable({
+          'Token ID': formatIdentityId(token.tokenId),
+          'Balance': chalk.green(BigInt(token.balance).toLocaleString()),
+        }, '');
+      }
+    } else {
+      // Just discover token IDs without balances
+      const result = await runWasmOperation(
+        'token-discover',
+        { identityId, limit: 100 },
+        { network: globalOpts.network || 'testnet' }
+      );
+
+      spinner.succeed('Tokens discovered');
+
+      const tokenIds = result.tokenIds || [];
+
+      if (tokenIds.length === 0) {
+        console.log(chalk.yellow('\nNo tokens found for this identity.'));
+        console.log(chalk.gray('Tokens will appear here when you receive them via transfer, mint, claim, or purchase.'));
+        return;
+      }
+
+      console.log(chalk.cyan(`\nDiscovered ${tokenIds.length} Token(s):`));
+      console.log(chalk.gray('─'.repeat(60)));
+
+      for (const tokenId of tokenIds) {
+        console.log(`  ${formatIdentityId(tokenId)}`);
+      }
+    }
+
+  } catch (err) {
+    spinner.fail('Failed to discover tokens');
+
+    // Token History Contract may not exist yet
+    if (err.message?.includes('not found') || err.message?.includes('contract')) {
+      console.log(chalk.yellow('\nToken discovery is not available on this network yet.'));
+      console.log(chalk.gray('The Token History Contract may not be deployed.'));
+    } else {
+      throw err;
+    }
+  }
+}
+
+/**
  * Get token balances for an identity
  */
 export async function tokensBalance(options, globalOpts) {

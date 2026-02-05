@@ -2,20 +2,20 @@
  * Global setup for real network E2E tests
  *
  * These tests run against actual testnet and require:
- * - TEST_MNEMONIC environment variable with funded wallet
+ * - MNEMONIC environment variable with funded wallet
  * - Network connectivity to Dash testnet
  */
 
 export default async function globalSetup(config) {
   // Check for required environment variables
-  const mnemonic = process.env.TEST_MNEMONIC;
+  const mnemonic = process.env.MNEMONIC;
 
   if (!mnemonic) {
-    console.log('\n⚠️  WARNING: TEST_MNEMONIC not set');
+    console.log('\n⚠️  WARNING: MNEMONIC not set');
     console.log('   Real network tests will be skipped.');
-    console.log('   Set TEST_MNEMONIC to enable testnet E2E tests.\n');
+    console.log('   Set MNEMONIC to enable testnet E2E tests.\n');
   } else {
-    console.log('\n✅ TEST_MNEMONIC found - real network tests enabled\n');
+    console.log('\n✅ MNEMONIC found - real network tests enabled\n');
   }
 
   // Log test configuration
@@ -30,5 +30,5 @@ export default async function globalSetup(config) {
  * Check if real network tests should run
  */
 export function shouldRunRealNetworkTests() {
-  return !!process.env.TEST_MNEMONIC;
+  return !!process.env.MNEMONIC;
 }

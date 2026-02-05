@@ -175,6 +175,7 @@ process.on('message', async (msg) => {
         'dashpay-contacts-received',
         'system-status',
         'system-epoch',
+        'token-discover',
       ];
 
       if (!dapiOnlyOperations.includes(operation)) {

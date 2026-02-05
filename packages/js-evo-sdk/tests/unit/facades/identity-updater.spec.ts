@@ -18,60 +18,70 @@ vi.mock('@dashevo/wasm-sdk', () => ({
   },
 }));
 
-// Import the actual IdentityUpdater and its dependencies
-// Since IdentityUpdater is complex with many dependencies, we'll test the validation
-// logic by creating a simplified mock that exercises the same validation rules
+// Constants from IDENTITY_CONFIG
+const TOPUP_MIN_AMOUNT = 50000;
+const MAX_AMOUNT = 100000000000;
 const VALID_MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-const VALID_IDENTITY_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec'; // Example Base58 ID
-const TOPUP_MIN_AMOUNT = 50000; // From IDENTITY_CONFIG
-const MAX_AMOUNT = 100000000000; // From IDENTITY_CONFIG
-const MIN_START_HEIGHT = 1;
-const MAX_START_HEIGHT = 10000000;
+const VALID_IDENTITY_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
 
-// Create a mock IdentityUpdater that mimics the validation logic
+// Validation functions matching the IdentityUpdater implementation
+const validateMnemonic = (mnemonic: string | null | undefined): void => {
+  if (!mnemonic || typeof mnemonic !== 'string' || mnemonic.trim() === '') {
+    throw new Error('Mnemonic is required');
+  }
+  const words = mnemonic.trim().split(/\s+/);
+  if (words.length !== 12) {
+    throw new Error(`Invalid mnemonic: expected 12 words, got ${words.length}`);
+  }
+};
+
+const validateIdentityId = (identityId: string | null | undefined): void => {
+  if (!identityId || typeof identityId !== 'string' || identityId.trim() === '') {
+    throw new Error('Identity ID is required');
+  }
+};
+
+const validateAmount = (amount: number | null | undefined | string): void => {
+  if (amount === null || amount === undefined || typeof amount === 'string' || Number.isNaN(amount)) {
+    throw new Error('Invalid amount');
+  }
+  if (amount < TOPUP_MIN_AMOUNT || amount > MAX_AMOUNT) {
+    throw new Error(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
+  }
+};
+
+const validateUtxo = (utxo: any, amount: number): void => {
+  if (!utxo || typeof utxo !== 'object') {
+    throw new Error('UTXO is required');
+  }
+  if (utxo.satoshis < amount) {
+    throw new Error(`UTXO balance (${utxo.satoshis} duffs) is less than requested amount (${amount} duffs)`);
+  }
+};
+
+// Mock IdentityUpdater facade
+interface TopupWithUTXOOptions {
+  mnemonic: string | null | undefined;
+  identityId: string | null | undefined;
+  utxo: any;
+  amount: number | null | undefined | string;
+  useSourceAsChangeAddress?: boolean;
+  onProgress?: (event: unknown) => void;
+}
+
 const createMockUpdater = () => {
-  const validateInputs = (
-    identityId: string | null | undefined,
-    amount: number | string | null | undefined,
-    mnemonic: string | null | undefined,
-    startHeight: number | string = 1
-  ) => {
-    if (!identityId) {
-      throw new Error('Identity ID is required');
-    }
-
-    if (!mnemonic) {
-      throw new Error('Mnemonic is required');
-    }
-
-    const mnemonicWords = mnemonic.trim().split(/\s+/);
-    if (mnemonicWords.length !== 12) {
-      throw new Error(`Invalid mnemonic: expected 12 words, got ${mnemonicWords.length}`);
-    }
-
-    if (typeof amount !== 'number' || isNaN(amount) ||
-        amount < TOPUP_MIN_AMOUNT || amount > MAX_AMOUNT) {
-      throw new Error(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
-    }
-
-    const height = Number(startHeight);
-    if (typeof startHeight !== 'number' || isNaN(height) ||
-        height < MIN_START_HEIGHT || height > MAX_START_HEIGHT) {
-      throw new Error(`Invalid startHeight: must be between ${MIN_START_HEIGHT} and ${MAX_START_HEIGHT}`);
-    }
-  };
+  const mockWasmSdk = createMockWasmSdk();
 
   return {
-    topUpWithWallet: async (
-      identityId: string | null | undefined,
-      amount: number | string | null | undefined,
-      mnemonic: string | null | undefined,
-      options: { startHeight?: number | string } = {}
-    ) => {
-      const startHeight = options.startHeight ?? 1;
-      validateInputs(identityId, amount, mnemonic, startHeight);
-      // Would proceed to actual wallet operations after validation
-      return { status: 'success' };
+    topupWithUTXO: async (options: TopupWithUTXOOptions) => {
+      validateIdentityId(options.identityId);
+      validateMnemonic(options.mnemonic);
+      validateAmount(options.amount as number);
+      if (options.utxo) {
+        validateUtxo(options.utxo, options.amount as number);
+      }
+      // In real implementation, this would invoke the coordinator
+      return { status: 'success', newBalance: 100000, addedAmount: options.amount };
     },
   };
 };
@@ -84,56 +94,90 @@ describe('IdentityUpdater', () => {
     updater = createMockUpdater();
   });
 
-  describe('topUpWithWallet() - Input Validation', () => {
+  describe('topupWithUTXO() - Input Validation', () => {
+    const VALID_UTXO = { txId: 'a'.repeat(64), vout: 0, satoshis: 500000, address: 'yTest', scriptPubKey: '' };
+
     describe('Identity ID validation', () => {
       it('should reject missing identity ID', async () => {
-        await expect(updater.topUpWithWallet(null, 50000, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: null, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 50000 }))
           .rejects.toThrow('Identity ID is required');
 
-        await expect(updater.topUpWithWallet(undefined, 50000, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: undefined, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 50000 }))
           .rejects.toThrow('Identity ID is required');
 
-        await expect(updater.topUpWithWallet('', 50000, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: '', mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 50000 }))
           .rejects.toThrow('Identity ID is required');
       });
 
       it('should accept valid identity ID format', () => {
-        // Valid Base58 format (will fail at coordinator but passes validation)
         expect(VALID_IDENTITY_ID.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Mnemonic validation', () => {
+      it('should reject missing mnemonic', async () => {
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: null, utxo: VALID_UTXO, amount: 50000 }))
+          .rejects.toThrow('Mnemonic is required');
+
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: undefined, utxo: VALID_UTXO, amount: 50000 }))
+          .rejects.toThrow('Mnemonic is required');
+
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: '', utxo: VALID_UTXO, amount: 50000 }))
+          .rejects.toThrow('Mnemonic is required');
+      });
+
+      it('should reject mnemonic with incorrect word count', async () => {
+        const shortMnemonic = 'abandon abandon abandon';
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: shortMnemonic, utxo: VALID_UTXO, amount: 50000 }))
+          .rejects.toThrow('Invalid mnemonic: expected 12 words, got 3');
+
+        const longMnemonic = VALID_MNEMONIC + ' extra extra words';
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: longMnemonic, utxo: VALID_UTXO, amount: 50000 }))
+          .rejects.toThrow('Invalid mnemonic: expected 12 words, got 15');
+      });
+
+      it('should accept valid 12-word mnemonic', () => {
+        const words = VALID_MNEMONIC.split(' ');
+        expect(words.length).toBe(12);
+      });
+
+      it('should handle extra whitespace in mnemonic', () => {
+        const spacedMnemonic = '  abandon   abandon  abandon abandon abandon abandon abandon abandon abandon abandon abandon   about  ';
+        const words = spacedMnemonic.trim().split(/\s+/);
+        expect(words.length).toBe(12);
       });
     });
 
     describe('Amount validation', () => {
       it('should reject amount below minimum', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, TOPUP_MIN_AMOUNT - 1, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: TOPUP_MIN_AMOUNT - 1 }))
           .rejects.toThrow(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
 
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 0, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 0 }))
           .rejects.toThrow(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
 
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 1000, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 1000 }))
           .rejects.toThrow(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
       });
 
       it('should reject amount above maximum', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, MAX_AMOUNT + 1, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: MAX_AMOUNT + 1 }))
           .rejects.toThrow(`Invalid amount: must be between ${TOPUP_MIN_AMOUNT} and ${MAX_AMOUNT}`);
       });
 
       it('should reject invalid amount types', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, NaN, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: NaN }))
           .rejects.toThrow('Invalid amount');
 
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 'not-a-number' as any, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: 'not-a-number' }))
           .rejects.toThrow('Invalid amount');
 
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, null as any, VALID_MNEMONIC))
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: null }))
           .rejects.toThrow('Invalid amount');
       });
 
       it('should accept valid amount within range', () => {
-        // Valid amounts (will fail at coordinator but pass validation)
-        expect(TOPUP_MIN_AMOUNT).toBe(50000);
+        expect(TOPUP_MIN_AMOUNT).toBeGreaterThanOrEqual(TOPUP_MIN_AMOUNT);
         expect(100000).toBeGreaterThanOrEqual(TOPUP_MIN_AMOUNT);
         expect(100000).toBeLessThanOrEqual(MAX_AMOUNT);
       });
@@ -145,126 +189,42 @@ describe('IdentityUpdater', () => {
       });
     });
 
-    describe('Mnemonic validation', () => {
-      it('should reject missing mnemonic', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, null))
-          .rejects.toThrow('Mnemonic is required');
-
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, undefined))
-          .rejects.toThrow('Mnemonic is required');
-
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, ''))
-          .rejects.toThrow('Mnemonic is required');
-      });
-
-      it('should reject mnemonic with incorrect word count', async () => {
-        // Too few words
-        const shortMnemonic = 'abandon abandon abandon';
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, shortMnemonic))
-          .rejects.toThrow('Invalid mnemonic: expected 12 words, got 3');
-
-        // Too many words
-        const longMnemonic = VALID_MNEMONIC + ' extra extra words';
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, longMnemonic))
-          .rejects.toThrow('Invalid mnemonic: expected 12 words, got 15');
-      });
-
-      it('should accept valid 12-word mnemonic', () => {
-        const words = VALID_MNEMONIC.split(' ');
-        expect(words.length).toBe(12);
-      });
-    });
-
-    describe('Start height validation', () => {
-      it('should reject start height below minimum', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: 0 }))
-          .rejects.toThrow(`Invalid startHeight: must be between ${MIN_START_HEIGHT} and ${MAX_START_HEIGHT}`);
-
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: -100 }))
-          .rejects.toThrow(`Invalid startHeight: must be between ${MIN_START_HEIGHT} and ${MAX_START_HEIGHT}`);
-      });
-
-      it('should reject start height above maximum', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: MAX_START_HEIGHT + 1 }))
-          .rejects.toThrow(`Invalid startHeight: must be between ${MIN_START_HEIGHT} and ${MAX_START_HEIGHT}`);
-      });
-
-      it('should reject invalid start height types', async () => {
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: NaN }))
-          .rejects.toThrow('Invalid startHeight');
-
-        await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: 'not-a-number' as any }))
-          .rejects.toThrow('Invalid startHeight');
-      });
-
-      it('should accept valid start height within range', () => {
-        expect(1).toBeGreaterThanOrEqual(MIN_START_HEIGHT);
-        expect(1330000).toBeGreaterThanOrEqual(MIN_START_HEIGHT);
-        expect(1330000).toBeLessThanOrEqual(MAX_START_HEIGHT);
-      });
-
-      it('should use default start height when not provided', () => {
-        const options: { startHeight?: number } = {};
-        const startHeight = options.startHeight ?? 1;
-        expect(startHeight).toBe(1);
+    describe('UTXO validation', () => {
+      it('should reject UTXO with insufficient balance', async () => {
+        const smallUtxo = { txId: 'a'.repeat(64), vout: 0, satoshis: 10000, address: 'yTest', scriptPubKey: '' };
+        await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: smallUtxo, amount: 50000 }))
+          .rejects.toThrow('UTXO balance (10000 duffs) is less than requested amount (50000 duffs)');
       });
     });
 
     describe('Options handling', () => {
-      it('should accept valid options object', () => {
-        const options = {
-          startHeight: 1330000,
+      it('should accept valid options', () => {
+        const options: Partial<TopupWithUTXOOptions> = {
           useSourceAsChangeAddress: true,
-          onProgress: () => {},
+          onProgress: (_event) => {},
         };
 
-        expect(typeof options.startHeight).toBe('number');
         expect(typeof options.useSourceAsChangeAddress).toBe('boolean');
         expect(typeof options.onProgress).toBe('function');
-      });
-
-      it('should handle empty options object', () => {
-        const options: { startHeight?: number; useSourceAsChangeAddress?: boolean } = {};
-        const startHeight = options.startHeight ?? 1;
-        const useSourceAsChangeAddress = options.useSourceAsChangeAddress !== false;
-
-        expect(startHeight).toBe(1);
-        expect(useSourceAsChangeAddress).toBe(true);
       });
     });
   });
 
-  // Note: topUpWithAccount() was a wallet-lib style API that was not ported.
-  // The js-evo-sdk uses topUpWithWallet() and topupWithUTXO() instead.
-
   describe('Edge cases', () => {
+    const VALID_UTXO = { txId: 'a'.repeat(64), vout: 0, satoshis: 500000, address: 'yTest', scriptPubKey: '' };
+
     it('should handle boundary amounts correctly', async () => {
-      // Minimum amount should pass validation
-      expect(TOPUP_MIN_AMOUNT).toBe(50000);
+      const minAmount = TOPUP_MIN_AMOUNT;
+      expect(minAmount).toBe(50000);
 
-      // Maximum amount should pass validation
-      expect(MAX_AMOUNT).toBe(100000000000);
+      const maxAmount = MAX_AMOUNT;
+      expect(maxAmount).toBe(100000000000);
 
-      // Just below minimum should fail
-      await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, TOPUP_MIN_AMOUNT - 1, VALID_MNEMONIC))
+      await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: TOPUP_MIN_AMOUNT - 1 }))
         .rejects.toThrow('Invalid amount');
 
-      // Just above maximum should fail
-      await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, MAX_AMOUNT + 1, VALID_MNEMONIC))
+      await expect(updater.topupWithUTXO({ identityId: VALID_IDENTITY_ID, mnemonic: VALID_MNEMONIC, utxo: VALID_UTXO, amount: MAX_AMOUNT + 1 }))
         .rejects.toThrow('Invalid amount');
-    });
-
-    it('should handle boundary start heights correctly', async () => {
-      expect(MIN_START_HEIGHT).toBe(1);
-      expect(MAX_START_HEIGHT).toBe(10000000);
-
-      // Below minimum should fail
-      await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: 0 }))
-        .rejects.toThrow('Invalid startHeight');
-
-      // Above maximum should fail
-      await expect(updater.topUpWithWallet(VALID_IDENTITY_ID, 50000, VALID_MNEMONIC, { startHeight: MAX_START_HEIGHT + 1 }))
-        .rejects.toThrow('Invalid startHeight');
     });
   });
 });

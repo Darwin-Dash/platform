@@ -256,7 +256,7 @@ export class WalletCoordinator {
       );
 
       // derivationPathBip44Testnet returns an object with path components
-      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coinType}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath({
         mnemonic,
@@ -266,7 +266,7 @@ export class WalletCoordinator {
       });
 
       // Derive address via dashcore-lib for consistent address generation
-      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
+      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKeyWif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 
@@ -288,7 +288,7 @@ export class WalletCoordinator {
       );
 
       // derivationPathBip44Testnet returns an object with path components
-      const path = `m/${pathInfo.purpose}'/${pathInfo.coin_type}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
+      const path = `m/${pathInfo.purpose}'/${pathInfo.coinType}'/${pathInfo.account}'/${pathInfo.change}/${pathInfo.index}`;
 
       const childKey = await walletFunctions.deriveKeyFromSeedWithPath({
         mnemonic,
@@ -298,7 +298,7 @@ export class WalletCoordinator {
       });
 
       // Derive address via dashcore-lib for consistent address generation
-      const privateKey = new dashcoreLib.PrivateKey(childKey.private_key_wif, network);
+      const privateKey = new dashcoreLib.PrivateKey(childKey.privateKeyWif, network);
       const publicKey = privateKey.toPublicKey();
       const address = publicKey.toAddress(network).toString();
 

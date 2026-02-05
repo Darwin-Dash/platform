@@ -20,15 +20,37 @@ export class WalletFundingFlow {
     this.monitoringCleanup = null;
     this.fundingAddress = null;
     this.context = 'create'; // 'create' or 'topup'
+    this.sdk = options.sdk || null; // EvoSDK instance for real mode
+    this.mnemonic = options.mnemonic || null; // Mnemonic for SDK operations
 
     // Initialize transaction finder service
     this.txFinderService = getTransactionFinderService({
       useMockMode: options.useMockMode ?? false,
-      network: options.network || 'testnet'
+      network: options.network || 'testnet',
+      sdk: options.sdk,
+      mnemonic: options.mnemonic,
     });
 
     // Bind service event handlers
     this._bindServiceEvents();
+  }
+
+  /**
+   * Update SDK instance (called when SDK becomes available)
+   * @param {object} sdk - EvoSDK instance
+   */
+  setSDK(sdk) {
+    this.sdk = sdk;
+    this.txFinderService.setSDK(sdk);
+  }
+
+  /**
+   * Update mnemonic (called when user logs in)
+   * @param {string} mnemonic - BIP39 mnemonic phrase
+   */
+  setMnemonic(mnemonic) {
+    this.mnemonic = mnemonic;
+    this.txFinderService.setMnemonic(mnemonic);
   }
 
   /**
@@ -295,7 +317,7 @@ export class WalletFundingFlow {
       <div class="funding-step funding-monitoring">
         <h2>Waiting for Your Transaction</h2>
         <p class="funding-description">
-          Send DASH to the address below. We'll detect it via InstantSend and confirm with ChainLock!
+          Send DASH to the address below. We'll detect it via InstantSend or ChainLock - whichever confirms first!
         </p>
         <div class="funding-address-display">
           <label>Send DASH to this address:</label>

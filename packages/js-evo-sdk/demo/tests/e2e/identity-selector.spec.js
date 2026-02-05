@@ -1,72 +1,69 @@
 import { test, expect } from '@playwright/test';
-import { setupMockMode, handleLoginIfNeeded } from './helpers/test-setup.js';
+import { setupMockMode, handleLoginIfNeeded, waitForDashboard } from './helpers/test-setup.js';
 
 test.describe('Identity Selector Component', () => {
   test.beforeEach(async ({ page }) => {
     await setupMockMode(page);
     await handleLoginIfNeeded(page);
+    // Give app time to fully initialize
+    await page.waitForTimeout(500);
   });
 
   test('shows identity selector when identities exist', async ({ page }) => {
-    // Wait for dashboard or welcome state
-    await page.waitForSelector('#dashboard-view, #welcome-state', { timeout: 10000 });
+    // Wait for dashboard to be visible (not hidden)
+    await waitForDashboard(page);
 
-    // If dashboard is visible, selector should be present
-    const isDashboard = await page.locator('#dashboard-view').isVisible().catch(() => false);
-
-    if (isDashboard) {
-      const selector = page.locator('.identity-selector');
-      await expect(selector).toBeVisible();
-    }
+    // Selector should be present in header
+    const selector = page.locator('.identity-selector');
+    await expect(selector).toBeVisible();
   });
 
-  test('selector displays identity count badge', async ({ page }) => {
-    await page.waitForSelector('#dashboard-view, #welcome-state', { timeout: 10000 });
+  test('selector displays current identity or placeholder', async ({ page }) => {
+    await waitForDashboard(page);
 
-    const isDashboard = await page.locator('#dashboard-view').isVisible().catch(() => false);
+    // The selector trigger should show identity preview
+    const preview = page.locator('.identity-preview');
+    await expect(preview).toBeVisible();
 
-    if (isDashboard) {
-      const countBadge = page.locator('.identity-count, .selector-count');
-      // Badge should show number of identities
-      const countText = await countBadge.textContent().catch(() => null);
-      if (countText) {
-        expect(parseInt(countText)).toBeGreaterThanOrEqual(0);
-      }
-    }
+    // Should have label text (either "Select Identity" or actual identity name)
+    const label = page.locator('.identity-preview .identity-label');
+    const labelText = await label.textContent();
+    expect(labelText).toBeTruthy();
   });
 
   test('can open identity dropdown', async ({ page }) => {
-    await page.waitForSelector('#dashboard-view', { timeout: 10000 });
+    await waitForDashboard(page);
 
     // Click to open selector dropdown
-    const selectorTrigger = page.locator('.selector-trigger, .identity-selector-trigger');
+    const selectorTrigger = page.locator('.selector-trigger');
     await selectorTrigger.click();
 
-    // Dropdown should appear
-    const dropdown = page.locator('.selector-dropdown, .identity-dropdown');
-    await expect(dropdown).toBeVisible();
+    // Dropdown should appear (wait for hidden attribute to be removed)
+    const dropdown = page.locator('.selector-dropdown');
+    await expect(dropdown).toBeVisible({ timeout: 2000 });
   });
 
   test('dropdown shows identity list', async ({ page }) => {
-    await page.waitForSelector('#dashboard-view', { timeout: 10000 });
+    await waitForDashboard(page);
 
     // Open dropdown
-    const selectorTrigger = page.locator('.selector-trigger, .identity-selector-trigger');
-    await selectorTrigger.click();
+    await page.locator('.selector-trigger').click();
+    await page.waitForTimeout(300); // Allow dropdown animation
 
     // Should show identity items
     const identityItems = page.locator('.identity-item');
     const count = await identityItems.count();
 
-    // At least one identity should be visible (mock mode creates test identities)
-    expect(count).toBeGreaterThanOrEqual(0);
+    // Mock mode creates 3 test identities
+    expect(count).toBe(3);
   });
 
   test('can select different identity', async ({ page }) => {
-    await page.waitForSelector('#dashboard-view', { timeout: 10000 });
+    await waitForDashboard(page);
 
     // Open dropdown
-    await page.locator('.selector-trigger, .identity-selector-trigger').click();
+    await page.locator('.selector-trigger').click();
+    await page.waitForTimeout(300);
 
     const identityItems = page.locator('.identity-item');
     const count = await identityItems.count();
@@ -76,22 +73,23 @@ test.describe('Identity Selector Component', () => {
       await identityItems.nth(1).click();
 
       // Dropdown should close
-      const dropdown = page.locator('.selector-dropdown, .identity-dropdown');
+      const dropdown = page.locator('.selector-dropdown');
       await expect(dropdown).toBeHidden({ timeout: 2000 });
     }
   });
 
   test('closes dropdown when clicking outside', async ({ page }) => {
-    await page.waitForSelector('#dashboard-view', { timeout: 10000 });
+    await waitForDashboard(page);
 
     // Open dropdown
-    await page.locator('.selector-trigger, .identity-selector-trigger').click();
+    await page.locator('.selector-trigger').click();
+    await page.waitForTimeout(300);
 
-    const dropdown = page.locator('.selector-dropdown, .identity-dropdown');
+    const dropdown = page.locator('.selector-dropdown');
     await expect(dropdown).toBeVisible();
 
-    // Click outside
-    await page.click('body', { position: { x: 10, y: 10 } });
+    // Click outside (on the header area)
+    await page.locator('.app-header').click({ position: { x: 10, y: 10 } });
 
     // Dropdown should close
     await expect(dropdown).toBeHidden({ timeout: 2000 });

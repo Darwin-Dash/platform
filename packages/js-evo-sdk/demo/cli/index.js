@@ -186,6 +186,15 @@ const tokens = program
   .description('Token operations');
 
 tokens
+  .command('discover <identityId>')
+  .description('Discover all tokens owned by an identity')
+  .option('--no-balances', 'Only show token IDs without balances')
+  .action(async (identityId, options) => {
+    const { tokensDiscover } = await import('./commands/tokens.js');
+    await tokensDiscover(identityId, options, program.opts());
+  });
+
+tokens
   .command('balance')
   .description('Get token balances for an identity')
   .requiredOption('-i, --identity <identityId>', 'Identity ID')

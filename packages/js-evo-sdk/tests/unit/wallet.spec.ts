@@ -25,6 +25,7 @@ describe('wallet namespace', () => {
     'pubkeyToAddress',
     'validateAddress',
     'signMessage',
+    'deriveIdentityKey',
   ];
 
   it('exposes the expected helper functions', () => {

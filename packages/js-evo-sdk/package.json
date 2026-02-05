@@ -46,6 +46,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:headed": "playwright test --config playwright.config.ts --headed",
+    "test:e2e:lifecycle": "TEST_CONTACT_LIFECYCLE=true playwright test --config playwright.config.ts demo/tests/e2e/contact-lifecycle.spec.js --grep 'full contact request lifecycle'",
+    "test:e2e:dpns": "playwright test --config playwright.config.ts demo/tests/e2e/contact-lifecycle.spec.js --grep 'DPNS resolution'",
     "test:all": "vitest run && playwright test --config playwright.config.ts",
     "test:coverage": "vitest run --coverage",
     "demo:cli": "node demo/cli/index.js",
@@ -53,11 +55,13 @@
     "demo:web:dev": "cd demo/web && webpack serve --mode development",
     "demo:web:build": "cd demo/web && webpack --mode production",
     "demo:web:serve": "cd demo/web && npx http-server dist -p 8080 -s -c-1",
-    "build:healthy-nodes": "node scripts/build-healthy-nodes.js"
+    "build:healthy-nodes": "node scripts/build-healthy-nodes.js",
+    "setup:test-token": "node scripts/setup-test-token.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
+    "@dashevo/dash-rpc-client": "workspace:*",
     "@playwright/test": "^1.40.0",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20.0.0",
@@ -98,8 +102,8 @@
     "util": "^0.12.4",
     "vitest": "^1.0.0",
     "vm-browserify": "^1.1.2",
-    "webpack": "^5.94.0",
-    "webpack-cli": "^4.9.1",
-    "webpack-dev-server": "^4.15.1"
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.3"
   }
 }
