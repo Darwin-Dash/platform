@@ -51,6 +51,10 @@ export { RealtimeFinder } from './finders/RealtimeFinder.js';
 // Export monitoring components for advanced use cases
 export { TransactionTracker } from './monitoring/TransactionTracker.js';
 export { ChainLockHeightMonitor } from './monitoring/ChainLockHeightMonitor.js';
+export { TransactionStatusPoller } from './monitoring/TransactionStatusPoller.js';
+export { ConfirmationTracker } from './monitoring/ConfirmationTracker.js';
+export { NodeHealthTracker } from './monitoring/NodeHealthTracker.js';
+export type { NodeStats, NodeHealthTrackerConfig } from './monitoring/NodeHealthTracker.js';
 
 // ==================== Core Utilities ====================
 // Export core utilities for advanced use cases

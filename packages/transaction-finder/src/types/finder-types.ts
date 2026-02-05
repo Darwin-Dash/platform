@@ -107,19 +107,36 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
   /** Stream reconnection interval in milliseconds.
    *  Periodic reconnection ensures missed transactions are caught
    *  via DAPI's historical data + mempool scan phases.
-   *  Default: 10000 (10 seconds). Set to 0 to disable. */
+   *  Default: 60000 (60 seconds). Set to 0 to disable. */
   streamReconnectInterval?: number;
 
-  /** Whether to immediately reconnect the stream when preRegisterTransaction()
-   *  is called. Ensures the mempool scan picks up newly broadcast transactions
-   *  so IS proof bytes are delivered. Default: true */
+  /** Whether to reconnect the stream when preRegisterTransaction() is called.
+   *  When true (default), reconnects immediately for a fresh stream. DAPI
+   *  streams stall after their initial historical + mempool scan — no new
+   *  ZMQ events are delivered. A fresh stream registers a new bloom filter
+   *  emitter on the DAPI server that captures IS events during its scan phase.
+   *  The caller should invoke preRegisterTransaction() BEFORE broadcasting
+   *  the transaction to maximize the IS capture window.
+   *  When false, only sets the grace period — useful if you know the stream
+   *  was recently opened and is still in its initial scan phase.
+   *  Default: true */
   reconnectOnPreRegister?: boolean;
 
-  /** Grace period (ms) after a pre-registered transaction is found on the
-   *  DAPI stream (WAIT phase). Periodic reconnection is paused so the stream
-   *  stays alive for IS proof byte delivery from the LLMQ quorum (~1-2s).
-   *  This is NOT set when preRegisterTransaction() is called — reconnection
-   *  continues normally during the HUNT phase until the stream finds the tx.
+  /** Delay (ms) before reconnecting the stream after preRegisterTransaction().
+   *  Default is 0 (immediate). The caller should call preRegisterTransaction()
+   *  BEFORE broadcasting so the fresh stream's bloom filter emitter is registered
+   *  before the IS ZMQ event fires (~1-2s after broadcast). DAPI caches IS events
+   *  arriving during the scan phase (in `unretrievedInstantLocks`) and flushes them
+   *  after MEMPOOL_DATA_SENT — so IS events are not lost even though the stream is
+   *  still processing historical data when IS fires.
+   *  Only applies when reconnectOnPreRegister is true.
+   *  Default: 0 (immediate). */
+  preRegisterReconnectDelay?: number;
+
+  /** Grace period (ms) for IS proof delivery. When preRegisterTransaction()
+   *  is called, periodic reconnection is paused for this duration so the
+   *  existing gRPC stream stays alive to receive IS proof bytes. The grace
+   *  period is extended each time the stream detects a pre-registered tx.
    *  Periodic reconnection resumes after all pre-registered txids receive IS
    *  proof or the grace period expires.
    *  Default: 15000 (15 seconds). */
@@ -128,8 +145,45 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
   /** How long to wait (ms) for stream to deliver InstantLock proof bytes
    *  after the poller detects IS (boolean only). Only applies to pre-registered
    *  txids where the SDK needs raw hex for InstantAssetLockProof creation.
-   *  Default: 5000 (5 seconds). Set to 0 to disable hex wait. */
+   *  No reconnect is triggered — DAPI cannot deliver IS bytes for already-locked
+   *  transactions on a new stream (ZMQ events are not replayed).
+   *  Default: 8000 (8 seconds). Set to 0 to disable hex wait. */
   instantLockHexWaitMs?: number;
+
+  // ============================================================================
+  // Multi-Node IS Hex Hunting Configuration
+  // ============================================================================
+
+  /** Enable multi-node InstantSend hex hunting.
+   *  When enabled, connects to multiple DAPI nodes simultaneously when
+   *  preRegisterTransaction() is called and races all streams for IS hex.
+   *  First valid hex wins. Nodes that fail to deliver IS hex are blacklisted
+   *  for the session.
+   *
+   *  Rationale: Most DAPI testnet nodes don't have ZMQ `rawtxlocksig` enabled.
+   *  Multi-node resilience increases the odds of connecting to a properly
+   *  configured node.
+   *
+   *  Default: true */
+  multiNodeIsHunting?: boolean;
+
+  /** Number of DAPI nodes to connect to simultaneously for IS hex hunting.
+   *  More nodes = higher chance of finding one with rawtxlocksig enabled,
+   *  but also more resource usage (gRPC connections).
+   *  Default: 3 */
+  isHuntingNodes?: number;
+
+  /** Timeout (ms) for IS hex hunting across all parallel streams.
+   *  If no node delivers IS hex within this time, falls back to ChainLock.
+   *  Speed priority: keep this short (2-3 seconds).
+   *  Default: 3000 (3 seconds) */
+  isHuntingTimeoutMs?: number;
+
+  /** Auto-blacklist nodes after this many consecutive IS hex delivery failures.
+   *  Nodes without rawtxlocksig are deterministically broken, so a threshold
+   *  of 1 is appropriate (immediate blacklist on first failure).
+   *  Default: 1 */
+  isHuntingBlacklistThreshold?: number;
 }
 
 /**
