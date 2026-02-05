@@ -258,6 +258,119 @@ export class NodeHealthTracker {
   }
 
   /**
+   * Seed the tracker with known-good IS nodes.
+   * These nodes start with a success count, making them preferred for IS hunting.
+   * @param addresses Array of node addresses known to deliver IS hex
+   * @param initialSuccesses Number of successes to credit (default: 5)
+   */
+  seedKnownGood(addresses: string[], initialSuccesses = 5): void {
+    for (const address of addresses) {
+      const normalized = this.normalizeAddress(address);
+      const existing = this.nodes.get(normalized);
+
+      if (existing) {
+        // Boost existing node's success count
+        existing.successes = Math.max(existing.successes, initialSuccesses);
+        existing.blacklisted = false;
+        existing.blacklistedAt = null;
+        this.blacklistedNodes.delete(normalized);
+      } else {
+        this.ensureCapacity();
+        this.nodes.set(normalized, {
+          address: normalized,
+          successes: initialSuccesses,
+          failures: 0,
+          blacklisted: false,
+          lastSuccessTime: null,
+          blacklistedAt: null,
+        });
+      }
+    }
+  }
+
+  /**
+   * Export current health data for persistence.
+   * Returns a JSON-serializable object.
+   */
+  exportHealth(): {
+    version: number;
+    generated: string;
+    knownGood: string[];
+    learned: Record<string, { successes: number; failures: number; blacklisted?: boolean }>;
+  } {
+    const learned: Record<string, { successes: number; failures: number; blacklisted?: boolean }> = {};
+
+    for (const [address, stats] of this.nodes) {
+      // Only export nodes with activity
+      if (stats.successes > 0 || stats.failures > 0) {
+        learned[address] = {
+          successes: stats.successes,
+          failures: stats.failures,
+        };
+        if (stats.blacklisted) {
+          learned[address].blacklisted = true;
+        }
+      }
+    }
+
+    // Extract known-good nodes (high success, not blacklisted)
+    const knownGood = Array.from(this.nodes.entries())
+      .filter(([_, stats]) => stats.successes >= 3 && !stats.blacklisted)
+      .sort((a, b) => b[1].successes - a[1].successes)
+      .map(([addr]) => addr);
+
+    return {
+      version: 1,
+      generated: new Date().toISOString(),
+      knownGood,
+      learned,
+    };
+  }
+
+  /**
+   * Import health data from persistence.
+   * @param data Previously exported health data
+   */
+  importHealth(data: {
+    knownGood?: string[];
+    learned?: Record<string, { successes: number; failures: number; blacklisted?: boolean }>;
+  }): void {
+    // First, seed known-good nodes
+    if (data.knownGood && Array.isArray(data.knownGood)) {
+      this.seedKnownGood(data.knownGood, 5);
+    }
+
+    // Then, import learned data (may override known-good)
+    if (data.learned) {
+      for (const [address, stats] of Object.entries(data.learned)) {
+        const normalized = this.normalizeAddress(address);
+        const existing = this.nodes.get(normalized);
+
+        if (existing) {
+          existing.successes = Math.max(existing.successes, stats.successes);
+          existing.failures = stats.failures;
+          if (stats.blacklisted) {
+            this.blacklist(normalized);
+          }
+        } else {
+          this.ensureCapacity();
+          this.nodes.set(normalized, {
+            address: normalized,
+            successes: stats.successes,
+            failures: stats.failures,
+            blacklisted: stats.blacklisted || false,
+            lastSuccessTime: null,
+            blacklistedAt: stats.blacklisted ? Date.now() : null,
+          });
+          if (stats.blacklisted) {
+            this.blacklistedNodes.add(normalized);
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Register a node without recording success or failure.
    * Useful for adding known nodes from DNS seeds.
    */

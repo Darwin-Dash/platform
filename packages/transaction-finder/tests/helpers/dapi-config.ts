@@ -12,6 +12,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
+ * IS Node Health data structure
+ */
+export interface IsNodeHealthData {
+  generated: string;
+  version: number;
+  knownGood: string[];
+  learned: Record<string, { successes: number; failures: number; blacklisted?: boolean }>;
+}
+
+/**
  * Load healthy DAPI nodes from JSON file
  *
  * Checks multiple locations to find the healthy-nodes.json
@@ -45,6 +55,72 @@ export function loadHealthyNodes(): string[] {
 
   console.log('[DAPI] No healthy-nodes.json found, using network defaults');
   return [];
+}
+
+/**
+ * Load IS-capable node health data from JSON file
+ *
+ * These are nodes known to successfully deliver InstantSend hex via gRPC stream.
+ * Used by MultiNodeIsHunter for prioritizing IS hex hunting.
+ *
+ * @returns IS node health data, or null if not found
+ */
+export function loadIsNodeHealth(): IsNodeHealthData | null {
+  const locations = [
+    path.join(__dirname, '../../../js-evo-sdk/demo/is-node-health.json'),
+    path.join(__dirname, '../../../js-evo-sdk/is-node-health.json'),
+  ];
+
+  for (const location of locations) {
+    try {
+      if (fs.existsSync(location)) {
+        const data = JSON.parse(fs.readFileSync(location, 'utf-8')) as IsNodeHealthData;
+        if (data.knownGood && Array.isArray(data.knownGood)) {
+          console.log(
+            `[DAPI] Loaded IS node health: ${data.knownGood.length} known-good nodes from ${path.basename(location)}`
+          );
+          return data;
+        }
+      }
+    } catch {
+      // Try next location
+    }
+  }
+
+  console.log('[DAPI] No is-node-health.json found, IS hunting will start fresh');
+  return null;
+}
+
+/**
+ * Get known-good IS-capable nodes
+ *
+ * Returns nodes that are both:
+ * 1. In the knownGood list from is-node-health.json
+ * 2. Also present in healthy-nodes.json (reachable)
+ *
+ * @returns Array of IS-capable node addresses
+ */
+export function getIsCapableNodes(): string[] {
+  const healthyNodes = loadHealthyNodes();
+  const isHealth = loadIsNodeHealth();
+
+  if (!isHealth) {
+    return [];
+  }
+
+  // Normalize for comparison
+  const healthySet = new Set(
+    healthyNodes.map((addr) => {
+      const normalized = addr.includes(':') ? addr : `${addr}:443`;
+      return normalized.replace('https://', '').replace('http://', '').toLowerCase();
+    })
+  );
+
+  // Filter known-good to only include currently healthy nodes
+  return isHealth.knownGood.filter((addr) => {
+    const normalized = addr.toLowerCase();
+    return healthySet.has(normalized);
+  });
 }
 
 /**
@@ -94,3 +170,16 @@ export function getDAPIClientOptions(network: 'testnet' | 'mainnet' = 'testnet')
  * Pre-loaded healthy nodes (available for direct access if needed)
  */
 export { HEALTHY_NODES };
+
+// Pre-load IS node health data once at module load time
+const IS_NODE_HEALTH = loadIsNodeHealth();
+
+/**
+ * Pre-loaded IS node health data (available for direct access if needed)
+ */
+export { IS_NODE_HEALTH };
+
+/**
+ * Get IS-capable nodes that are also currently healthy
+ */
+export const IS_CAPABLE_NODES = getIsCapableNodes();
