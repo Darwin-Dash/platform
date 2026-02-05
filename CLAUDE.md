@@ -181,55 +181,22 @@ xcodebuild -project SwiftExampleApp/SwiftExampleApp.xcodeproj \
 - C header issues: Use pointers for opaque FFI types
 - After merges: Always clean and rebuild from scratch
 
-## Ralph Autonomous Loop Configuration
+## Ralph Autonomous Loop
 
-This project uses the [snarktank/ralph](https://github.com/snarktank/ralph) autonomous coding loop format.
+This project uses the Ralph autonomous coding loop. Use the `/ralph_wiggum` skill for documentation.
 
-### Files
-- `prd.json` - Task definitions with user stories and acceptance criteria
-- `progress.txt` - Persistent memory across iterations
-- `ralph.sh` - Loop orchestrator script
-
-### Running Ralph
+### Quick Reference
 ```bash
-# Run with default 10 iterations
-./ralph.sh
-
-# Run single iteration (for testing)
-./ralph.sh 1
-
-# Run with custom max iterations
-./ralph.sh 20
+ralph                                  # Run loop
+ralph --monitor                        # Run with tmux dashboard
+ralph --stream --verbose --timeout 60  # Run with streaming output, verbose, 60min timeout
+ralph --status                         # Check current status
+ralph --circuit-status                 # Check circuit breaker
+ralph --reset-session                  # Reset after crash/interruption
 ```
 
-### For Claude (Autonomous Mode)
-
-When running in Ralph loop:
-1. Read `prd.json` to find the first incomplete user story
-2. Read `progress.txt` for previous learnings and context
-3. Implement the story completely
-4. Verify with commands in `passes` array
-5. Update `completed: true` in prd.json when done
-6. Append learnings to progress.txt
-7. Commit changes
-
-**Verification Commands:**
-```bash
-cd packages/js-evo-sdk && yarn tsc -p tsconfig.json --noEmit
-npm test
-```
-
-**Completion Signal:**
-When all stories are complete, output:
-```
-<promise>COMPLETE</promise>
-```
-
-### Current Project Status
-- **Phase 1 (Identity)**: Complete
-- **Phase 2 (DPNS)**: Complete
-- **Phase 3 (Documents)**: Complete
-- **Phase 4 (DashPay)**: Pending
-- **Phase 5 (Tokens)**: Pending
-
-See `progress.txt` for detailed history and learnings.
+### Project Config (in `.ralph/`)
+- `PROMPT.md` - Agent instructions and objectives
+- `@fix_plan.md` - Task checklist (markdown)
+- `@AGENT.md` - Build/run instructions and learnings
+- `specs/` - Technical specifications
