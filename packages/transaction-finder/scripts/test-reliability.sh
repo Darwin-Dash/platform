@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
-# Run the IS integration test multiple times and report pass rate AND hex delivery rate.
+# On-Demand Detection Reliability Test
+# Tests the ONLY supported flow: monitor → detect → callbacks provide all data
+#
 # Usage: bash scripts/test-reliability.sh [RUNS]  (default: 10)
 
 set -uo pipefail
+
+# Source environment from js-evo-sdk
+ENV_FILE="$(dirname "$0")/../../js-evo-sdk/.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a  # Export all variables
+  source "$ENV_FILE"
+  set +a
+  echo "Loaded environment from $ENV_FILE"
+else
+  echo "Warning: $ENV_FILE not found - ensure TESTNET_RPC_* vars are set"
+fi
 
 RUNS="${1:-10}"
 PASS=0
@@ -10,10 +23,10 @@ FAIL=0
 HEX_DELIVERED=0
 HEX_NOT_DELIVERED=0
 
-LOG_FILE="/tmp/is-reliability-$(date +%s).log"
+LOG_FILE="/tmp/ondemand-reliability-$(date +%s).log"
 
-echo "=== InstantSend Reliability Test ==="
-echo "Running yarn run test:realtime:auto:is  $RUNS times..."
+echo "=== On-Demand Detection Reliability Test ==="
+echo "Running yarn vitest run tests/integration/testnet-realtime-automated.spec.ts  $RUNS times..."
 echo "Log file: $LOG_FILE"
 echo ""
 
@@ -21,7 +34,8 @@ for i in $(seq 1 "$RUNS"); do
   echo -n "Run $i/$RUNS ... "
 
   # Run test and capture output
-  OUTPUT=$(TEST_MODE=instantsend yarn vitest run tests/integration/testnet-realtime-automated.spec.ts 2>&1)
+  # Use single thread to prevent memory accumulation from parallel workers
+  OUTPUT=$(yarn vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=120000 --pool=forks --poolOptions.forks.singleFork 2>&1)
   EXIT_CODE=$?
 
   # Log output
@@ -39,10 +53,10 @@ for i in $(seq 1 "$RUNS"); do
   fi
 
   # Check hex delivery (look for the specific log messages)
-  if echo "$OUTPUT" | grep -q "InstantLock hex delivered"; then
+  if echo "$OUTPUT" | grep -q "IS hex delivered via multi-node"; then
     HEX_DELIVERED=$((HEX_DELIVERED + 1))
     HEX_STATUS="HEX ✓"
-  elif echo "$OUTPUT" | grep -q "hex NOT delivered"; then
+  elif echo "$OUTPUT" | grep -q "IS hex not delivered"; then
     HEX_NOT_DELIVERED=$((HEX_NOT_DELIVERED + 1))
     HEX_STATUS="HEX ✗"
   else
@@ -52,8 +66,9 @@ for i in $(seq 1 "$RUNS"); do
 
   echo "$RESULT  $HEX_STATUS"
 
-  # Small delay between runs
-  sleep 2
+  # Delay between runs to ensure gRPC connections are fully cleaned up
+  # gRPC cleanup can take several seconds after process exit
+  sleep 5
 done
 
 PASS_RATE=$((PASS * 100 / RUNS))
