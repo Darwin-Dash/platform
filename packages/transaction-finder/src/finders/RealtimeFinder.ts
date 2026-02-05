@@ -7,16 +7,33 @@
  * Features:
  * - InstantLock detection (~1-3 seconds)
  * - ChainLock confirmation (~1-3 minutes)
+ * - Immediate stream reconnection on preRegisterTransaction() for IS proof
  * - Periodic stream reconnection to catch missed transactions
- * - Two-phase grace period: HUNT (reconnect until tx found) → WAIT (pause for IS proof)
  * - Polling-based IS/CL fallback (TransactionStatusPoller)
  * - Transaction state tracking
  *
- * The DAPI subscribeToTransactionsWithProofs stream only bloom-filter-tests
- * block transactions on the first block after connection. For subsequent blocks,
- * if the internal ZMQ rawtx event was missed, the transaction is silently dropped.
- * Periodic reconnection forces the server to re-run its historical + mempool scan,
- * catching anything missed in continuous mode.
+ * DAPI stream behavior:
+ * - DAPI streams stall after the initial historical + mempool scan.
+ *   Despite the server-side polling loop, no new ZMQ events are
+ *   delivered to the client after the initial batch completes.
+ *   Empirical testing confirms: 30+ seconds of silence after scan.
+ * - A fresh stream registers a new bloom filter emitter on the DAPI
+ *   server IMMEDIATELY (before historical blocks are sent). IS events
+ *   arriving via ZMQ during the scan are cached in the server's
+ *   `unretrievedInstantLocks` map and flushed after MEMPOOL_DATA_SENT.
+ * - The IS ZMQ event is a one-time broadcast. A new emitter must be
+ *   registered BEFORE IS fires AND the tx must be in the DAPI node's
+ *   `transactionHashesMap` (populated during mempool scan) for IS
+ *   delivery. To satisfy both: reconnect from ~50 blocks back so the
+ *   scan phase runs long enough for the tx to reach mempool via P2P
+ *   AND for IS to fire while the preMempoolSentInstantLockListener
+ *   is still active. Reconnecting from current tip makes the scan
+ *   too fast — MEMPOOL_DATA_SENT fires before IS arrives.
+ * - preRegisterTransaction() reconnects immediately (0ms delay) by
+ *   default. The caller should invoke preRegister BEFORE broadcasting
+ *   the transaction to maximize the IS capture window.
+ * - A grace period prevents periodic reconnection from interfering
+ *   with the IS delivery window after preRegisterTransaction().
  */
 
 import { EventEmitter } from 'events';
@@ -25,6 +42,8 @@ import { StreamWrapper } from '../core/StreamWrapper.js';
 import { TransactionTracker } from '../monitoring/TransactionTracker.js';
 import { ChainLockHeightMonitor } from '../monitoring/ChainLockHeightMonitor.js';
 import { TransactionStatusPoller } from '../monitoring/TransactionStatusPoller.js';
+import { NodeHealthTracker, NodeStats } from '../monitoring/NodeHealthTracker.js';
+import { MultiNodeIsHunter, IsHuntResult } from '../monitoring/MultiNodeIsHunter.js';
 import {
   RealtimeFinderConfig,
   ConfirmationOptions,
@@ -67,13 +86,19 @@ export class RealtimeFinder extends EventEmitter {
   private reconnectTimer: ReturnType<typeof setInterval> | null = null;
   private isReconnecting: boolean = false;
 
-  // Two-phase grace period for IS proof delivery:
-  // HUNT phase: after preRegisterTransaction(), reconnection continues normally.
-  //   Each reconnect forces DAPI to re-scan mempool until the tx is found.
-  // WAIT phase: when the stream detects a pre-registered tx, reconnectPausedUntil
-  //   is set to pause periodic reconnection so IS proof bytes can arrive (~1-2s).
+  // Grace period for IS proof delivery:
+  // When preRegisterTransaction() is called, periodic reconnection is PAUSED
+  // so the existing gRPC stream stays alive. The stream's subscription will
+  // naturally receive the tx and IS proof bytes after broadcast.
+  // If the stream detects the pre-registered tx, the grace period is extended.
+  // DAPI only delivers IS bytes for ZMQ events received AFTER stream opens —
+  // reconnecting after IS won't help. The live stream is our only chance.
   private reconnectPausedUntil: number = 0;
   private preRegisteredTxids: Set<string> = new Set();
+
+  // Multi-node IS hunting (for nodes without ZMQ rawtxlocksig)
+  private nodeHealthTracker: NodeHealthTracker;
+  private multiNodeIsHunter: MultiNodeIsHunter | null = null;
 
   constructor(config: RealtimeFinderConfig) {
     super();
@@ -87,6 +112,22 @@ export class RealtimeFinder extends EventEmitter {
     this.stream = null;
     this.isActive = false;
     this.logger = createLogger('RealtimeFinder');
+
+    // Initialize node health tracking
+    this.nodeHealthTracker = new NodeHealthTracker({
+      blacklistThreshold: config.isHuntingBlacklistThreshold ?? 1,
+    });
+
+    // Initialize multi-node IS hunter if enabled
+    const multiNodeEnabled = config.multiNodeIsHunting ?? true;
+    if (multiNodeEnabled) {
+      this.multiNodeIsHunter = new MultiNodeIsHunter(this.nodeHealthTracker, {
+        network: config.network,
+        nodeCount: config.isHuntingNodes ?? 3,
+        timeoutMs: config.isHuntingTimeoutMs ?? 3000,
+      });
+      this.logger.info(`Multi-node IS hunting enabled (${config.isHuntingNodes ?? 3} nodes, ${config.isHuntingTimeoutMs ?? 3000}ms timeout)`);
+    }
   }
 
   /**
@@ -228,11 +269,9 @@ export class RealtimeFinder extends EventEmitter {
 
     // Start periodic stream reconnection to catch missed transactions.
     // Each reconnection forces DAPI to re-run history + mempool scan.
-    // Two-phase grace period:
-    //   HUNT: reconnection continues normally after preRegisterTransaction()
-    //   WAIT: reconnection pauses when stream finds the pre-registered tx,
-    //         keeping the stream alive for IS proof byte delivery
-    const reconnectInterval = this.config.streamReconnectInterval ?? 10000;
+    // Reconnection is paused after preRegisterTransaction() so the stream
+    // stays alive for IS proof byte delivery.
+    const reconnectInterval = this.config.streamReconnectInterval ?? 60000;
     if (reconnectInterval > 0) {
       this.reconnectTimer = setInterval(() => {
         if (this.isActive && Date.now() >= this.reconnectPausedUntil) {
@@ -240,7 +279,7 @@ export class RealtimeFinder extends EventEmitter {
             this.logger.warn('Periodic reconnect failed:', (err as Error).message)
           );
         } else if (this.isActive && Date.now() < this.reconnectPausedUntil) {
-          this.logger.debug('Periodic reconnect skipped (WAIT phase: stream alive for IS proof bytes)');
+          this.logger.debug('Periodic reconnect skipped (grace period: stream alive for IS proof bytes)');
         }
       }, reconnectInterval);
     }
@@ -250,12 +289,18 @@ export class RealtimeFinder extends EventEmitter {
   }
 
   /**
-   * Reconnect the DAPI stream from lastBlockHeight.
+   * Reconnect the DAPI stream.
    * Forces the server to re-run its historical data + mempool scan phases,
    * catching any transactions missed during continuous streaming.
+   * @param fromCurrentTip If true, subscribes from ~50 blocks behind the
+   *   current tip. This keeps the scan phase (preMempoolSentInstantLockListener)
+   *   active long enough for the broadcast tx to propagate to the DAPI node
+   *   and for the IS ZMQ event to fire during the scan — both conditions
+   *   required for IS proof byte delivery.
+   *   If false (default), reconnects from lastBlockHeight - 1.
    * @private
    */
-  private async reconnectStream(): Promise<void> {
+  private async reconnectStream(fromCurrentTip: boolean = false): Promise<void> {
     if (!this.isActive || this.isReconnecting || this.monitoredAddresses.length === 0) return;
     this.isReconnecting = true;
     try {
@@ -272,12 +317,34 @@ export class RealtimeFinder extends EventEmitter {
         }
       }
 
-      // Re-subscribe from lastBlockHeight. Use max(1, lastBlockHeight - 1)
-      // to ensure we request a block height that definitely exists on the
-      // DAPI node (lastBlockHeight may have been speculatively incremented
-      // from a MerkleBlock before the block is available on the next node).
-      const reconnectHeight = Math.max(1, this.lastBlockHeight - 1);
       const core = (this.config.dapiClient as any).core;
+      let reconnectHeight: number;
+
+      if (fromCurrentTip) {
+        // Subscribe from slightly behind the tip so the scan phase takes
+        // long enough for both the tx to propagate to the DAPI node's mempool
+        // AND the IS ZMQ event to fire while the preMempoolSentInstantLockListener
+        // is still active. DAPI caches IS events during the scan phase in
+        // `unretrievedInstantLocks` and flushes them after MEMPOOL_DATA_SENT.
+        // Subscribing from exactly the tip makes the scan too fast — it completes
+        // before our broadcast tx reaches the mempool or IS fires.
+        // Subscribe from behind the tip so the historical + mempool scan
+        // phase takes long enough for both:
+        //   1. The broadcast tx to propagate via P2P to the DAPI node's mempool
+        //   2. The IS ZMQ event to fire while preMempoolSentInstantLockListener is active
+        // DAPI caches IS events during scan and flushes after MEMPOOL_DATA_SENT.
+        // 200 blocks back (~8min on Dash) extends the scan to ~3-8s, covering
+        // the IS delivery window (~2-3s after broadcast) while keeping bloom
+        // filter false positives manageable.
+        const currentTip = await core.getBestBlockHeight();
+        reconnectHeight = Math.max(1, currentTip - 200);
+      } else {
+        // Re-subscribe from lastBlockHeight - 1 to catch missed txs.
+        // Use max(1, lastBlockHeight - 1) to ensure we request a block
+        // height that definitely exists on the DAPI node.
+        reconnectHeight = Math.max(1, this.lastBlockHeight - 1);
+      }
+
       let rawStream = core.subscribeToTransactionsWithProofs(this.bloomFilter, {
         fromBlockHeight: reconnectHeight,
         count: 0,
@@ -296,7 +363,7 @@ export class RealtimeFinder extends EventEmitter {
           }
         });
 
-      this.logger.info(`Stream reconnected from height ${reconnectHeight}`);
+      this.logger.info(`Stream reconnected from height ${reconnectHeight}${fromCurrentTip ? ' (near tip, extended scan for IS capture)' : ''}`);
     } catch (error) {
       this.logger.warn('Stream reconnection failed:', (error as Error).message);
     } finally {
@@ -324,6 +391,14 @@ export class RealtimeFinder extends EventEmitter {
         }
 
         const msg = message as any;
+
+        // Debug: log available message fields
+        const hasRawTx = typeof msg.getRawTransactions === 'function';
+        const hasRawMerkle = typeof msg.getRawMerkleBlock === 'function';
+        const hasISLock = typeof msg.getInstantSendLockMessages === 'function';
+        const isLockResult = hasISLock ? msg.getInstantSendLockMessages() : null;
+        const hasISLockProp = 'instantSendLockMessages' in msg;
+        this.logger.debug(`📨 Stream message: rawTx=${hasRawTx}, merkle=${hasRawMerkle}, isLock=${hasISLock}, isLockResult=${isLockResult != null ? 'object' : 'null'}, isLockProp=${hasISLockProp}`);
 
         // Parse transactions
         const rawTxs = typeof msg.getRawTransactions === 'function'
@@ -360,12 +435,12 @@ export class RealtimeFinder extends EventEmitter {
                     });
                   }
 
-                  // WAIT phase: pre-registered tx found on stream — start grace period
+                  // Pre-registered tx found on stream — extend grace period
                   // to keep the stream alive for IS proof byte delivery (~1-2s after detection).
-                  if (this.preRegisteredTxids.has(txid) && Date.now() >= this.reconnectPausedUntil) {
+                  if (this.preRegisteredTxids.has(txid)) {
                     const gracePeriod = this.config.reconnectGracePeriod ?? 15000;
                     this.reconnectPausedUntil = Date.now() + gracePeriod;
-                    this.logger.info(`⏸️ WAIT phase: tx ${txid.substring(0, 16)}... found — grace period ${gracePeriod}ms`);
+                    this.logger.info(`⏸️ Grace period extended: tx ${txid.substring(0, 16)}... found — ${gracePeriod}ms`);
                   }
                 }
               } catch (error) {
@@ -423,6 +498,13 @@ export class RealtimeFinder extends EventEmitter {
         const instantLockMessages = typeof msg.getInstantSendLockMessages === 'function'
           ? msg.getInstantSendLockMessages()
           : msg.instantSendLockMessages;
+
+        // Debug IS lock parsing
+        if (instantLockMessages) {
+          const hasGetMessagesList = typeof instantLockMessages.getMessagesList === 'function';
+          const isArray = Array.isArray(instantLockMessages);
+          this.logger.debug(`🔒 IS lock messages object: type=${typeof instantLockMessages}, hasGetMessagesList=${hasGetMessagesList}, isArray=${isArray}, keys=${Object.keys(instantLockMessages || {}).join(',')}`);
+        }
 
         // Extract message list from wrapper object (DAPI returns wrapper with getMessagesList method)
         const instantLockList = instantLockMessages?.getMessagesList
@@ -543,7 +625,7 @@ export class RealtimeFinder extends EventEmitter {
     // Register transaction for monitoring
     this.tracker.addBroadcast(txid);
 
-    const hexWaitMs = this.config.instantLockHexWaitMs ?? 5000;
+    const hexWaitMs = this.config.instantLockHexWaitMs ?? 8000;
 
     return new Promise<ConfirmationResult>((resolve) => {
       let resolved = false;
@@ -583,17 +665,35 @@ export class RealtimeFinder extends EventEmitter {
             return;
           }
 
-          // No hex yet — for pre-registered txids, wait briefly for stream delivery
+          // No hex yet — wait for stream to deliver proof bytes
           if (hexWaitMs > 0 && (this.preRegisteredTxids.has(txid) || instantLockDetectedAt)) {
             if (!instantLockDetectedAt) {
               instantLockDetectedAt = Date.now();
-              this.logger.info(`⏳ IS detected without hex for ${txid.substring(0, 16)}... — waiting up to ${hexWaitMs}ms for stream proof bytes`);
+              this.logger.info(`⏳ IS detected without hex for ${txid.substring(0, 16)}... — waiting for stream (up to ${hexWaitMs}ms)`);
             }
+
+            // Check if hex arrived from stream
+            const txCheck = this.tracker.getTransaction(txid);
+            if (txCheck?.instantLockHex) {
+              this.logger.info(`✅ IS hex delivered for ${txid.substring(0, 16)}...`);
+              resolved = true;
+              resolve({
+                txid,
+                method: 'instantlock',
+                instantLockTime: txCheck.instantLockTime,
+                chainLockTime: null,
+                blockHeight: txCheck.blockHeight,
+                totalLatencyMs: Date.now() - startTime,
+                instantLockHex: txCheck.instantLockHex,
+              });
+              return;
+            }
+
             if (Date.now() - instantLockDetectedAt >= hexWaitMs) {
               // Re-check hex one final time (may have arrived during wait)
               const txFinal = this.tracker.getTransaction(txid);
               if (txFinal?.instantLockHex) {
-                this.logger.info(`⏳ Hex arrived during wait — resolving with hex`);
+                this.logger.info(`✅ Hex arrived during wait — resolving with hex`);
                 resolved = true;
                 resolve({
                   txid,
@@ -718,6 +818,10 @@ export class RealtimeFinder extends EventEmitter {
    * Call this BEFORE broadcasting a transaction to ensure InstantLocks
    * are captured even if they arrive before waitForConfirmation() is called.
    *
+   * When multi-node IS hunting is enabled (default), this also triggers
+   * parallel streams to multiple DAPI nodes to increase the chance of
+   * receiving IS hex from a node that has ZMQ rawtxlocksig enabled.
+   *
    * @param txid Transaction ID to pre-register
    */
   preRegisterTransaction(txid: string): void {
@@ -725,18 +829,70 @@ export class RealtimeFinder extends EventEmitter {
     this.tracker.addBroadcast(txid);
     this.preRegisteredTxids.add(txid);
 
-    // HUNT phase: do NOT set grace period here. Reconnection continues
-    // normally so each reconnect forces DAPI to re-scan mempool until
-    // the tx is found. Grace period starts later (WAIT phase) when the
-    // stream actually detects the pre-registered tx.
+    if (this.isActive) {
+      // Always set grace period to prevent periodic reconnects during IS delivery window
+      const gracePeriod = this.config.reconnectGracePeriod ?? 15000;
+      this.reconnectPausedUntil = Date.now() + gracePeriod;
+      this.logger.info(`⏸️ Paused reconnection for ${gracePeriod}ms (stream alive for IS proof delivery)`);
 
-    // Immediately reconnect the stream so DAPI's mempool scan picks up
-    // the newly broadcast transaction.
-    const reconnectOnPreRegister = this.config.reconnectOnPreRegister ?? true;
-    if (reconnectOnPreRegister && this.isActive) {
-      this.reconnectStream().catch((err) =>
-        this.logger.warn('Reconnect on preRegister failed:', (err as Error).message)
-      );
+      // Multi-node IS hunting: open parallel streams to multiple nodes
+      // This increases the chance of hitting a node with rawtxlocksig enabled
+      if (this.multiNodeIsHunter && this.config.dapiClient) {
+        this.logger.info(`🎯 Starting multi-node IS hunt for ${txid.substring(0, 16)}...`);
+        this.multiNodeIsHunter.huntIsHex(
+          this.config.dapiClient,
+          txid,
+          this.monitoredAddresses,
+          this.bloomFilter
+        ).then((result: IsHuntResult) => {
+          if (result.found && result.instantLockHex) {
+            // Record IS in tracker (will trigger callback if new)
+            const timestamp = Date.now();
+            const wasNew = this.tracker.recordInstantLock(txid, timestamp, result.instantLockHex);
+
+            if (wasNew && this.monitoredCallbacks.onInstantLock) {
+              const tx = this.tracker.getTransaction(txid);
+              this.monitoredCallbacks.onInstantLock({
+                txid,
+                timestamp,
+                latency: tx?.broadcastTime ? timestamp - tx.broadcastTime : 0,
+                instantLockHex: result.instantLockHex,
+              });
+            }
+
+            // Remove from pre-registered set and clear grace period
+            this.preRegisteredTxids.delete(txid);
+            if (this.preRegisteredTxids.size === 0 && this.reconnectPausedUntil > Date.now()) {
+              this.reconnectPausedUntil = 0;
+              this.logger.info('▶️  All pre-registered txids have IS proof — grace period cleared');
+            }
+          } else {
+            this.logger.info(`Multi-node IS hunt did not find hex (falling back to single stream)`);
+          }
+        }).catch((err: Error) => {
+          this.logger.warn(`Multi-node IS hunt failed: ${err.message}`);
+        });
+      }
+
+      const reconnectOnPreRegister = this.config.reconnectOnPreRegister ?? true;
+      if (reconnectOnPreRegister) {
+        // Reconnect for a fresh stream. Empirical testing confirms that DAPI
+        // streams stall after the initial historical + mempool scan — no new ZMQ
+        // events are delivered even after 30+ seconds. A fresh stream registers a
+        // new bloom filter emitter on the DAPI server that captures IS events during
+        // its scan phase (cached in unretrievedInstantLocks, flushed after
+        // MEMPOOL_DATA_SENT). Default 0ms (immediate) — the caller should invoke
+        // preRegister BEFORE broadcasting so the emitter is registered before IS fires.
+        const reconnectDelay = this.config.preRegisterReconnectDelay ?? 0;
+        this.logger.info(`🔄 Scheduling stream reconnect in ${reconnectDelay}ms for IS proof delivery`);
+        setTimeout(() => {
+          if (this.isActive) {
+            this.reconnectStream(true).catch((err) =>
+              this.logger.warn('Reconnect on preRegister failed:', (err as Error).message)
+            );
+          }
+        }, reconnectDelay);
+      }
     }
   }
 
@@ -776,5 +932,60 @@ export class RealtimeFinder extends EventEmitter {
    */
   getNetwork(): string {
     return this.config.network;
+  }
+
+  /**
+   * Get node health statistics for IS hex delivery.
+   *
+   * Returns information about which DAPI nodes have successfully delivered
+   * InstantSend hex and which have been blacklisted for failing to do so.
+   * Useful for debugging and monitoring multi-node IS hunting.
+   *
+   * @returns Node health summary and per-node statistics
+   */
+  getNodeHealth(): {
+    /** Total number of nodes tracked */
+    totalTracked: number;
+    /** Number of healthy (non-blacklisted) nodes */
+    healthy: number;
+    /** Number of blacklisted nodes */
+    blacklisted: number;
+    /** Total successful IS hex deliveries */
+    totalSuccesses: number;
+    /** Total failed IS hex deliveries */
+    totalFailures: number;
+    /** Per-node statistics */
+    nodes: Map<string, NodeStats>;
+  } {
+    const summary = this.nodeHealthTracker.getSummary();
+    return {
+      totalTracked: summary.totalTracked,
+      healthy: summary.healthy,
+      blacklisted: summary.blacklisted,
+      totalSuccesses: summary.totalSuccesses,
+      totalFailures: summary.totalFailures,
+      nodes: this.nodeHealthTracker.getAllStats(),
+    };
+  }
+
+  /**
+   * Clear the node health blacklist.
+   *
+   * Useful for testing or when you want to give previously blacklisted
+   * nodes another chance. Does not clear success/failure statistics.
+   */
+  clearNodeBlacklist(): void {
+    this.nodeHealthTracker.clearBlacklist();
+    this.logger.info('Node health blacklist cleared');
+  }
+
+  /**
+   * Reset all node health tracking data.
+   *
+   * Clears all tracked nodes, blacklist, and statistics.
+   */
+  resetNodeHealth(): void {
+    this.nodeHealthTracker.clear();
+    this.logger.info('Node health tracking reset');
   }
 }

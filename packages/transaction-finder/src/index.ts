@@ -55,6 +55,8 @@ export { TransactionStatusPoller } from './monitoring/TransactionStatusPoller.js
 export { ConfirmationTracker } from './monitoring/ConfirmationTracker.js';
 export { NodeHealthTracker } from './monitoring/NodeHealthTracker.js';
 export type { NodeStats, NodeHealthTrackerConfig } from './monitoring/NodeHealthTracker.js';
+export { MultiNodeIsHunter } from './monitoring/MultiNodeIsHunter.js';
+export type { IsHuntResult, MultiNodeIsHunterConfig } from './monitoring/MultiNodeIsHunter.js';
 
 // ==================== Core Utilities ====================
 // Export core utilities for advanced use cases

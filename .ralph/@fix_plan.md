@@ -13,28 +13,28 @@ and use the first one that delivers valid IS hex.
 
 ## Phase 1: Multi-Node IS Hex Hunting (HIGH PRIORITY)
 - [x] Implement `NodeHealthTracker` class to track which nodes deliver IS hex
-- [ ] Add DNS seed discovery integration (use DAPI's built-in seeds)
-- [ ] Implement parallel stream connections (3 nodes simultaneously)
-- [ ] Open parallel streams on `preRegisterTransaction()` call
-- [ ] First valid IS hex wins — use whichever node delivers first
+- [x] Add DNS seed discovery integration (use DAPI's built-in seeds)
+- [x] Implement parallel stream connections (3 nodes simultaneously)
+- [x] Open parallel streams on `preRegisterTransaction()` call
+- [x] First valid IS hex wins — use whichever node delivers first
 - [x] Immediate session blacklist for nodes that fail IS hex delivery
 - [x] In-memory health tracking (no persistence, resets on restart)
-- [ ] Default ON — multi-node enabled by default, can be disabled via config
-- [ ] Speed priority: 2-3s max wait across all nodes before ChainLock fallback
+- [x] Default ON — multi-node enabled by default, can be disabled via config
+- [x] Speed priority: 2-3s max wait across all nodes before ChainLock fallback
 
 ## Phase 2: Configuration & API
 - [x] Add `multiNodeIsHunting` config option (default: true)
 - [x] Add `isHuntingNodes` config option (default: 3)
 - [x] Add `isHuntingTimeoutMs` config option (default: 3000)
-- [ ] Add `getNodeHealth()` method to expose node reputation
+- [x] Add `getNodeHealth()` method to expose node reputation
 - [x] Update TypeScript types for new config options
 
 ## Phase 3: Testing & Verification
-- [x] Unit tests for NodeHealthTracker
-- [ ] Unit tests for parallel stream management
+- [x] Unit tests for NodeHealthTracker (26 tests)
+- [x] Unit tests for parallel stream management (17 tests for MultiNodeIsHunter)
 - [ ] Integration test: verify IS hex received from at least one node
 - [x] TypeScript compiles cleanly
-- [x] All existing unit tests pass (252+)
+- [x] All unit tests pass (263 tests)
 
 ## Phase 4: Documentation
 - [ ] Update CLAUDE.md with multi-node architecture
