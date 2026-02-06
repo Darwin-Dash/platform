@@ -2697,11 +2697,11 @@ __metadata:
 
 "@dashevo/dash-rpc-client@file:../dash-rpc-client::locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder":
   version: 1.0.0
-  resolution: "@dashevo/dash-rpc-client@file:../dash-rpc-client#../dash-rpc-client::hash=8de979&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"
+  resolution: "@dashevo/dash-rpc-client@file:../dash-rpc-client#../dash-rpc-client::hash=f44866&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"
   dependencies:
     axios: "npm:^1.12.2"
     dotenv: "npm:^17.2.3"
-  checksum: 10/904b699dcf26262c06dfede9cf0b7e2a7531b31df7b3519472fcab497f8ff781bb24e5e6b27794934f252de0895cb457011d2afbcaca31f58b4a4d10254eed16
+  checksum: 10/02260ca274288cb3639a902e85a64e38d20342e2e47b471ee003e8f1638b0914c16929d24a78b773de0138208cb987d4399c70b89e2f0f3a6290cf16919db75f
   languageName: node
   linkType: hard
 

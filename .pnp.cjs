@@ -4433,10 +4433,10 @@ const RAW_RUNTIME_STATE =
       }]\
     ]],\
     ["@dashevo/dash-rpc-client", [\
-      ["file:../dash-rpc-client#../dash-rpc-client::hash=8de979&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder", {\
-        "packageLocation": "./.yarn/cache/@dashevo-dash-rpc-client-file-c6bf1cb5b7-904b699dcf.zip/node_modules/@dashevo/dash-rpc-client/",\
+      ["file:../dash-rpc-client#../dash-rpc-client::hash=f44866&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder", {\
+        "packageLocation": "./.yarn/cache/@dashevo-dash-rpc-client-file-73245a0bbe-02260ca274.zip/node_modules/@dashevo/dash-rpc-client/",\
         "packageDependencies": [\
-          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=8de979&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
+          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=f44866&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
           ["axios", "npm:1.13.2"],\
           ["dotenv", "npm:17.2.3"]\
         ],\
@@ -4899,7 +4899,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/__virtual__/@dashevo-transaction-finder-virtual-22ee7dffaa/1/packages/transaction-finder/",\
         "packageDependencies": [\
           ["@dashevo/dapi-client", "workspace:packages/js-dapi-client"],\
-          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=8de979&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
+          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=f44866&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
           ["@dashevo/dashcore-lib", "npm:0.22.0"],\
           ["@dashevo/resilient-dapi-client", null],\
           ["@dashevo/transaction-finder", "virtual:da12f6bb23b671689b7f4f5cfff69cabf980ba04aff1ffd96860c787f7d5d08d32b0db765d9f16463de0d1af2c01fa6987b861cf5df2362e38e0ef415f29b51c#workspace:packages/transaction-finder"],\
@@ -4933,7 +4933,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./packages/transaction-finder/",\
         "packageDependencies": [\
           ["@dashevo/dapi-client", "npm:1.8.0"],\
-          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=8de979&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
+          ["@dashevo/dash-rpc-client", "file:../dash-rpc-client#../dash-rpc-client::hash=f44866&locator=%40dashevo%2Ftransaction-finder%40workspace%3Apackages%2Ftransaction-finder"],\
           ["@dashevo/dashcore-lib", "npm:0.22.0"],\
           ["@dashevo/transaction-finder", "workspace:packages/transaction-finder"],\
           ["@types/node", "npm:20.19.30"],\
