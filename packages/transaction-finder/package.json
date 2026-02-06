@@ -26,6 +26,7 @@
     "test:coverage": "vitest run --coverage",
     "poc:multinode": "npx tsx scripts/simplified-multinode-poc.ts",
     "poc:multinode:auto": "npx tsx scripts/simplified-multinode-poc.ts --auto-send",
+    "poc:dapi": "npx tsx scripts/dapi-multinode-poc.ts",
     "discover:healthy": "npx tsx scripts/discover-healthy-nodes.ts",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
