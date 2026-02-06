@@ -7,7 +7,8 @@
  * Features:
  * - InstantLock detection (~1-3 seconds)
  * - ChainLock confirmation (~1-3 minutes)
- * - Immediate stream reconnection on preRegisterTransaction() for IS proof
+ * - On-demand transaction detection via parallel multi-node streams
+ * - Multi-node IS hex hunting for reliable IS proof delivery
  * - Periodic stream reconnection to catch missed transactions
  * - Polling-based IS/CL fallback (TransactionStatusPoller)
  * - Transaction state tracking
@@ -24,16 +25,14 @@
  * - The IS ZMQ event is a one-time broadcast. A new emitter must be
  *   registered BEFORE IS fires AND the tx must be in the DAPI node's
  *   `transactionHashesMap` (populated during mempool scan) for IS
- *   delivery. To satisfy both: reconnect from ~50 blocks back so the
- *   scan phase runs long enough for the tx to reach mempool via P2P
- *   AND for IS to fire while the preMempoolSentInstantLockListener
- *   is still active. Reconnecting from current tip makes the scan
- *   too fast — MEMPOOL_DATA_SENT fires before IS arrives.
- * - preRegisterTransaction() reconnects immediately (0ms delay) by
- *   default. The caller should invoke preRegister BEFORE broadcasting
- *   the transaction to maximize the IS capture window.
- * - A grace period prevents periodic reconnection from interfering
- *   with the IS delivery window after preRegisterTransaction().
+ *   delivery.
+ *
+ * On-Demand Detection Flow:
+ * - Call monitorAddresses() with callbacks BEFORE transactions are sent
+ * - Parallel streams to multiple DAPI nodes maximize IS hex capture odds
+ * - When a transaction is detected, onTransaction fires with txid and data
+ * - When IS hex arrives, onInstantLock fires with instantLockHex
+ * - No preRegistration needed - all data comes via callbacks
  */
 
 import { EventEmitter } from 'events';
@@ -55,6 +54,7 @@ import {
 } from '../types/index.js';
 import { createLogger, Logger } from '../utils/logger.js';
 import dashcore from '@dashevo/dashcore-lib';
+import DAPIClient from '@dashevo/dapi-client';
 
 const { Transaction, MerkleBlock, InstantLock } = dashcore;
 
@@ -86,19 +86,14 @@ export class RealtimeFinder extends EventEmitter {
   private reconnectTimer: ReturnType<typeof setInterval> | null = null;
   private isReconnecting: boolean = false;
 
-  // Grace period for IS proof delivery:
-  // When preRegisterTransaction() is called, periodic reconnection is PAUSED
-  // so the existing gRPC stream stays alive. The stream's subscription will
-  // naturally receive the tx and IS proof bytes after broadcast.
-  // If the stream detects the pre-registered tx, the grace period is extended.
-  // DAPI only delivers IS bytes for ZMQ events received AFTER stream opens —
-  // reconnecting after IS won't help. The live stream is our only chance.
-  private reconnectPausedUntil: number = 0;
-  private preRegisteredTxids: Set<string> = new Set();
-
   // Multi-node IS hunting (for nodes without ZMQ rawtxlocksig)
   private nodeHealthTracker: NodeHealthTracker;
   private multiNodeIsHunter: MultiNodeIsHunter | null = null;
+
+  // Parallel streams for on-demand IS hex capture
+  private parallelStreams: any[] = [];
+  private parallelStreamCallbacks: RealtimeFinderCallbacks = {};
+  private parallelStreamNodes: Map<number, string> = new Map(); // Maps stream index to node address
 
   constructor(config: RealtimeFinderConfig) {
     super();
@@ -117,6 +112,12 @@ export class RealtimeFinder extends EventEmitter {
     this.nodeHealthTracker = new NodeHealthTracker({
       blacklistThreshold: config.isHuntingBlacklistThreshold ?? 1,
     });
+
+    // Seed known-good IS nodes if provided
+    if (config.knownGoodIsNodes && config.knownGoodIsNodes.length > 0) {
+      this.nodeHealthTracker.seedKnownGood(config.knownGoodIsNodes);
+      this.logger.info(`Seeded ${config.knownGoodIsNodes.length} known-good IS nodes`);
+    }
 
     // Initialize multi-node IS hunter if enabled
     const multiNodeEnabled = config.multiNodeIsHunting ?? true;
@@ -269,23 +270,191 @@ export class RealtimeFinder extends EventEmitter {
 
     // Start periodic stream reconnection to catch missed transactions.
     // Each reconnection forces DAPI to re-run history + mempool scan.
-    // Reconnection is paused after preRegisterTransaction() so the stream
-    // stays alive for IS proof byte delivery.
     const reconnectInterval = this.config.streamReconnectInterval ?? 60000;
     if (reconnectInterval > 0) {
       this.reconnectTimer = setInterval(() => {
-        if (this.isActive && Date.now() >= this.reconnectPausedUntil) {
+        if (this.isActive) {
           this.reconnectStream().catch((err) =>
             this.logger.warn('Periodic reconnect failed:', (err as Error).message)
           );
-        } else if (this.isActive && Date.now() < this.reconnectPausedUntil) {
-          this.logger.debug('Periodic reconnect skipped (grace period: stream alive for IS proof bytes)');
         }
       }, reconnectInterval);
     }
 
+    // Open additional parallel streams for on-demand IS hex capture.
+    // Multi-node IS hunting requires multiple streams to be open BEFORE transactions
+    // are broadcast, so we open parallel streams here rather than waiting for
+    // transaction detection. This ensures at least one stream is connected to a
+    // DAPI node with ZMQ rawtxlocksig enabled.
+    const multiNodeEnabled = this.config.multiNodeIsHunting ?? true;
+    const parallelStreamCount = this.config.isHuntingNodes ?? 3;
+    if (multiNodeEnabled && parallelStreamCount > 1) {
+      this.parallelStreamCallbacks = callbacks;
+      this.startParallelStreams(currentHeight, bloomFilter, addressArray, callbacks)
+        .catch((err) => {
+          this.logger.warn('Failed to start parallel streams:', (err as Error).message);
+        });
+    }
+
     // Return cleanup function
     return () => this.stop();
+  }
+
+  /**
+   * Start parallel streams for on-demand IS hex capture.
+   * These streams run continuously to catch IS hex as it arrives.
+   * Uses per-node DAPIClient instances to connect to specific known-good nodes
+   * when available, maximizing the chance of IS hex delivery.
+   * @private
+   */
+  private async startParallelStreams(
+    fromHeight: number,
+    bloomFilter: any,
+    addresses: string[],
+    callbacks: RealtimeFinderCallbacks
+  ): Promise<void> {
+    const parallelStreamCount = (this.config.isHuntingNodes ?? 3) - 1; // -1 because primary stream already running
+    if (parallelStreamCount <= 0) return;
+
+    // Get known-good nodes to prioritize for parallel streams
+    const knownGoodNodes = this.nodeHealthTracker.getHealthyNodes();
+    const hasKnownGood = knownGoodNodes.length > 0;
+
+    this.logger.info(`Starting ${parallelStreamCount} parallel streams for on-demand IS hex capture`);
+    if (hasKnownGood) {
+      this.logger.info(`  Using ${Math.min(knownGoodNodes.length, parallelStreamCount)} known-good IS nodes`);
+    }
+
+    for (let i = 0; i < parallelStreamCount; i++) {
+      try {
+        let nodeClient: any;
+        let nodeAddr: string | null = null;
+
+        // Use known-good node if available, otherwise fall back to shared client
+        if (hasKnownGood && i < knownGoodNodes.length) {
+          nodeAddr = knownGoodNodes[i];
+          // Create a dedicated DAPIClient pinned to this specific node
+          nodeClient = new DAPIClient({
+            dapiAddresses: [nodeAddr],
+            network: this.config.network,
+            timeout: 60000,
+          });
+          this.logger.debug(`Parallel stream ${i + 1}: using known-good node ${nodeAddr}`);
+        } else {
+          // Fall back to the shared DAPI client (will use random node)
+          nodeClient = this.config.dapiClient;
+          this.logger.debug(`Parallel stream ${i + 1}: using shared DAPI client`);
+        }
+
+        const core = nodeClient.core;
+        let rawStream = core.subscribeToTransactionsWithProofs(bloomFilter, {
+          fromBlockHeight: fromHeight,
+          count: 0,
+        });
+
+        if (rawStream && typeof rawStream.then === 'function') {
+          rawStream = await rawStream;
+        }
+
+        this.parallelStreams.push(rawStream);
+        const asyncStream = StreamWrapper.makeAsyncIterable(rawStream);
+
+        // Track node address for this stream (for health tracking)
+        if (nodeAddr) {
+          this.parallelStreamNodes.set(i + 1, nodeAddr);
+        }
+
+        // Process this parallel stream for IS hex only (avoid duplicate TX callbacks)
+        this.processParallelStreamForIsHex(asyncStream, addresses, callbacks, i + 1)
+          .catch((error) => {
+            if (this.isActive) {
+              this.logger.debug(`Parallel stream ${i + 1} ended: ${(error as Error).message}`);
+            }
+          });
+      } catch (error) {
+        this.logger.warn(`Failed to open parallel stream ${i + 1}: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  /**
+   * Process a parallel stream looking only for IS hex.
+   * Avoids firing duplicate transaction callbacks since the primary stream handles those.
+   * @private
+   */
+  private async processParallelStreamForIsHex(
+    stream: AsyncIterable<any>,
+    addresses: string[],
+    callbacks: RealtimeFinderCallbacks,
+    streamIndex: number
+  ): Promise<void> {
+    this.logger.debug(`Parallel stream ${streamIndex} started, listening for IS hex`);
+
+    try {
+      for await (const message of stream) {
+        if (!this.isActive) break;
+
+        const msg = message as any;
+
+        // Only process InstantLock messages from parallel streams
+        const instantLockMessages = typeof msg.getInstantSendLockMessages === 'function'
+          ? msg.getInstantSendLockMessages()
+          : msg.instantSendLockMessages;
+
+        const instantLockList = instantLockMessages?.getMessagesList
+          ? instantLockMessages.getMessagesList()
+          : (Array.isArray(instantLockMessages) ? instantLockMessages : null);
+
+        if (instantLockList && instantLockList.length > 0) {
+          for (const lockBuf of instantLockList) {
+            try {
+              const lock: any = (InstantLock as any).fromBuffer(Buffer.from(lockBuf));
+              const txid = lock.txid.toString('hex');
+              const timestamp = Date.now();
+              const instantLockHex = Buffer.from(lockBuf).toString('hex');
+
+              // Check if this tx is one we're tracking
+              const isMonitored = this.tracker.isMonitored(txid);
+              if (!isMonitored) continue;
+
+              // Check if we already have hex for this tx
+              const txBefore = this.tracker.getTransaction(txid);
+              if (txBefore?.instantLockHex) continue; // Already have hex
+
+              this.logger.info(`🎯 Parallel stream ${streamIndex} captured IS hex for ${txid.substring(0, 16)}...`);
+
+              const wasNew = this.tracker.recordInstantLock(txid, timestamp, instantLockHex);
+              const hexJustDelivered = !txBefore?.instantLockHex && instantLockHex
+                && this.tracker.getTransaction(txid)?.instantLockHex != null;
+
+              if ((wasNew || hexJustDelivered) && callbacks.onInstantLock) {
+                const txAfter = this.tracker.getTransaction(txid);
+                callbacks.onInstantLock({
+                  txid,
+                  timestamp,
+                  latency: txAfter?.broadcastTime ? timestamp - txAfter.broadcastTime : 0,
+                  instantLockHex,
+                });
+              }
+
+              // Node health tracking: record success with actual node address
+              const nodeAddr = this.parallelStreamNodes.get(streamIndex);
+              if (nodeAddr) {
+                this.nodeHealthTracker.recordSuccess(nodeAddr);
+                this.logger.debug(`Recorded IS hex success for node ${nodeAddr}`);
+              }
+            } catch (error) {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Stream ended or errored
+      if (this.isActive) {
+        this.logger.debug(`Parallel stream ${streamIndex} error: ${(error as Error).message}`);
+      }
+    }
   }
 
   /**
@@ -435,12 +604,42 @@ export class RealtimeFinder extends EventEmitter {
                     });
                   }
 
-                  // Pre-registered tx found on stream — extend grace period
-                  // to keep the stream alive for IS proof byte delivery (~1-2s after detection).
-                  if (this.preRegisteredTxids.has(txid)) {
-                    const gracePeriod = this.config.reconnectGracePeriod ?? 15000;
-                    this.reconnectPausedUntil = Date.now() + gracePeriod;
-                    this.logger.info(`⏸️ Grace period extended: tx ${txid.substring(0, 16)}... found — ${gracePeriod}ms`);
+                  // On-demand multi-node IS hunting: when a NEW transaction is detected,
+                  // automatically trigger multi-node IS hunting to maximize chances of
+                  // getting IS hex. This handles the case where the primary stream's
+                  // DAPI node doesn't have ZMQ rawtxlocksig enabled.
+                  if (isNew && this.multiNodeIsHunter && this.config.dapiClient) {
+                    this.logger.info(`🎯 Auto-triggering multi-node IS hunt for detected tx ${txid.substring(0, 16)}...`);
+                    this.multiNodeIsHunter.huntIsHex(
+                      this.config.dapiClient,
+                      txid,
+                      this.monitoredAddresses,
+                      this.bloomFilter
+                    ).then((result: IsHuntResult) => {
+                      if (result.found && result.instantLockHex) {
+                        const timestamp = Date.now();
+                        const txBeforeRecord = this.tracker.getTransaction(txid);
+                        const hadHex = txBeforeRecord?.instantLockHex != null;
+                        const wasNew = this.tracker.recordInstantLock(txid, timestamp, result.instantLockHex);
+
+                        // Fire callback if IS is new OR if hex was just delivered
+                        const hexJustDelivered = !hadHex && result.instantLockHex
+                          && this.tracker.getTransaction(txid)?.instantLockHex != null;
+
+                        if ((wasNew || hexJustDelivered) && callbacks.onInstantLock && this.tracker.isMonitored(txid)) {
+                          const txAfter = this.tracker.getTransaction(txid);
+                          callbacks.onInstantLock({
+                            txid,
+                            timestamp,
+                            latency: txAfter?.broadcastTime ? timestamp - txAfter.broadcastTime : 0,
+                            instantLockHex: result.instantLockHex,
+                          });
+                        }
+                        this.logger.info(`✅ Multi-node IS hunt delivered hex for ${txid.substring(0, 16)}...`);
+                      }
+                    }).catch((err: Error) => {
+                      this.logger.warn(`Multi-node IS hunt failed for ${txid.substring(0, 16)}...: ${err.message}`);
+                    });
                   }
                 }
               } catch (error) {
@@ -545,20 +744,6 @@ export class RealtimeFinder extends EventEmitter {
                   latency: tx?.broadcastTime ? timestamp - tx.broadcastTime : 0,
                   instantLockHex,
                 });
-              }
-
-              // If this was a pre-registered txid, remove it from the pending set.
-              // Once all pre-registered txids have IS proof, clear the grace period
-              // to resume periodic reconnection.
-              // Trigger on wasNew (first IS detection) OR hexJustDelivered (stream
-              // delivers hex after poller already detected IS).
-              if ((wasNew || hexJustDelivered) && this.preRegisteredTxids.has(txid)) {
-                this.preRegisteredTxids.delete(txid);
-                this.logger.debug(`✅ IS proof received for pre-registered txid ${txid} (${this.preRegisteredTxids.size} remaining)`);
-                if (this.preRegisteredTxids.size === 0 && this.reconnectPausedUntil > Date.now()) {
-                  this.reconnectPausedUntil = 0;
-                  this.logger.info('▶️  All pre-registered txids have IS proof — grace period cleared, periodic reconnection resumed');
-                }
               }
             } catch (error) {
               this.logger.warn('Failed to parse instant lock:', error);
@@ -665,14 +850,14 @@ export class RealtimeFinder extends EventEmitter {
             return;
           }
 
-          // No hex yet — wait for stream to deliver proof bytes
-          if (hexWaitMs > 0 && (this.preRegisteredTxids.has(txid) || instantLockDetectedAt)) {
+          // No hex yet — wait for parallel streams to deliver proof bytes
+          if (hexWaitMs > 0) {
             if (!instantLockDetectedAt) {
               instantLockDetectedAt = Date.now();
-              this.logger.info(`⏳ IS detected without hex for ${txid.substring(0, 16)}... — waiting for stream (up to ${hexWaitMs}ms)`);
+              this.logger.info(`⏳ IS detected without hex for ${txid.substring(0, 16)}... — waiting for parallel streams (up to ${hexWaitMs}ms)`);
             }
 
-            // Check if hex arrived from stream
+            // Check if hex arrived from parallel streams
             const txCheck = this.tracker.getTransaction(txid);
             if (txCheck?.instantLockHex) {
               this.logger.info(`✅ IS hex delivered for ${txid.substring(0, 16)}...`);
@@ -721,7 +906,7 @@ export class RealtimeFinder extends EventEmitter {
             }
             // else: still waiting, check again next tick
           } else {
-            // Non-pre-registered tx or hex wait disabled — resolve immediately without hex
+            // Hex wait disabled — resolve immediately without hex
             resolved = true;
             resolve({
               txid,
@@ -803,6 +988,17 @@ export class RealtimeFinder extends EventEmitter {
         try { oldStream.cancel(); } catch (_) { /* ignore cleanup errors */ }
       }
     }
+
+    // Clean up parallel streams
+    for (const parallelStream of this.parallelStreams) {
+      if (typeof parallelStream.on === 'function') {
+        parallelStream.on('error', () => {});
+      }
+      if (typeof parallelStream.cancel === 'function') {
+        try { parallelStream.cancel(); } catch (_) { /* ignore cleanup errors */ }
+      }
+    }
+    this.parallelStreams = [];
   }
 
   /**
@@ -810,90 +1006,6 @@ export class RealtimeFinder extends EventEmitter {
    */
   getTransaction(txid: string) {
     return this.tracker.getTransaction(txid);
-  }
-
-  /**
-   * Pre-register a txid for InstantLock monitoring
-   *
-   * Call this BEFORE broadcasting a transaction to ensure InstantLocks
-   * are captured even if they arrive before waitForConfirmation() is called.
-   *
-   * When multi-node IS hunting is enabled (default), this also triggers
-   * parallel streams to multiple DAPI nodes to increase the chance of
-   * receiving IS hex from a node that has ZMQ rawtxlocksig enabled.
-   *
-   * @param txid Transaction ID to pre-register
-   */
-  preRegisterTransaction(txid: string): void {
-    this.logger.debug(`📝 Pre-registering txid: ${txid}`);
-    this.tracker.addBroadcast(txid);
-    this.preRegisteredTxids.add(txid);
-
-    if (this.isActive) {
-      // Always set grace period to prevent periodic reconnects during IS delivery window
-      const gracePeriod = this.config.reconnectGracePeriod ?? 15000;
-      this.reconnectPausedUntil = Date.now() + gracePeriod;
-      this.logger.info(`⏸️ Paused reconnection for ${gracePeriod}ms (stream alive for IS proof delivery)`);
-
-      // Multi-node IS hunting: open parallel streams to multiple nodes
-      // This increases the chance of hitting a node with rawtxlocksig enabled
-      if (this.multiNodeIsHunter && this.config.dapiClient) {
-        this.logger.info(`🎯 Starting multi-node IS hunt for ${txid.substring(0, 16)}...`);
-        this.multiNodeIsHunter.huntIsHex(
-          this.config.dapiClient,
-          txid,
-          this.monitoredAddresses,
-          this.bloomFilter
-        ).then((result: IsHuntResult) => {
-          if (result.found && result.instantLockHex) {
-            // Record IS in tracker (will trigger callback if new)
-            const timestamp = Date.now();
-            const wasNew = this.tracker.recordInstantLock(txid, timestamp, result.instantLockHex);
-
-            if (wasNew && this.monitoredCallbacks.onInstantLock) {
-              const tx = this.tracker.getTransaction(txid);
-              this.monitoredCallbacks.onInstantLock({
-                txid,
-                timestamp,
-                latency: tx?.broadcastTime ? timestamp - tx.broadcastTime : 0,
-                instantLockHex: result.instantLockHex,
-              });
-            }
-
-            // Remove from pre-registered set and clear grace period
-            this.preRegisteredTxids.delete(txid);
-            if (this.preRegisteredTxids.size === 0 && this.reconnectPausedUntil > Date.now()) {
-              this.reconnectPausedUntil = 0;
-              this.logger.info('▶️  All pre-registered txids have IS proof — grace period cleared');
-            }
-          } else {
-            this.logger.info(`Multi-node IS hunt did not find hex (falling back to single stream)`);
-          }
-        }).catch((err: Error) => {
-          this.logger.warn(`Multi-node IS hunt failed: ${err.message}`);
-        });
-      }
-
-      const reconnectOnPreRegister = this.config.reconnectOnPreRegister ?? true;
-      if (reconnectOnPreRegister) {
-        // Reconnect for a fresh stream. Empirical testing confirms that DAPI
-        // streams stall after the initial historical + mempool scan — no new ZMQ
-        // events are delivered even after 30+ seconds. A fresh stream registers a
-        // new bloom filter emitter on the DAPI server that captures IS events during
-        // its scan phase (cached in unretrievedInstantLocks, flushed after
-        // MEMPOOL_DATA_SENT). Default 0ms (immediate) — the caller should invoke
-        // preRegister BEFORE broadcasting so the emitter is registered before IS fires.
-        const reconnectDelay = this.config.preRegisterReconnectDelay ?? 0;
-        this.logger.info(`🔄 Scheduling stream reconnect in ${reconnectDelay}ms for IS proof delivery`);
-        setTimeout(() => {
-          if (this.isActive) {
-            this.reconnectStream(true).catch((err) =>
-              this.logger.warn('Reconnect on preRegister failed:', (err as Error).message)
-            );
-          }
-        }, reconnectDelay);
-      }
-    }
   }
 
   /**
@@ -987,5 +1099,26 @@ export class RealtimeFinder extends EventEmitter {
   resetNodeHealth(): void {
     this.nodeHealthTracker.clear();
     this.logger.info('Node health tracking reset');
+  }
+
+  /**
+   * Export node health data for persistence.
+   *
+   * Returns a JSON-serializable object containing:
+   * - knownGood: Array of node addresses with high IS hex success rates
+   * - learned: Per-node statistics (successes, failures, blacklist status)
+   *
+   * This data can be saved to a file and loaded via the `knownGoodIsNodes`
+   * config option on future runs for faster IS hex discovery.
+   *
+   * @returns Node health data suitable for JSON serialization
+   */
+  exportNodeHealth(): {
+    version: number;
+    generated: string;
+    knownGood: string[];
+    learned: Record<string, { successes: number; failures: number; blacklisted?: boolean }>;
+  } {
+    return this.nodeHealthTracker.exportHealth();
   }
 }

@@ -188,39 +188,6 @@ console.log('Confirmed via:', result.method);
 console.log('Total latency:', result.totalLatencyMs, 'ms');
 ```
 
-#### preRegisterTransaction()
-
-Pre-register a txid for InstantLock monitoring. Call this BEFORE broadcasting
-a transaction to ensure InstantLock proof bytes are captured.
-
-Reconnects the stream immediately (0ms delay) for a fresh bloom filter emitter
-on the DAPI server. DAPI streams stall after their initial scan — a fresh stream
-captures IS events during its scan phase. Also pauses periodic reconnection
-(grace period, default 15s). Call preRegister BEFORE broadcasting the transaction
-to maximize the IS capture window.
-
-The grace period ends early if all pre-registered txids receive IS proof bytes.
-
-```typescript
-preRegisterTransaction(txid: string): void
-```
-
-**Parameters:**
-- `txid` - Transaction ID to pre-register
-
-**Example:**
-```typescript
-// 1. Pre-register BEFORE broadcasting
-finder.preRegisterTransaction(assetLockTxid);
-
-// 2. Broadcast the transaction via DAPI
-await dapiClient.core.broadcastTransaction(txBuffer);
-
-// 3. Wait for confirmation — instantLockHex will be available
-const result = await finder.waitForConfirmation(assetLockTxid);
-console.log('Proof bytes:', result.instantLockHex);
-```
-
 #### getTransaction()
 
 Get current state of a tracked transaction.
@@ -376,19 +343,14 @@ interface RealtimeFinderConfig {
   transactionPollInterval?: number;     // Poll interval in ms (minimum 1000). Default: 2000
   streamReconnectInterval?: number;     // Periodic stream reconnection interval in ms. Forces DAPI to
                                         // re-run historical + mempool scan to catch missed txs.
-                                        // Default: 10000 (10s). Set to 0 to disable.
-  reconnectOnPreRegister?: boolean;     // Reconnect stream when preRegisterTransaction() is called.
-                                        // Default: true (immediate reconnect for fresh IS emitter)
-  reconnectGracePeriod?: number;        // Grace period (ms) after pre-registered tx is found on stream
-                                        // (WAIT phase). Periodic reconnection is paused so IS proof
-                                        // bytes can arrive. Default: 15000 (15s).
-  instantLockHexWaitMs?: number;        // How long to wait (ms) for stream to deliver IS proof bytes
-                                        // after the poller detects IS (boolean only). Only applies to
-                                        // pre-registered txids. Default: 5000 (5s). Set to 0 to disable.
+                                        // Default: 60000 (60s). Set to 0 to disable.
+  instantLockHexWaitMs?: number;        // How long to wait (ms) for parallel streams to deliver IS proof
+                                        // bytes after the poller detects IS (boolean only).
+                                        // Default: 8000 (8s). Set to 0 to disable.
 
   // Multi-Node IS Hex Hunting Configuration
   multiNodeIsHunting?: boolean;         // Enable parallel IS hex hunting from multiple DAPI nodes.
-                                        // Connects to multiple nodes simultaneously and races for
+                                        // Opens parallel streams on monitorAddresses() and races for
                                         // IS hex delivery. First valid hex wins. Default: true
   isHuntingNodes?: number;              // Number of DAPI nodes to connect to for IS hunting.
                                         // More nodes = higher chance of success. Default: 3

@@ -110,43 +110,9 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
    *  Default: 60000 (60 seconds). Set to 0 to disable. */
   streamReconnectInterval?: number;
 
-  /** Whether to reconnect the stream when preRegisterTransaction() is called.
-   *  When true (default), reconnects immediately for a fresh stream. DAPI
-   *  streams stall after their initial historical + mempool scan — no new
-   *  ZMQ events are delivered. A fresh stream registers a new bloom filter
-   *  emitter on the DAPI server that captures IS events during its scan phase.
-   *  The caller should invoke preRegisterTransaction() BEFORE broadcasting
-   *  the transaction to maximize the IS capture window.
-   *  When false, only sets the grace period — useful if you know the stream
-   *  was recently opened and is still in its initial scan phase.
-   *  Default: true */
-  reconnectOnPreRegister?: boolean;
-
-  /** Delay (ms) before reconnecting the stream after preRegisterTransaction().
-   *  Default is 0 (immediate). The caller should call preRegisterTransaction()
-   *  BEFORE broadcasting so the fresh stream's bloom filter emitter is registered
-   *  before the IS ZMQ event fires (~1-2s after broadcast). DAPI caches IS events
-   *  arriving during the scan phase (in `unretrievedInstantLocks`) and flushes them
-   *  after MEMPOOL_DATA_SENT — so IS events are not lost even though the stream is
-   *  still processing historical data when IS fires.
-   *  Only applies when reconnectOnPreRegister is true.
-   *  Default: 0 (immediate). */
-  preRegisterReconnectDelay?: number;
-
-  /** Grace period (ms) for IS proof delivery. When preRegisterTransaction()
-   *  is called, periodic reconnection is paused for this duration so the
-   *  existing gRPC stream stays alive to receive IS proof bytes. The grace
-   *  period is extended each time the stream detects a pre-registered tx.
-   *  Periodic reconnection resumes after all pre-registered txids receive IS
-   *  proof or the grace period expires.
-   *  Default: 15000 (15 seconds). */
-  reconnectGracePeriod?: number;
-
-  /** How long to wait (ms) for stream to deliver InstantLock proof bytes
-   *  after the poller detects IS (boolean only). Only applies to pre-registered
-   *  txids where the SDK needs raw hex for InstantAssetLockProof creation.
-   *  No reconnect is triggered — DAPI cannot deliver IS bytes for already-locked
-   *  transactions on a new stream (ZMQ events are not replayed).
+  /** How long to wait (ms) for parallel streams to deliver InstantLock proof bytes
+   *  after the poller detects IS (boolean only). Parallel streams run continuously
+   *  and may capture IS hex from a DAPI node with ZMQ rawtxlocksig enabled.
    *  Default: 8000 (8 seconds). Set to 0 to disable hex wait. */
   instantLockHexWaitMs?: number;
 
@@ -184,6 +150,12 @@ export interface RealtimeFinderConfig extends BaseFinderConfig {
    *  of 1 is appropriate (immediate blacklist on first failure).
    *  Default: 1 */
   isHuntingBlacklistThreshold?: number;
+
+  /** Known-good IS-capable node addresses to seed the NodeHealthTracker.
+   *  These nodes have previously delivered IS hex successfully and will be
+   *  prioritized for parallel stream connections. Format: "host:port" or "host".
+   *  Default: [] (no seeding, fresh discovery) */
+  knownGoodIsNodes?: string[];
 }
 
 /**

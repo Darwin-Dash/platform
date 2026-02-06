@@ -204,22 +204,6 @@ export class TransactionFinder extends EventEmitter {
     throw new Error(`clearAllConfirmed() is only available in REALTIME mode, current mode: ${this.mode}`);
   }
 
-  /**
-   * Pre-register a transaction ID before broadcast (Realtime mode only)
-   *
-   * Call this BEFORE broadcasting a transaction to ensure InstantLocks
-   * are captured even if they arrive before waitForConfirmation() is called.
-   *
-   * @param txid Transaction ID to pre-register
-   * @throws Error if not in Realtime mode
-   */
-  preRegisterTransaction(txid: string): void {
-    if (this.finder instanceof RealtimeFinder) {
-      return this.finder.preRegisterTransaction(txid);
-    }
-    throw new Error(`preRegisterTransaction() is only available in REALTIME mode, current mode: ${this.mode}`);
-  }
-
   // ==================== Common Methods ====================
 
   /**
@@ -243,5 +227,30 @@ export class TransactionFinder extends EventEmitter {
       this.finder.stop();
     }
     // Historic finder is stateless, no cleanup needed
+  }
+
+  /**
+   * Export node health data for persistence (Realtime mode only)
+   *
+   * Returns a JSON-serializable object containing:
+   * - knownGood: Array of node addresses with high IS hex success rates
+   * - learned: Per-node statistics (successes, failures, blacklist status)
+   *
+   * This data can be saved to a file and loaded via the `knownGoodIsNodes`
+   * config option on future runs for faster IS hex discovery.
+   *
+   * @returns Node health data suitable for JSON serialization
+   * @throws Error if not in Realtime mode
+   */
+  exportNodeHealth(): {
+    version: number;
+    generated: string;
+    knownGood: string[];
+    learned: Record<string, { successes: number; failures: number; blacklisted?: boolean }>;
+  } {
+    if (this.finder instanceof RealtimeFinder) {
+      return this.finder.exportNodeHealth();
+    }
+    throw new Error(`exportNodeHealth() is only available in REALTIME mode, current mode: ${this.mode}`);
   }
 }

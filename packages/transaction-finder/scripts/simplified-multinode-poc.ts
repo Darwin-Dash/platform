@@ -103,6 +103,8 @@ interface StreamHandle {
   asyncIterable: AsyncIterable<any>;
 }
 
+type ReconnectionStrategy = 'stale-detection' | 'aggressive-single' | 'staggered-multi';
+
 interface POCConfig {
   runs: number;
   address: string;
@@ -113,6 +115,112 @@ interface POCConfig {
   isHexTimeoutMs: number;
   clTimeoutMs: number;
   clPollIntervalMs: number;
+  reconnectionStrategy: ReconnectionStrategy;
+  aggressiveReconnectMs: number;  // For aggressive-single strategy
+  staggeredReconnectMs: number;   // For staggered-multi strategy
+  staggeredSlots: number;         // Number of staggered slots
+  isOnly: boolean;                // Skip ChainLock fallback, IS hex only
+  useHealthyNodes: boolean;       // Use healthy node list instead of random nodes
+}
+
+// ============================================================================
+// Healthy Node List Types
+// ============================================================================
+
+interface IsNodeHealth {
+  version: number;
+  generated: string;
+  knownGood: string[];
+  learned: Record<string, { successes: number; failures: number }>;
+}
+
+const HEALTH_FILE_PATH = path.join(__dirname, '../../js-evo-sdk/demo/is-node-health.json');
+
+// Module-level state for health tracking across runs
+let currentHealthData: IsNodeHealth | null = null;
+let currentNodeAddresses: string[] = [];
+
+async function loadHealthyNodes(): Promise<IsNodeHealth> {
+  try {
+    const data = await fs.promises.readFile(HEALTH_FILE_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.warn(`  ⚠️ Could not load healthy nodes: ${(error as Error).message}`);
+    return {
+      version: 1,
+      generated: new Date().toISOString(),
+      knownGood: [],
+      learned: {},
+    };
+  }
+}
+
+async function saveHealthyNodes(healthData: IsNodeHealth): Promise<void> {
+  healthData.generated = new Date().toISOString();
+  await fs.promises.writeFile(HEALTH_FILE_PATH, JSON.stringify(healthData, null, 2));
+  console.log(`  💾 Saved updated health data to ${HEALTH_FILE_PATH}`);
+}
+
+function updateNodeHealth(
+  healthData: IsNodeHealth,
+  nodeAddress: string,
+  success: boolean
+): void {
+  // Normalize address (remove https:// prefix if present)
+  const addr = nodeAddress.replace('https://', '');
+  if (!healthData.learned[addr]) {
+    healthData.learned[addr] = { successes: 0, failures: 0 };
+  }
+  if (success) {
+    healthData.learned[addr].successes++;
+  } else {
+    healthData.learned[addr].failures++;
+  }
+}
+
+function promoteOrDemoteNodes(healthData: IsNodeHealth): void {
+  // Threshold: nodes with >50% success rate and at least 3 attempts stay in knownGood
+  const MIN_ATTEMPTS = 3;
+  const SUCCESS_THRESHOLD = 0.5;
+
+  // Check current knownGood nodes
+  const stillGood: string[] = [];
+  for (const addr of healthData.knownGood) {
+    const stats = healthData.learned[addr];
+    if (!stats) {
+      // No data yet, keep in list
+      stillGood.push(addr);
+      continue;
+    }
+    const totalAttempts = stats.successes + stats.failures;
+    if (totalAttempts < MIN_ATTEMPTS) {
+      // Not enough data, keep in list
+      stillGood.push(addr);
+      continue;
+    }
+    const successRate = stats.successes / totalAttempts;
+    if (successRate >= SUCCESS_THRESHOLD) {
+      stillGood.push(addr);
+    } else {
+      console.log(`  ⬇️ Demoting ${addr} (success rate: ${(successRate * 100).toFixed(0)}%)`);
+    }
+  }
+
+  // Check learned nodes for promotion
+  for (const [addr, stats] of Object.entries(healthData.learned)) {
+    if (healthData.knownGood.includes(addr)) continue; // Already in knownGood
+
+    const totalAttempts = stats.successes + stats.failures;
+    if (totalAttempts < MIN_ATTEMPTS) continue;
+
+    const successRate = stats.successes / totalAttempts;
+    if (successRate >= SUCCESS_THRESHOLD && !stillGood.includes(addr)) {
+      console.log(`  ⬆️ Promoting ${addr} (success rate: ${(successRate * 100).toFixed(0)}%)`);
+      stillGood.push(addr);
+    }
+  }
+
+  healthData.knownGood = stillGood;
 }
 
 // ============================================================================
@@ -131,6 +239,12 @@ function parseArgs(): POCConfig {
     isHexTimeoutMs: 10000,
     clTimeoutMs: 180000,    // 3 minutes for CL
     clPollIntervalMs: 2000,
+    reconnectionStrategy: 'stale-detection',  // Default: current behavior
+    aggressiveReconnectMs: 5000,              // Reconnect every 5s for aggressive-single
+    staggeredReconnectMs: 15000,              // Each slot reconnects every 15s
+    staggeredSlots: 3,                        // 3 staggered slots
+    isOnly: false,                            // Skip ChainLock fallback
+    useHealthyNodes: false,                   // Use healthy node list
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -159,6 +273,24 @@ function parseArgs(): POCConfig {
       case '--cl-timeout':
         config.clTimeoutMs = parseInt(args[++i], 10);
         break;
+      case '--strategy':
+        config.reconnectionStrategy = args[++i] as ReconnectionStrategy;
+        break;
+      case '--aggressive-interval':
+        config.aggressiveReconnectMs = parseInt(args[++i], 10);
+        break;
+      case '--staggered-interval':
+        config.staggeredReconnectMs = parseInt(args[++i], 10);
+        break;
+      case '--staggered-slots':
+        config.staggeredSlots = parseInt(args[++i], 10);
+        break;
+      case '--is-only':
+        config.isOnly = true;
+        break;
+      case '--use-healthy-nodes':
+        config.useHealthyNodes = true;
+        break;
       case '--help':
         console.log(`
 Simplified Multi-Node Transaction Detection POC
@@ -167,15 +299,25 @@ Usage:
   npx ts-node scripts/simplified-multinode-poc.ts [options]
 
 Options:
-  --runs N          Number of test runs (default: 1)
-  --address ADDR    Testnet address to monitor (required)
-  --nodes N         Number of parallel streams (default: 3)
-  --delay MS        Delay between runs in ms (default: 15000)
-  --auto-send       Automatically send tDASH via RPC
-  --network NET     Network: testnet or mainnet (default: testnet)
-  --is-timeout MS   IS hex timeout in ms (default: 10000)
-  --cl-timeout MS   ChainLock timeout in ms (default: 180000)
-  --help            Show this help message
+  --runs N              Number of test runs (default: 1)
+  --address ADDR        Testnet address to monitor (required)
+  --nodes N             Number of parallel streams (default: 3)
+  --delay MS            Delay between runs in ms (default: 15000)
+  --auto-send           Automatically send tDASH via RPC
+  --network NET         Network: testnet or mainnet (default: testnet)
+  --is-timeout MS       IS hex timeout in ms (default: 10000)
+  --cl-timeout MS       ChainLock timeout in ms (default: 180000)
+  --strategy STRAT      Reconnection strategy (default: stale-detection)
+                        Options:
+                          stale-detection   - Current behavior, reconnect on 5s stale
+                          aggressive-single - Single stream, reconnect every 5s
+                          staggered-multi   - 3 staggered streams, offset by 5s
+  --aggressive-interval MS  Reconnect interval for aggressive-single (default: 5000)
+  --staggered-interval MS   Reconnect cycle for staggered-multi (default: 15000)
+  --staggered-slots N       Number of staggered slots (default: 3)
+  --is-only             Skip ChainLock fallback, test IS hex capture only (faster)
+  --use-healthy-nodes   Use known healthy nodes from is-node-health.json
+  --help                Show this help message
 
 Environment variables (from ../js-evo-sdk/.env):
   TESTNET_RPC_ENDPOINT   RPC endpoint (default: http://localhost:19998)
@@ -713,27 +855,56 @@ async function runSingleTest(
     const currentHeight = await core.getBestBlockHeight();
     console.log(`  Current height: ${currentHeight}`);
 
-    // 3. Discover node addresses
-    console.log(`  Discovering ${config.nodes} nodes...`);
-    const nodeAddresses = await getNodeAddresses(mainClient, config.nodes);
+    // 3. Discover node addresses (healthy nodes or random)
+    let nodeAddresses: string[];
+
+    if (config.useHealthyNodes) {
+      // Load health data if not already loaded
+      if (!currentHealthData) {
+        console.log(`  Loading healthy nodes from is-node-health.json...`);
+        currentHealthData = await loadHealthyNodes();
+      }
+
+      if (currentHealthData.knownGood.length === 0) {
+        console.log(`  ⚠️ No healthy nodes in list, falling back to random discovery`);
+        console.log(`  Discovering ${config.nodes} nodes...`);
+        nodeAddresses = await getNodeAddresses(mainClient, config.nodes);
+      } else {
+        // Use healthy nodes, format as https URLs
+        nodeAddresses = currentHealthData.knownGood
+          .slice(0, config.nodes)
+          .map(addr => `https://${addr}`);
+        console.log(`  Using ${nodeAddresses.length} healthy nodes from list:`);
+        for (const addr of nodeAddresses) {
+          console.log(`    - ${addr}`);
+        }
+      }
+    } else {
+      console.log(`  Discovering ${config.nodes} random nodes...`);
+      nodeAddresses = await getNodeAddresses(mainClient, config.nodes);
+    }
 
     if (nodeAddresses.length === 0) {
       throw new Error('No DAPI nodes discovered');
     }
 
+    // Store current node addresses for health tracking
+    currentNodeAddresses = nodeAddresses;
     console.log(`  Found ${nodeAddresses.length} nodes`);
 
     // 4. Build bloom filter for the address
     const bloomFilter = BloomFilterBuilder.build([config.address], config.network);
 
     // 5. Open parallel streams to ALL nodes (same processing for all)
-    // Start from 10 blocks back to extend the scan phase.
+    // Start from N blocks back to extend the scan phase.
     // Streams are most active during their scan phase - they deliver IS bytes
     // for transactions that arrive while scanning. Starting slightly back
     // ensures streams are still in scan phase when we broadcast.
-    // Too far back (200 blocks) = scan takes too long, streams stall before broadcast
-    // Too close (0 blocks) = scan finishes instantly, streams stall immediately
-    const fromHeight = Math.max(1, currentHeight - 10);
+    //
+    // For aggressive strategies, we start from -50 blocks for longer scan phase (~2-3s)
+    // For stale-detection (default), we use -10 blocks
+    const scanBlocksBack = (config.reconnectionStrategy === 'stale-detection') ? 10 : 50;
+    const fromHeight = Math.max(1, currentHeight - scanBlocksBack);
     console.log(`  Opening ${nodeAddresses.length} parallel streams from height ${fromHeight}...`);
     // Use shared client for more reliable stream subscription
     // Per-node clients seem to have issues with immediate stream closure
@@ -886,87 +1057,243 @@ async function runSingleTest(
       return result;
     }
 
-    // 9. Wait for IS hex (with reconnection if streams stall)
-    console.log('  Waiting for IS hex...');
+    // 9. Wait for IS hex using the configured reconnection strategy
+    console.log(`  Waiting for IS hex (strategy: ${config.reconnectionStrategy})...`);
     const isHexStartTime = Date.now();
-    const STALE_STREAM_THRESHOLD_MS = 5000;
-    let reconnectAttempted = false;
 
-    while (Date.now() - isHexStartTime < config.isHexTimeoutMs) {
-      // Check if IS hex arrived
-      if (result.isHexCaptured) {
-        result.method = 'instantlock';
-        closeStreams(streamHandles);
-        result.totalLatencyMs = Date.now() - startTime;
-        return result;
+    // Helper to create new stream processors
+    const createProcessorsForHandles = (handles: StreamHandle[]) => {
+      for (const handle of handles) {
+        const processor = processStream(handle, tracker, addressSet, config.network, {
+          onNewTx: (txid, nodeAddress) => {
+            if (!acceptCallbacks) return;
+            if (!result.txDetected) {
+              console.log(`  📥 TX detected by ${nodeAddress.substring(0, 20)}...: ${txid.substring(0, 16)}...`);
+              result.txDetected = true;
+              result.txid = txid;
+              result.txDetectedBy = nodeAddress;
+              result.txDetectionLatencyMs = Date.now() - broadcastTime;
+              txResolve(txid);
+            }
+          },
+          onNewIsHex: (txid, hex, nodeAddress) => {
+            if (!acceptCallbacks) return;
+            console.log(`  ⚡ IS hex captured by ${nodeAddress.substring(0, 20)}...: ${hex.substring(0, 32)}...`);
+            result.isHexCaptured = true;
+            result.isHexCapturedBy = nodeAddress;
+            result.isHexLatencyMs = Date.now() - broadcastTime;
+            isHexResolve(hex);
+          },
+          onBlockInclusion: (txid, height, nodeAddress) => {
+            if (!acceptCallbacks) return;
+            console.log(`  📦 Block inclusion by ${nodeAddress.substring(0, 20)}...`);
+          },
+        });
+        streamProcessors.push(processor);
+      }
+    };
+
+    // =========================================================================
+    // STRATEGY: stale-detection (original behavior)
+    // =========================================================================
+    if (config.reconnectionStrategy === 'stale-detection') {
+      const STALE_STREAM_THRESHOLD_MS = 5000;
+      let reconnectAttempted = false;
+
+      while (Date.now() - isHexStartTime < config.isHexTimeoutMs) {
+        if (result.isHexCaptured) {
+          result.method = 'instantlock';
+          closeStreams(streamHandles);
+          result.totalLatencyMs = Date.now() - startTime;
+          return result;
+        }
+
+        // Check for stale streams (no activity for 5s) - reconnect once
+        const lastActivity = getLastActivityTime();
+        const timeSinceActivity = Date.now() - lastActivity;
+
+        if (!reconnectAttempted && timeSinceActivity > STALE_STREAM_THRESHOLD_MS && lastActivity > 0) {
+          console.log(`  ⚠️ Streams stale (${Math.round(timeSinceActivity / 1000)}s), reconnecting...`);
+          reconnectAttempted = true;
+
+          closeStreams(streamHandles);
+          streamActivity.clear();
+
+          const freshHeight = await (mainClient as any).core.getBestBlockHeight();
+          const newFromHeight = Math.max(1, freshHeight - 5);
+          const newHandles = await openParallelStreams(
+            nodeAddresses, bloomFilter, newFromHeight, config.network, mainClient
+          );
+
+          if (newHandles.length > 0) {
+            console.log(`  ✓ Reconnected ${newHandles.length} streams from height ${newFromHeight}`);
+            createProcessorsForHandles(newHandles);
+            streamHandles.length = 0;
+            streamHandles.push(...newHandles);
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    // =========================================================================
+    // STRATEGY: aggressive-single
+    // Single stream that reconnects every N seconds to stay in scan phase
+    // =========================================================================
+    else if (config.reconnectionStrategy === 'aggressive-single') {
+      let lastReconnect = Date.now();
+      let reconnectCount = 0;
+
+      while (Date.now() - isHexStartTime < config.isHexTimeoutMs) {
+        if (result.isHexCaptured) {
+          result.method = 'instantlock';
+          closeStreams(streamHandles);
+          result.totalLatencyMs = Date.now() - startTime;
+          return result;
+        }
+
+        // Aggressive reconnect every N milliseconds
+        if (Date.now() - lastReconnect > config.aggressiveReconnectMs) {
+          reconnectCount++;
+          console.log(`  🔄 Aggressive reconnect #${reconnectCount}...`);
+
+          closeStreams(streamHandles);
+          streamActivity.clear();
+
+          // Start from currentHeight - 50 for longer scan phase (~2-3s scan time)
+          const freshHeight = await (mainClient as any).core.getBestBlockHeight();
+          const newFromHeight = Math.max(1, freshHeight - 50);
+          const newHandles = await openParallelStreams(
+            nodeAddresses.slice(0, 1), // Single stream for this strategy
+            bloomFilter,
+            newFromHeight,
+            config.network,
+            mainClient
+          );
+
+          if (newHandles.length > 0) {
+            createProcessorsForHandles(newHandles);
+            streamHandles.length = 0;
+            streamHandles.push(...newHandles);
+          }
+
+          lastReconnect = Date.now();
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 250)); // Faster poll
+      }
+      console.log(`  📊 Aggressive strategy: ${reconnectCount} reconnects in ${config.isHexTimeoutMs}ms`);
+    }
+
+    // =========================================================================
+    // STRATEGY: staggered-multi
+    // N streams with staggered reconnection times (offset by interval/N)
+    // Always have at least one stream in active scan phase
+    // =========================================================================
+    else if (config.reconnectionStrategy === 'staggered-multi') {
+      const numSlots = config.staggeredSlots;
+      const staggerOffset = Math.floor(config.staggeredReconnectMs / numSlots);
+
+      // Track each slot's last reconnect time
+      interface SlotState {
+        slotId: number;
+        lastReconnect: number;
+        handle: StreamHandle | null;
+        reconnectCount: number;
       }
 
-      // Check for stale streams (no activity for 5s) - reconnect once
-      const lastActivity = getLastActivityTime();
-      const timeSinceActivity = Date.now() - lastActivity;
+      const slots: SlotState[] = [];
+      for (let i = 0; i < numSlots; i++) {
+        slots.push({
+          slotId: i,
+          lastReconnect: Date.now() - (i * staggerOffset), // Stagger initial times
+          handle: streamHandles[i] || null,
+          reconnectCount: 0,
+        });
+      }
 
-      if (!reconnectAttempted && timeSinceActivity > STALE_STREAM_THRESHOLD_MS && lastActivity > 0) {
-        console.log(`  ⚠️ Streams stale (${Math.round(timeSinceActivity / 1000)}s), reconnecting...`);
-        reconnectAttempted = true;
+      console.log(`  📊 Staggered slots: ${numSlots}, offset: ${staggerOffset}ms, cycle: ${config.staggeredReconnectMs}ms`);
 
-        // Close old streams
-        closeStreams(streamHandles);
-        streamActivity.clear();
-
-        // Open fresh streams
-        const freshHeight = await (mainClient as any).core.getBestBlockHeight();
-        const newFromHeight = Math.max(1, freshHeight - 5);
-        const newHandles = await openParallelStreams(
-          nodeAddresses,
-          bloomFilter,
-          newFromHeight,
-          config.network,
-          mainClient
-        );
-
-        if (newHandles.length > 0) {
-          console.log(`  ✓ Reconnected ${newHandles.length} streams from height ${newFromHeight}`);
-          // Start new processors (reuse same callbacks)
-          for (const handle of newHandles) {
-            const processor = processStream(handle, tracker, addressSet, config.network, {
-              onNewTx: (txid, nodeAddress) => {
-                if (!acceptCallbacks) return;
-                if (!result.txDetected) {
-                  console.log(`  📥 TX detected by ${nodeAddress.substring(0, 20)}...: ${txid.substring(0, 16)}...`);
-                  result.txDetected = true;
-                  result.txid = txid;
-                  result.txDetectedBy = nodeAddress;
-                  result.txDetectionLatencyMs = Date.now() - broadcastTime;
-                  txResolve(txid);
-                }
-              },
-              onNewIsHex: (txid, hex, nodeAddress) => {
-                if (!acceptCallbacks) return;
-                console.log(`  ⚡ IS hex captured by ${nodeAddress.substring(0, 20)}...: ${hex.substring(0, 32)}...`);
-                result.isHexCaptured = true;
-                result.isHexCapturedBy = nodeAddress;
-                result.isHexLatencyMs = Date.now() - broadcastTime;
-                isHexResolve(hex);
-              },
-              onBlockInclusion: (txid, height, nodeAddress) => {
-                if (!acceptCallbacks) return;
-                console.log(`  📦 Block inclusion by ${nodeAddress.substring(0, 20)}...`);
-              },
-            });
-            streamProcessors.push(processor);
+      while (Date.now() - isHexStartTime < config.isHexTimeoutMs) {
+        if (result.isHexCaptured) {
+          result.method = 'instantlock';
+          // Close all slot handles
+          for (const slot of slots) {
+            if (slot.handle) {
+              closeStreams([slot.handle]);
+            }
           }
-          // Update handles reference for cleanup
-          streamHandles.length = 0;
-          streamHandles.push(...newHandles);
+          result.totalLatencyMs = Date.now() - startTime;
+          return result;
+        }
+
+        // Check each slot for reconnection
+        for (const slot of slots) {
+          const timeSinceReconnect = Date.now() - slot.lastReconnect;
+
+          if (timeSinceReconnect > config.staggeredReconnectMs) {
+            slot.reconnectCount++;
+            console.log(`  🔄 Slot ${slot.slotId} reconnect #${slot.reconnectCount}...`);
+
+            // Close old handle for this slot
+            if (slot.handle) {
+              closeStreams([slot.handle]);
+            }
+
+            // Open fresh stream for this slot (start from -50 blocks for longer scan)
+            const freshHeight = await (mainClient as any).core.getBestBlockHeight();
+            const newFromHeight = Math.max(1, freshHeight - 50);
+
+            // Pick a node for this slot (round-robin through available nodes)
+            const nodeIndex = slot.slotId % nodeAddresses.length;
+            const nodeAddr = nodeAddresses[nodeIndex];
+
+            try {
+              const newHandles = await openParallelStreams(
+                [nodeAddr],
+                bloomFilter,
+                newFromHeight,
+                config.network,
+                mainClient
+              );
+
+              if (newHandles.length > 0) {
+                slot.handle = newHandles[0];
+                createProcessorsForHandles(newHandles);
+              }
+            } catch (e) {
+              console.log(`  ⚠️ Slot ${slot.slotId} reconnect failed: ${(e as Error).message}`);
+            }
+
+            slot.lastReconnect = Date.now();
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 250)); // Faster poll
+      }
+
+      // Log final stats
+      const totalReconnects = slots.reduce((sum, s) => sum + s.reconnectCount, 0);
+      console.log(`  📊 Staggered strategy: ${totalReconnects} total reconnects across ${numSlots} slots`);
+
+      // Cleanup all slot handles
+      for (const slot of slots) {
+        if (slot.handle) {
+          closeStreams([slot.handle]);
         }
       }
+    }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    // 10. ChainLock fallback (skip if --is-only mode)
+    if (config.isOnly) {
+      console.log(`  ⏳ No IS hex after ${config.isHexTimeoutMs}ms (IS-only mode, skipping CL)`);
+      closeStreams(streamHandles);
+      result.totalLatencyMs = Date.now() - startTime;
+      return result;
     }
 
     console.log(`  ⏳ No IS hex after ${config.isHexTimeoutMs}ms, falling back to CL...`);
-
-    // 10. ChainLock fallback via multi-node getTransaction()
     console.log('  Polling for ChainLock confirmation...');
     console.log('  Legend: M=mempool, B=in block, .=IS locked (waiting CL)');
     const clStartTime = Date.now();
@@ -1132,11 +1459,26 @@ function printRunResult(result: RunResult): void {
   }
 }
 
-function printReliabilityReport(stats: ReliabilityStats): void {
+function printReliabilityReport(stats: ReliabilityStats, config: POCConfig): void {
   console.log('');
   console.log('═'.repeat(60));
   console.log('           SIMPLIFIED MULTI-NODE POC RESULTS');
   console.log('═'.repeat(60));
+  console.log('');
+  console.log('TEST CONFIGURATION');
+  console.log('─'.repeat(60));
+  console.log(`  Strategy:           ${config.reconnectionStrategy}`);
+  if (config.reconnectionStrategy === 'aggressive-single') {
+    console.log(`  Reconnect interval: ${config.aggressiveReconnectMs}ms`);
+  } else if (config.reconnectionStrategy === 'staggered-multi') {
+    console.log(`  Slots:              ${config.staggeredSlots}`);
+    console.log(`  Cycle:              ${config.staggeredReconnectMs}ms`);
+  }
+  console.log(`  IS timeout:         ${config.isHexTimeoutMs}ms`);
+  console.log(`  Healthy nodes:      ${config.useHealthyNodes ? 'YES' : 'no (random)'}`);
+  if (config.isOnly) {
+    console.log(`  Mode:               IS-only (no CL fallback)`);
+  }
   console.log('');
   console.log('SUMMARY');
   console.log('─'.repeat(60));
@@ -1201,6 +1543,11 @@ async function main(): Promise<void> {
   console.log('  • Any stream that delivers IS hex wins');
   console.log('  • CL fallback: multi-node getTransaction(), ANY "true" wins');
   console.log('');
+  console.log('Reconnection Strategies:');
+  console.log('  • stale-detection  - Reconnect once when streams stall (5s threshold)');
+  console.log('  • aggressive-single - Single stream, reconnect every 5s to stay in scan phase');
+  console.log('  • staggered-multi   - 3 staggered streams, always one in scan phase');
+  console.log('');
 
   const pocConfig = parseArgs();
 
@@ -1213,6 +1560,16 @@ async function main(): Promise<void> {
   console.log(`  Network:        ${pocConfig.network}`);
   console.log(`  IS timeout:     ${pocConfig.isHexTimeoutMs}ms`);
   console.log(`  CL timeout:     ${pocConfig.clTimeoutMs}ms`);
+  console.log(`  Strategy:       ${pocConfig.reconnectionStrategy}`);
+  if (pocConfig.reconnectionStrategy === 'aggressive-single') {
+    console.log(`    - Reconnect every: ${pocConfig.aggressiveReconnectMs}ms`);
+  } else if (pocConfig.reconnectionStrategy === 'staggered-multi') {
+    console.log(`    - Slots: ${pocConfig.staggeredSlots}`);
+    console.log(`    - Cycle: ${pocConfig.staggeredReconnectMs}ms`);
+    console.log(`    - Offset: ${Math.floor(pocConfig.staggeredReconnectMs / pocConfig.staggeredSlots)}ms`);
+  }
+  console.log(`  IS-only mode:   ${pocConfig.isOnly ? 'YES (no CL fallback)' : 'no'}`);
+  console.log(`  Healthy nodes:  ${pocConfig.useHealthyNodes ? 'YES (using is-node-health.json)' : 'no (random discovery)'}`);
   console.log('');
 
   // Initialize RPC client if auto-send enabled
@@ -1258,15 +1615,41 @@ async function main(): Promise<void> {
     results.push(result);
     printRunResult(result);
 
+    // Update node health tracking if using healthy nodes mode
+    if (pocConfig.useHealthyNodes && currentHealthData) {
+      const isHexSuccess = result.isHexCaptured;
+
+      // Track the node that delivered IS hex (success) or all nodes that didn't (failure)
+      if (isHexSuccess && result.isHexCapturedBy) {
+        // Mark the winning node as successful
+        updateNodeHealth(currentHealthData, result.isHexCapturedBy, true);
+        console.log(`  📊 Health: ${result.isHexCapturedBy.replace('https://', '').substring(0, 20)}... ✓ IS hex delivered`);
+      } else if (!isHexSuccess && currentNodeAddresses.length > 0) {
+        // Mark all connected nodes as failures (none delivered IS hex)
+        for (const nodeAddr of currentNodeAddresses) {
+          updateNodeHealth(currentHealthData, nodeAddr, false);
+        }
+        console.log(`  📊 Health: ${currentNodeAddresses.length} nodes marked as failure (no IS hex)`);
+      }
+    }
+
     if (i < pocConfig.runs) {
       console.log(`\nWaiting ${pocConfig.delay}ms before next run...`);
       await new Promise((resolve) => setTimeout(resolve, pocConfig.delay));
     }
   }
 
+  // Save updated health data and promote/demote nodes
+  if (pocConfig.useHealthyNodes && currentHealthData) {
+    console.log('');
+    console.log('Updating node health data...');
+    promoteOrDemoteNodes(currentHealthData);
+    await saveHealthyNodes(currentHealthData);
+  }
+
   // Print final statistics
   const stats = calculateStats(results);
-  printReliabilityReport(stats);
+  printReliabilityReport(stats, pocConfig);
 
   // Exit with appropriate code
   const successRate = (stats.successes / stats.totalRuns) * 100;

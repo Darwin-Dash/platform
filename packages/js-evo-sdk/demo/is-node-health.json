@@ -1,7 +1,6 @@
 {
-  "generated": "2026-02-05T00:00:00.000Z",
   "version": 1,
-  "description": "Known-good IS hex capable DAPI nodes. These nodes have ZMQ rawtxlocksig enabled and successfully deliver InstantSend proof bytes via the gRPC stream.",
+  "generated": "2026-02-05T19:47:06.016Z",
   "knownGood": [
     "35.82.197.197:1443",
     "44.227.137.77:1443",
@@ -14,5 +13,46 @@
     "52.43.13.92:1443",
     "52.43.86.231:1443"
   ],
-  "learned": {}
+  "learned": {
+    "35.82.197.197:1443": {
+      "successes": 5,
+      "failures": 4
+    },
+    "44.227.137.77:1443": {
+      "successes": 7,
+      "failures": 4
+    },
+    "44.239.39.153:1443": {
+      "successes": 6,
+      "failures": 4
+    },
+    "44.240.98.102:1443": {
+      "successes": 5,
+      "failures": 2
+    },
+    "52.13.132.146:1443": {
+      "successes": 6,
+      "failures": 2
+    },
+    "52.24.124.162:1443": {
+      "successes": 5,
+      "failures": 0
+    },
+    "52.33.28.47:1443": {
+      "successes": 5,
+      "failures": 0
+    },
+    "52.34.144.50:1443": {
+      "successes": 5,
+      "failures": 0
+    },
+    "52.43.13.92:1443": {
+      "successes": 5,
+      "failures": 0
+    },
+    "52.43.86.231:1443": {
+      "successes": 5,
+      "failures": 0
+    }
+  }
 }

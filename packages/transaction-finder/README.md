@@ -28,9 +28,9 @@ const utxo = await finder.findLatestSpendableUTXO();
 // Use utxo for asset lock creation
 ```
 
-### 2. Realtime Confirmation Monitoring
+### 2. Realtime On-Demand Monitoring
 
-Monitor asset lock transactions for InstantSend and ChainLock confirmation. The SDK needs raw InstantLock proof bytes (fast path, ~2s) or ChainLock height (slow fallback, ~30-60s) to create identity proofs on Platform.
+Monitor addresses for incoming transactions with automatic InstantSend proof capture. Uses parallel multi-node streams to maximize the chance of receiving IS hex from a DAPI node with `rawtxlocksig` enabled.
 
 ```typescript
 const finder = new TransactionFinder({
@@ -38,21 +38,25 @@ const finder = new TransactionFinder({
   network: 'testnet',
   addresses: ['yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy'],
   dapiClient: myDapiClient,
+  multiNodeIsHunting: true,  // Enable parallel streams (default)
 });
 
+// Start monitoring BEFORE transactions are sent
 const stop = await finder.monitorAddresses(['yX3CJJ42...'], {
-  onTransaction: (tx) => console.log('TX detected:', tx.txid),
+  onTransaction: (tx) => {
+    console.log('TX detected:', tx.txid);  // txid comes from callback
+  },
   onInstantLock: (lock) => {
     console.log('IS proof:', lock.instantLockHex);  // Raw bytes for InstantAssetLockProof
   },
   onChainLock: (cl) => console.log('CL at height:', cl.chainLockedHeight),
 });
 
-// Pre-register a txid BEFORE broadcasting to ensure IS proof bytes arrive
-finder.preRegisterTransaction(assetLockTxid);
+// Transaction is sent to the address (we don't know txid beforehand)
+// Callbacks fire with all the data we need
 
-// Wait for confirmation
-const result = await finder.waitForConfirmation(assetLockTxid);
+// Wait for confirmation using txid from callback
+const result = await finder.waitForConfirmation(detectedTxid);
 // result.instantLockHex — raw proof bytes if IS path succeeded
 // result.method — 'instantlock' | 'chainlock' | 'timeout'
 ```
@@ -89,10 +93,10 @@ const stop = await finder.monitorAddresses(['yPaymentAddr...'], {
 │  │                                  │  │                          │ │
 │  │  Reconnection:                   │  └──────────────────────────┘ │
 │  │  - Periodic (every 60s)          │                                │
-│  │  - Paused on preRegister() so    │  ┌──────────────────────────┐ │
-│  │    stream stays alive for IS      │  │  ChainLockHeightMonitor  │ │
-│  │    proof byte delivery            │  │  polls getEpochsInfo()   │ │
-│  │                                   │  │  for CL height           │ │
+│  │                                   │  ┌──────────────────────────┐ │
+│  │  Parallel Streams:                │  │  ChainLockHeightMonitor  │ │
+│  │  - Multi-node IS hex hunting      │  │  polls getEpochsInfo()   │ │
+│  │  - Captures IS from any node      │  │  for CL height           │ │
 │  └──────────────────────────────────┘  │                          │ │
 │                                         │  High-water mark:        │ │
 │  ┌──────────────────────────────────┐  │  monotonic, never drops  │ │
@@ -130,17 +134,13 @@ The SDK creates asset lock proofs via two paths:
 
 **Fallback behavior:** If `instantLockHex` is available, the SDK creates an InstantAssetLockProof (fast). If not — for any reason (IS failed, stream missed it, poller detected IS boolean only) — there is no way to create an InstantAssetLockProof, and ChainAssetLockProof is the only option. The IS boolean from the poller is informational only; it cannot produce the raw proof bytes needed.
 
-### Grace Period
+### Hex Wait
 
-After `preRegisterTransaction()`:
+When the poller detects IS (boolean only) before parallel streams deliver the hex:
 
-Periodic reconnection is **paused** (default 15s grace period). The existing gRPC stream stays alive and naturally receives the transaction and IS proof bytes after broadcast. The grace period is extended each time the stream detects a pre-registered tx.
+`waitForConfirmation()` waits up to `instantLockHexWaitMs` (default 8s) for parallel streams to deliver the IS proof bytes. No reconnect is triggered — DAPI cannot replay historical IS events.
 
-If the poller detects IS without hex bytes, the hex wait in `waitForConfirmation()` gives the live stream time to deliver the proof bytes (no reconnect — DAPI cannot replay historical IS).
-
-Periodic reconnection resumes after:
-- All pre-registered txids have received IS proof, OR
-- The grace period expires
+The wait gives parallel streams time to capture IS hex from a node that has `rawtxlocksig` enabled.
 
 ## SDK Integration
 
@@ -151,18 +151,22 @@ Periodic reconnection resumes after:
 findSpendableUTXO() → scans blockchain → returns UTXO for asset lock
 ```
 
-**Realtime (confirmation monitoring):**
+**Realtime (on-demand confirmation monitoring):**
 ```
-preRegisterTransaction(txid) → reconnection PAUSED (stream stays alive)
-  → stream receives tx via gRPC subscription
-  → IS proof bytes arrive via stream (~1-2s)
+monitorAddresses(addresses, callbacks)
+  → Opens primary stream + parallel streams to multiple DAPI nodes
+  → Waits for transaction to be sent to the address
+
+  Transaction detected:
+  → onTransaction fires with txid and transaction data
+  → Multi-node IS hunting automatically triggered
+  → Parallel streams race to capture IS hex
   → onInstantLock fires with instantLockHex
   → SDK creates InstantAssetLockProof
 
-  If poller detects IS before stream delivers hex:
+  If poller detects IS before parallel streams deliver hex:
   → waitForConfirmation() waits up to instantLockHexWaitMs (8s)
-  → hex wait: live stream given time to deliver proof bytes
-  → If stream delivers hex during wait → resolves with hex
+  → If parallel streams deliver hex during wait → resolves with hex
   → If hex wait expires → resolves without hex → SDK falls back
 
   If IS proof bytes NOT available:
@@ -210,10 +214,11 @@ waitForConfirmation(txid) → returns { method, instantLockHex, ... }
 | `enableTransactionPolling` | `boolean` | `true` | Enable IS/CL polling via `getTransaction()` |
 | `transactionPollInterval` | `number` | `2000` | TX poll interval (ms, min 1000) |
 | `streamReconnectInterval` | `number` | `60000` | Periodic stream reconnect interval (ms). Set to 0 to disable. |
-| `reconnectOnPreRegister` | `boolean` | `true` | When true (default), reconnects immediately (0ms delay) for a fresh stream. DAPI streams stall after initial scan — a fresh stream registers a new bloom filter emitter that captures IS events during its scan phase. Call preRegister BEFORE broadcast. When false, only sets grace period. Either way, periodic reconnection is paused for `reconnectGracePeriod` ms. |
-| `preRegisterReconnectDelay` | `number` | `0` | Delay (ms) before reconnecting the stream after `preRegisterTransaction()`. Default 0 (immediate) — caller should call preRegister BEFORE broadcast so emitter is registered before IS fires. |
-| `reconnectGracePeriod` | `number` | `15000` | Grace period (ms) for IS proof delivery. Reconnection is paused when `preRegisterTransaction()` is called, extended when stream detects the tx. |
-| `instantLockHexWaitMs` | `number` | `8000` | How long `waitForConfirmation()` waits for stream to deliver IS proof bytes after poller detects IS (boolean only). No reconnect is triggered — the live stream is given time to deliver. Only applies to pre-registered txids. Set to 0 to disable. |
+| `instantLockHexWaitMs` | `number` | `8000` | How long `waitForConfirmation()` waits for parallel streams to deliver IS proof bytes after poller detects IS (boolean only). Set to 0 to disable. |
+| `multiNodeIsHunting` | `boolean` | `true` | Enable parallel multi-node streams for IS hex capture. |
+| `isHuntingNodes` | `number` | `3` | Number of DAPI nodes to connect to for IS hex hunting. |
+| `isHuntingTimeoutMs` | `number` | `3000` | Timeout (ms) for IS hex hunting before ChainLock fallback. |
+| `isHuntingBlacklistThreshold` | `number` | `1` | Blacklist nodes after this many consecutive failures. |
 
 ## Running Tests
 

@@ -1076,227 +1076,7 @@ describe('RealtimeFinder', () => {
   });
 
   //
-  // Scenario 8: Grace Period (preRegister pauses reconnection)
-  //
-  describe('Grace Period', () => {
-    it('preRegisterTransaction PAUSES reconnection (keeps stream alive)', async () => {
-      const configWithGrace: RealtimeFinderConfig = {
-        ...config,
-        streamReconnectInterval: 50, // Fast reconnect for testing
-        reconnectGracePeriod: 5000,
-        reconnectOnPreRegister: false, // Explicitly disable reconnect for this test
-      };
-
-      const finder = new RealtimeFinder(configWithGrace);
-
-      mockDAPIClient.setTransactionStreamMessages([]);
-
-      const cleanup = await finder.monitorAddresses(config.addresses, {});
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Record call count before preRegister
-      const callsBefore = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // Pre-register a txid — should PAUSE reconnection
-      finder.preRegisterTransaction('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-
-      // Verify that the transaction is tracked
-      const tx = finder.getTransaction('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-      expect(tx).toBeDefined();
-
-      // Wait for several reconnect intervals — reconnection should be paused
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const callsAfter = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // No new reconnections should have occurred during the grace period
-      expect(callsAfter).toBe(callsBefore);
-
-      cleanup();
-    });
-
-    it('grace period is EXTENDED when pre-registered tx is found on stream', async () => {
-      const configWithGrace: RealtimeFinderConfig = {
-        ...config,
-        streamReconnectInterval: 0, // Disable periodic reconnect — test grace extension only
-        reconnectGracePeriod: 5000,
-      };
-
-      const finder = new RealtimeFinder(configWithGrace);
-
-      const tx = createMockTransaction({
-        outputs: [{ satoshis: 100000, address: config.addresses[0] }],
-      });
-
-      // Stream delivers the transaction
-      const streamBuilder = new MockStreamBuilder();
-      streamBuilder.addTransactions([tx.toBuffer()]);
-      mockDAPIClient.setTransactionStreamMessages(streamBuilder.build());
-
-      const cleanup = await finder.monitorAddresses(config.addresses, {});
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Pre-register the txid (starts grace period)
-      finder.preRegisterTransaction(tx.hash);
-
-      // Trigger a reconnect so the stream processes the tx
-      await (finder as any).reconnectStream();
-
-      // Wait for stream processing
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // The pre-registered transaction should have been found by the tracker
-      const trackedTx = finder.getTransaction(tx.hash);
-      expect(trackedTx).toBeDefined();
-
-      cleanup();
-    });
-
-    it('grace period CLEARS when IS proof arrives for pre-registered tx', async () => {
-      const configWithGrace: RealtimeFinderConfig = {
-        ...config,
-        streamReconnectInterval: 0, // Disable periodic reconnect for this test
-        reconnectGracePeriod: 15000,
-      };
-
-      const finder = new RealtimeFinder(configWithGrace);
-      const onInstantLock = vi.fn();
-
-      const tx = createMockTransaction({
-        outputs: [{ satoshis: 100000, address: config.addresses[0] }],
-      });
-
-      const instantLock = createMockInstantLock(tx.hash);
-
-      // Stream delivers tx AND its IS proof
-      const streamBuilder = new MockStreamBuilder();
-      streamBuilder
-        .addTransactions([tx.toBuffer()])
-        .addInstantLock(instantLock.toBuffer());
-      mockDAPIClient.setTransactionStreamMessages(streamBuilder.build());
-
-      const cleanup = await finder.monitorAddresses(config.addresses, {
-        onInstantLock,
-      });
-
-      // Pre-register the tx
-      finder.preRegisterTransaction(tx.hash);
-
-      // Wait for stream to process everything
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      // IS proof should have been received
-      expect(onInstantLock).toHaveBeenCalledTimes(1);
-      expect(onInstantLock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          txid: tx.hash,
-          instantLockHex: expect.any(String),
-        })
-      );
-
-      // The pre-registered txid should have been removed from the set
-      // and the grace period should have been cleared
-      // (verified indirectly: no more pre-registered txids pending)
-
-      cleanup();
-    });
-
-    it('reconnectOnPreRegister: true triggers reconnect AND sets grace period', async () => {
-      const configDefault: RealtimeFinderConfig = {
-        ...config,
-        streamReconnectInterval: 50, // Fast reconnect for testing
-        reconnectOnPreRegister: true, // Explicit opt-in: reconnect on preRegister
-        preRegisterReconnectDelay: 0, // Immediate reconnect for testing
-        reconnectGracePeriod: 5000,
-      };
-
-      const finder = new RealtimeFinder(configDefault);
-
-      mockDAPIClient.setTransactionStreamMessages([]);
-
-      const cleanup = await finder.monitorAddresses(config.addresses, {});
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const callsBefore = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // Pre-register a txid — should trigger reconnect AND set grace period
-      finder.preRegisterTransaction('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
-
-      // Wait for reconnect to complete
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const callsAfter = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // Reconnect should have been triggered
-      expect(callsAfter).toBeGreaterThan(callsBefore);
-
-      // Grace period should also be set (no further periodic reconnects)
-      const reconnectCallsAfterGrace = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // Wait for several reconnect intervals — reconnection should be paused by grace period
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const reconnectCallsFinal = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-      expect(reconnectCallsFinal).toBe(reconnectCallsAfterGrace);
-
-      cleanup();
-    });
-
-    it('hex wait does NOT trigger reconnect (DAPI cannot replay historical IS)', async () => {
-      const hexWaitMs = 3000;
-      const finder = new RealtimeFinder({
-        ...config,
-        streamReconnectInterval: 0,
-        reconnectOnPreRegister: false, // Disable so preRegister doesn't add reconnect calls
-        enableTransactionPolling: false,
-        instantLockHexWaitMs: hexWaitMs,
-      });
-
-      mockDAPIClient.setTransactionStreamMessages([]);
-
-      const cleanup = await finder.monitorAddresses(config.addresses, {});
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      const txid = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-
-      // Pre-register the txid
-      finder.preRegisterTransaction(txid);
-
-      // Simulate poller detecting IS without hex
-      (finder as any).tracker.recordInstantLock(txid, Date.now());
-
-      const callsBefore = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // Start waiting — should NOT trigger a reconnect (DAPI can't replay historical IS)
-      const resultPromise = finder.waitForConfirmation(txid, {
-        requireInstantLock: true,
-        timeout: 10000,
-      });
-
-      // Wait a bit to confirm no reconnect fires
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const callsAfter = mockDAPIClient.getCallCount('subscribeToTransactionsWithProofs');
-
-      // No reconnect should have been triggered — DAPI cannot deliver IS bytes
-      // for already-locked transactions on a new stream
-      expect(callsAfter).toBe(callsBefore);
-
-      // Wait for the hex wait to expire so the test completes
-      const result = await resultPromise;
-      expect(result.method).toBe('instantlock');
-      expect(result.instantLockHex).toBeNull();
-
-      cleanup();
-    }, 15000);
-  });
-
-  //
-  // Scenario 9: InstantLock Hex Race Condition Fix
+  // Scenario 8: InstantLock Hex Race Condition Fix
   //
   describe('InstantLock Hex Race Condition', () => {
     it('onInstantLock fires with hex even when poller already detected IS', async () => {
@@ -1305,7 +1085,6 @@ describe('RealtimeFinder', () => {
       const configNoReconnect: RealtimeFinderConfig = {
         ...config,
         streamReconnectInterval: 0,
-        reconnectOnPreRegister: false,
         enableTransactionPolling: false, // We'll simulate poller manually
       };
 
@@ -1407,12 +1186,11 @@ describe('RealtimeFinder', () => {
       cleanup();
     });
 
-    it('waitForConfirmation waits for hex on pre-registered txids', async () => {
+    it('waitForConfirmation waits for hex when hexWaitMs > 0', async () => {
       const hexWaitMs = 2000;
       const finder = new RealtimeFinder({
         ...config,
         streamReconnectInterval: 0,
-        reconnectOnPreRegister: false,
         enableTransactionPolling: false,
         instantLockHexWaitMs: hexWaitMs,
       });
@@ -1425,17 +1203,15 @@ describe('RealtimeFinder', () => {
 
       const txid = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 
-      // Pre-register the txid
-      finder.preRegisterTransaction(txid);
-
       // Simulate poller detecting IS without hex
+      (finder as any).tracker.addBroadcast(txid);
       (finder as any).tracker.recordInstantLock(txid, Date.now());
 
       const trackedTx = finder.getTransaction(txid);
       expect(trackedTx!.status).toBe('instantlocked');
       expect(trackedTx!.instantLockHex).toBeNull();
 
-      // Start waiting — should NOT resolve immediately due to hex wait
+      // Start waiting — should wait for hex
       const startTime = Date.now();
       const result = await finder.waitForConfirmation(txid, {
         requireInstantLock: true,
@@ -1452,12 +1228,12 @@ describe('RealtimeFinder', () => {
       cleanup();
     }, 10000);
 
-    it('waitForConfirmation resolves without waiting for non-pre-registered txids', async () => {
+    it('waitForConfirmation resolves immediately when hex wait is disabled', async () => {
       const finder = new RealtimeFinder({
         ...config,
         streamReconnectInterval: 0,
         enableTransactionPolling: false,
-        instantLockHexWaitMs: 5000,
+        instantLockHexWaitMs: 0, // Disabled
       });
 
       mockDAPIClient.setTransactionStreamMessages([]);
@@ -1468,11 +1244,11 @@ describe('RealtimeFinder', () => {
 
       const txid = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
 
-      // Do NOT pre-register — just add broadcast and IS
+      // Add broadcast and IS
       (finder as any).tracker.addBroadcast(txid);
       (finder as any).tracker.recordInstantLock(txid, Date.now());
 
-      // Should resolve immediately (no hex wait for non-pre-registered)
+      // Should resolve immediately (hex wait disabled)
       const startTime = Date.now();
       const result = await finder.waitForConfirmation(txid, {
         requireInstantLock: true,
@@ -1481,7 +1257,7 @@ describe('RealtimeFinder', () => {
 
       const elapsed = Date.now() - startTime;
 
-      // Should resolve within the 1s check interval (not wait 5s for hex)
+      // Should resolve within the 1s check interval
       expect(elapsed).toBeLessThan(2000);
       expect(result.method).toBe('instantlock');
       expect(result.instantLockHex).toBeNull();

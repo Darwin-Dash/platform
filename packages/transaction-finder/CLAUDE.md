@@ -102,6 +102,24 @@ export TESTNET_WALLET=test_wallet
 export TESTNET_ADDRESS=yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy
 ```
 
+### Environment File Location
+
+**The RPC credentials are stored in the js-evo-sdk package's `.env` file:**
+
+```
+../js-evo-sdk/.env
+```
+
+The test file automatically loads this via dotenv:
+```typescript
+import { config } from 'dotenv';
+config({ path: '../js-evo-sdk/.env' });
+```
+
+The shell script (`scripts/test-reliability.sh`) also sources this file.
+
+**No manual `export` commands needed** - just run the test directly.
+
 ## Environment Configuration
 
 ### What's Required
@@ -209,32 +227,25 @@ TransactionFinder serves as the critical bridge that connects:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     TRANSACTION FLOW                              │
+│                     ON-DEMAND TRANSACTION FLOW                    │
 ├──────────────────────────────────────────────────────────────────┤
-│  1. Core RPC sends DASH to derived address                        │
+│  1. Start monitoring BEFORE transactions are sent                 │
+│     → Parallel streams opened to multiple DAPI nodes             │
 │              ↓                                                    │
-│  2. TransactionFinder (HISTORIC) detects via DAPI                 │
-│     - findUTXOs() / findLatestSpendableUTXO()                    │
+│  2. Someone sends DASH to monitored address                       │
+│     (we don't know the txid beforehand)                          │
 │              ↓                                                    │
-│  3. SDK creates asset lock tx using UTXO                          │
+│  3. TransactionFinder (REALTIME) detects via parallel streams:    │
+│     a. onTransaction fires with txid and transaction data         │
+│     b. Multi-node IS hunting finds node with rawtxlocksig enabled │
+│     c. onInstantLock fires with instantLockHex                    │
 │              ↓                                                    │
-│  4. SDK calls preRegisterTransaction(assetLockTxid)               │
-│     → Reconnection PAUSED (stream stays alive for IS delivery)    │
+│  4. waitForConfirmation() returns { instantLockHex, ... }         │
 │              ↓                                                    │
-│  5. SDK broadcasts asset lock via DAPI                            │
-│              ↓                                                    │
-│  6. TransactionFinder (REALTIME) confirms:                        │
-│     a. Stream stays alive, receives tx via gRPC subscription      │
-│     b. Grace period extended when tx found on stream              │
-│     c. IS proof bytes arrive via stream (~1-2s)                   │
-│     d. onInstantLock fires with instantLockHex                    │
-│              ↓                                                    │
-│  7. waitForConfirmation() returns { instantLockHex, ... }         │
-│              ↓                                                    │
-│  8. SDK creates InstantAssetLockProof with raw bytes              │
+│  5. SDK creates InstantAssetLockProof with raw bytes              │
 │     (or falls back to ChainAssetLockProof if no hex available)    │
 │              ↓                                                    │
-│  9. SDK creates identity on Platform                              │
+│  6. SDK creates identity on Platform                              │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -254,34 +265,41 @@ const utxos = await finder.findUTXOs();
 // Use utxos[0] for asset lock creation
 ```
 
-#### 2. Asset Lock Confirmation (Realtime)
+#### 2. On-Demand Transaction Monitoring (Realtime)
 ```typescript
 const finder = new TransactionFinder({
   mode: FinderMode.REALTIME,
   network: 'testnet',
   addresses: [derivedAddress],
   dapiClient: dapiClient,
+  multiNodeIsHunting: true,  // Parallel streams for IS hex capture
+  isHuntingNodes: 3,         // Number of parallel streams
 });
 
+// Start monitoring BEFORE transactions are sent
 await finder.monitorAddresses([derivedAddress], {
+  onTransaction: (tx) => {
+    // Transaction detected - txid comes from callback
+    console.log('Detected:', tx.txid);
+  },
   onInstantLock: (lock) => {
-    // lock.instantLockHex — raw bytes for InstantAssetLockProof (from stream)
-    // lock.instantLockHex is undefined when detected by poller (boolean only)
+    // lock.instantLockHex — raw bytes for InstantAssetLockProof
+    // Captured from parallel streams to multiple DAPI nodes
   },
   onChainLock: (cl) => {
     // cl.chainLockedHeight — height for ChainAssetLockProof (fallback)
   }
 });
 
-// Pre-register BEFORE broadcasting to enable grace period
-finder.preRegisterTransaction(assetLockTxid);
+// Transaction is sent to the address by user/wallet (we don't know txid)
+// Callbacks fire with all the data we need
 
-// Wait for confirmation
-const confirmation = await finder.waitForConfirmation(assetLockTxid, {
+// Wait for confirmation using txid from callback
+const confirmation = await finder.waitForConfirmation(detectedTxid, {
   timeout: 60000,
 });
 
-// confirmation.instantLockHex — present if IS proof arrived via stream
+// confirmation.instantLockHex — present if IS proof arrived via parallel streams
 // confirmation.method — 'instantlock' | 'chainlock' | 'timeout'
 ```
 
@@ -334,6 +352,7 @@ Our code ──gRPC──→ DAPI ──(internal ZMQ)──→ Dash Core.
 - **All SDK operations (asset lock, identity) broadcast via DAPI**
 - The `instantLockHex` from confirmation is required for InstantAssetLockProof creation
 - **Duplicate prevention:** `onTransaction` fires exactly once per unique txid (reconnections skip known txids)
+- **On-demand detection:** All transaction data comes from callbacks - no need to know txid beforehand
 
 ## Stream Reconnection Architecture (CRITICAL KNOWLEDGE)
 
@@ -344,33 +363,16 @@ reconnections. DAPI internally uses ZMQ events from its local Dash Core node to 
 transactions — if a ZMQ event is dropped, the transaction is silently missed. (Note: our code
 communicates with DAPI via gRPC only; ZMQ is DAPI's internal implementation detail.)
 
-To catch missed transactions, the stream reconnects periodically (every 60s by default). However,
-periodic reconnection **conflicts with IS proof delivery**: the SDK needs raw InstantLock proof
-bytes that arrive ~1-2s after the stream detects a transaction. If a reconnect kills the stream
-before those bytes arrive, the SDK falls back to the slow ChainLock path (~30-60s instead of ~2s).
+To catch missed transactions, the stream reconnects periodically (every 60s by default).
 
-### The Fix: Immediate Reconnect on preRegister
+### The Solution: Parallel Multi-Node Streams
 
-When `preRegisterTransaction()` is called:
-1. **Immediate reconnect** (default, `reconnectOnPreRegister: true`): Fresh stream with new emitter
-2. **Grace period**: Periodic reconnection paused for `reconnectGracePeriod` (default 15s)
+When `monitorAddresses()` is called with multi-node IS hunting enabled (default):
+1. **Primary stream**: Handles all callbacks (onTransaction, onInstantLock, etc.)
+2. **Parallel streams**: Additional streams to other DAPI nodes for IS hex capture
 
-DAPI streams stall after the initial historical + mempool scan — no new ZMQ events are delivered
-(empirically confirmed: 30+ seconds of silence). A fresh stream registers a new bloom filter
-emitter on the DAPI server BEFORE historical blocks are sent. IS events arriving via ZMQ during
-the scan phase are cached in the server's `unretrievedInstantLocks` map and flushed after
-MEMPOOL_DATA_SENT. The 0ms delay (default) starts the reconnect before broadcast, maximizing
-the window for IS event capture.
-
-After `preRegisterTransaction()`:
-1. Stream reconnects immediately from current tip (fresh emitter registered on DAPI server)
-2. Periodic reconnection **paused** for `reconnectGracePeriod` (default 15s)
-3. Caller broadcasts transaction → IS fires ~1-2s later → captured by fresh emitter
-4. Grace period extended when pre-registered tx found on stream
-5. IS proof bytes arrive → `onInstantLock` fires with `instantLockHex`
-6. Grace period ends early when all pre-registered txids have IS proof
-7. If IS detected without hex → hex wait: stream given time to deliver proof bytes
-8. Periodic reconnection resumes after grace period
+This approach maximizes the chance of connecting to a DAPI node that has `rawtxlocksig` ZMQ
+enabled, which is required for IS hex delivery.
 
 ### Duplicate Prevention
 
@@ -380,11 +382,11 @@ txid, the callback is skipped. This ensures `onTransaction` fires exactly once p
 
 ### Key Files
 
-- `src/finders/RealtimeFinder.ts` — Grace period logic, duplicate prevention, reconnection
-- `src/types/finder-types.ts` — `reconnectGracePeriod`, `instantLockHexWaitMs` config fields
+- `src/finders/RealtimeFinder.ts` — Parallel streams, duplicate prevention, reconnection
+- `src/types/finder-types.ts` — `instantLockHexWaitMs` config field
 - `src/monitoring/TransactionTracker.ts` — Transaction state tracking and deduplication
 
-## Multi-Node IS Hex Hunting (NEW - 2026-02)
+## Multi-Node IS Hex Hunting
 
 This section documents the multi-node InstantSend hex hunting system that increases the odds of receiving IS proof bytes from DAPI nodes.
 
@@ -403,23 +405,25 @@ When `preRegisterTransaction()` is called, the system:
 ### How It Works
 
 ```
-preRegisterTransaction(txid)
+monitorAddresses(['yAddr...'], callbacks)
     │
-    ├─► Open 3 parallel streams to different DAPI nodes (via address provider)
+    ├─► Open primary stream + parallel streams to DAPI nodes
     │   Each stream: subscribeToTransactionsWithProofs(bloomFilter, fromHeight)
     │
-    ├─► Broadcast transaction (by caller, after preRegister returns)
+    ├─► Wait for transaction to be sent to the monitored address
     │
-    ├─► Race: wait for IS hex from ANY of the 3 streams
-    │   ├─ Node A delivers IS hex ─► USE IT, close other streams
-    │   ├─ Node B delivers IS hex ─► USE IT, close other streams
-    │   ├─ Node C delivers IS hex ─► USE IT, close other streams
-    │   └─ 3s timeout, no hex ─► fall back to ChainLock
+    ├─► Transaction detected:
+    │   ├─ onTransaction fires with txid and transaction data
+    │   ├─ Auto-trigger multi-node IS hunt for the detected txid
+    │   └─ Race: wait for IS hex from ANY stream
+    │       ├─ Node A delivers IS hex ─► onInstantLock fires with hex
+    │       ├─ Node B delivers IS hex ─► onInstantLock fires with hex
+    │       ├─ Node C delivers IS hex ─► onInstantLock fires with hex
+    │       └─ Timeout, no hex ─► fall back to ChainLock
     │
     └─► Track node health:
         - Node delivered IS hex ─► mark as "good" (success)
         - Node in race but didn't win ─► increment failure count
-        - Timeout (no winner) ─► no blacklisting (could be tx propagation issue)
 ```
 
 ### Configuration Options
@@ -477,11 +481,32 @@ for (const [addr, stats] of health.nodeStats) {
 - Node configuration may change between sessions
 - Simple, no persistence complexity
 
+### Parallel Streams Architecture
+
+When `monitorAddresses()` is called with `multiNodeIsHunting` enabled (default), parallel streams
+are opened automatically:
+
+```
+monitorAddresses(['yAddr...'], callbacks)
+    │
+    ├─► Primary stream (handles all callbacks: onTransaction, onInstantLock, etc.)
+    │
+    ├─► Parallel stream 1 (IS hex capture only)
+    │
+    └─► Parallel stream 2 (IS hex capture only)
+        │
+        └─► When ANY stream captures IS hex → onInstantLock fires with hex
+```
+
+**Parallel streams only process InstantLock messages** to avoid duplicate `onTransaction` callbacks.
+When any parallel stream captures IS hex for a monitored transaction, it records the hex and fires
+`onInstantLock` if the callback is defined.
+
 ### Key Files
 
 - `src/monitoring/NodeHealthTracker.ts` — Tracks node health/blacklist
-- `src/monitoring/MultiNodeIsHunter.ts` — Parallel stream management
-- `src/finders/RealtimeFinder.ts` — Integration with main finder
+- `src/monitoring/MultiNodeIsHunter.ts` — Parallel stream management (for preRegisterTransaction)
+- `src/finders/RealtimeFinder.ts` — Integration with main finder, parallel streams for on-demand
 - `src/types/finder-types.ts` — Configuration options
 
 ## InstantLock Hex Race Condition (CRITICAL KNOWLEDGE)
@@ -643,4 +668,4 @@ The high-water mark implementation is thoroughly tested:
 - `src/finders/RealtimeFinder.ts` - Uses monitor for realtime confirmation tracking
 
 ---
-*Last Updated: 2026-02-02*
+*Last Updated: 2026-02-05*
