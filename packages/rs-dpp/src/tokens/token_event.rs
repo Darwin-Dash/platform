@@ -56,6 +56,10 @@ pub type FrozenIdentifier = Identifier;
 #[derive(
     Debug, PartialEq, PartialOrd, Clone, Eq, Encode, Decode, PlatformDeserialize, PlatformSerialize,
 )]
+#[cfg_attr(
+    feature = "state-transition-serde-conversion",
+    derive(serde::Serialize, serde::Deserialize)
+)]
 #[platform_serialize(unversioned)]
 pub enum TokenEvent {
     /// Event representing the minting of tokens to a recipient.
@@ -453,6 +457,7 @@ impl TokenEvent {
             created_at_core_block_height: None,
             updated_at_core_block_height: None,
             transferred_at_core_block_height: None,
+            creator_id: None,
         }
         .into();
 

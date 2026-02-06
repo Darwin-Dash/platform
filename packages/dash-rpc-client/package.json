@@ -1,0 +1,31 @@
+{
+  "name": "@dashevo/dash-rpc-client",
+  "version": "1.0.0",
+  "description": "Simple RPC client for Dash Core nodes (testnet/mainnet)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:send": "node tests/send-transaction.js",
+    "test:integration": "node tests/integration/rpc-client.spec.js"
+  },
+  "keywords": [
+    "dash",
+    "rpc",
+    "bitcoin",
+    "cryptocurrency",
+    "client"
+  ],
+  "author": "Dash Core Group",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

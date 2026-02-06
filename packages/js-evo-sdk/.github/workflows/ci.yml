@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+      - 'feat/*'
+    paths:
+      - 'packages/js-evo-sdk/**'
+      - '.github/workflows/js-evo-sdk-*.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+    paths:
+      - 'packages/js-evo-sdk/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: packages/js-evo-sdk
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Run TypeScript check
+        run: yarn tsc -p tsconfig.json --noEmit
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Run ESLint
+        run: yarn lint
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Chrome for Karma
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Run unit tests
+        run: yarn test:unit
+        env:
+          CHROME_BIN: chrome
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Only run integration tests when secrets are available (not on forks)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Run integration tests
+        run: yarn test:integration
+        env:
+          # Add testnet configuration if needed
+          DASH_NETWORK: testnet
+        continue-on-error: true
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [typecheck, lint, unit-tests]
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Build package
+        run: yarn build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-evo-sdk-build-${{ github.sha }}
+          path: packages/js-evo-sdk/dist
+          retention-days: 7

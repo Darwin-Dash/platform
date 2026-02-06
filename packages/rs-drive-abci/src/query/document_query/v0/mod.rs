@@ -2,6 +2,7 @@ use crate::error::query::QueryError;
 use crate::error::Error;
 use crate::platform_types::platform::Platform;
 use crate::platform_types::platform_state::PlatformState;
+use crate::query::response_metadata::CheckpointUsed;
 use crate::query::QueryValidationResult;
 use dapi_grpc::platform::v0::get_documents_request::get_documents_request_v0::Start;
 use dapi_grpc::platform::v0::get_documents_request::GetDocumentsRequestV0;
@@ -16,6 +17,7 @@ use dpp::validation::ValidationResult;
 use dpp::version::PlatformVersion;
 use drive::error::query::QuerySyntaxError;
 use drive::query::DriveDocumentQuery;
+use drive::util::grove_operations::GroveDBToUse;
 
 impl<C> Platform<C> {
     pub(super) fn query_documents_v0(
@@ -143,11 +145,12 @@ impl<C> Platform<C> {
                     Err(e) => return Err(e.into()),
                 };
 
+            let (grovedb_used, proof) =
+                self.response_proof_v0(platform_state, proof, GroveDBToUse::Current)?;
+
             GetDocumentsResponseV0 {
-                result: Some(get_documents_response_v0::Result::Proof(
-                    self.response_proof_v0(platform_state, proof),
-                )),
-                metadata: Some(self.response_metadata_v0(platform_state)),
+                result: Some(get_documents_response_v0::Result::Proof(proof)),
+                metadata: Some(self.response_metadata_v0(platform_state, grovedb_used)),
             }
         } else {
             let results = match drive_query.execute_raw_results_no_proof(
@@ -169,7 +172,7 @@ impl<C> Platform<C> {
                 result: Some(get_documents_response_v0::Result::Documents(
                     get_documents_response_v0::Documents { documents: results },
                 )),
-                metadata: Some(self.response_metadata_v0(platform_state)),
+                metadata: Some(self.response_metadata_v0(platform_state, CheckpointUsed::Current)),
             }
         };
 
@@ -772,10 +775,10 @@ mod tests {
                 owner_id: Identifier::random_with_rng(&mut std_rng),
                 properties: {
                     let mut properties = BTreeMap::new();
-                    properties.insert("status".to_string(), Value::U8(0)); // Always queued
-                    properties.insert("pooling".to_string(), Value::U8(0)); // Always 0
-                    properties.insert("coreFeePerByte".to_string(), Value::U32(1)); // Always 1
-                    properties.insert("amount".to_string(), Value::U64(1000)); // Set a minimum amount of 1000
+                    properties.insert("status".to_string(), Value::I64(0)); // Always queued
+                    properties.insert("pooling".to_string(), Value::I64(0)); // Always 0
+                    properties.insert("coreFeePerByte".to_string(), Value::I64(1)); // Always 1
+                    properties.insert("amount".to_string(), Value::I64(1000)); // Set a minimum amount of 1000
                     properties.insert("outputScript".to_string(), Value::Bytes(vec![])); // Set an empty output script
                     properties
                 },
@@ -789,6 +792,7 @@ mod tests {
                 created_at_core_block_height: None,
                 updated_at_core_block_height: None,
                 transferred_at_core_block_height: None,
+                creator_id: None,
             }
             .into();
             store_document(
@@ -936,10 +940,10 @@ mod tests {
                 owner_id: Identifier::random_with_rng(&mut std_rng),
                 properties: {
                     let mut properties = BTreeMap::new();
-                    properties.insert("status".to_string(), Value::U8(i as u8 % 4)); // Always queued
-                    properties.insert("pooling".to_string(), Value::U8(0)); // Always 0
-                    properties.insert("coreFeePerByte".to_string(), Value::U32(1)); // Always 1
-                    properties.insert("amount".to_string(), Value::U64(1000)); // Set a minimum amount of 1000
+                    properties.insert("status".to_string(), Value::I64(i as i64 % 4)); // Always queued
+                    properties.insert("pooling".to_string(), Value::I64(0)); // Always 0
+                    properties.insert("coreFeePerByte".to_string(), Value::I64(1)); // Always 1
+                    properties.insert("amount".to_string(), Value::I64(1000)); // Set a minimum amount of 1000
                     properties.insert("outputScript".to_string(), Value::Bytes(vec![])); // Set an empty output script
                     properties
                 },
@@ -953,6 +957,7 @@ mod tests {
                 created_at_core_block_height: None,
                 updated_at_core_block_height: None,
                 transferred_at_core_block_height: None,
+                creator_id: None,
             }
             .into();
             store_document(
@@ -1100,10 +1105,10 @@ mod tests {
                 owner_id: Identifier::random_with_rng(&mut std_rng),
                 properties: {
                     let mut properties = BTreeMap::new();
-                    properties.insert("status".to_string(), Value::U8(i as u8 % 4)); // Always queued
-                    properties.insert("pooling".to_string(), Value::U8(0)); // Always 0
-                    properties.insert("coreFeePerByte".to_string(), Value::U32(1)); // Always 1
-                    properties.insert("amount".to_string(), Value::U64(1000)); // Set a minimum amount of 1000
+                    properties.insert("status".to_string(), Value::I64(i as i64 % 4)); // Always queued
+                    properties.insert("pooling".to_string(), Value::I64(0)); // Always 0
+                    properties.insert("coreFeePerByte".to_string(), Value::I64(1)); // Always 1
+                    properties.insert("amount".to_string(), Value::I64(1000)); // Set a minimum amount of 1000
                     properties.insert("outputScript".to_string(), Value::Bytes(vec![])); // Set an empty output script
                     properties
                 },
@@ -1117,6 +1122,7 @@ mod tests {
                 created_at_core_block_height: None,
                 updated_at_core_block_height: None,
                 transferred_at_core_block_height: None,
+                creator_id: None,
             }
             .into();
             store_document(
@@ -1256,10 +1262,10 @@ mod tests {
                 owner_id: Identifier::random_with_rng(&mut std_rng),
                 properties: {
                     let mut properties = BTreeMap::new();
-                    properties.insert("status".to_string(), Value::U8(i as u8 % 4)); // Always queued
-                    properties.insert("pooling".to_string(), Value::U8(0)); // Always 0
-                    properties.insert("coreFeePerByte".to_string(), Value::U32(1)); // Always 1
-                    properties.insert("amount".to_string(), Value::U64(1000)); // Set a minimum amount of 1000
+                    properties.insert("status".to_string(), Value::I64(i as i64 % 4)); // Always queued
+                    properties.insert("pooling".to_string(), Value::I64(0)); // Always 0
+                    properties.insert("coreFeePerByte".to_string(), Value::I64(1)); // Always 1
+                    properties.insert("amount".to_string(), Value::I64(1000)); // Set a minimum amount of 1000
                     properties.insert("outputScript".to_string(), Value::Bytes(vec![])); // Set an empty output script
                     properties
                 },
@@ -1273,6 +1279,7 @@ mod tests {
                 created_at_core_block_height: None,
                 updated_at_core_block_height: None,
                 transferred_at_core_block_height: None,
+                creator_id: None,
             }
             .into();
             store_document(
@@ -1301,11 +1308,11 @@ mod tests {
                     field: "status".to_string(),
                     operator: WhereOperator::In,
                     value: Value::Array(vec![
-                        Value::U8(0),
-                        Value::U8(1),
-                        Value::U8(2),
-                        Value::U8(3),
-                        Value::U8(4),
+                        Value::I64(0),
+                        Value::I64(1),
+                        Value::I64(2),
+                        Value::I64(3),
+                        Value::I64(4),
                     ]),
                 }),
                 range_clause: None,
@@ -1427,10 +1434,10 @@ mod tests {
                 owner_id: Identifier::random_with_rng(&mut std_rng),
                 properties: {
                     let mut properties = BTreeMap::new();
-                    properties.insert("status".to_string(), Value::U8(i as u8 % 4)); // Always queued
-                    properties.insert("pooling".to_string(), Value::U8(0)); // Always 0
-                    properties.insert("coreFeePerByte".to_string(), Value::U32(1)); // Always 1
-                    properties.insert("amount".to_string(), Value::U64(1000)); // Set a minimum amount of 1000
+                    properties.insert("status".to_string(), Value::I64(i as i64 % 4)); // Always queued
+                    properties.insert("pooling".to_string(), Value::I64(0)); // Always 0
+                    properties.insert("coreFeePerByte".to_string(), Value::I64(1)); // Always 1
+                    properties.insert("amount".to_string(), Value::I64(1000)); // Set a minimum amount of 1000
                     properties.insert("outputScript".to_string(), Value::Bytes(vec![])); // Set an empty output script
                     properties
                 },
@@ -1444,6 +1451,7 @@ mod tests {
                 created_at_core_block_height: None,
                 updated_at_core_block_height: None,
                 transferred_at_core_block_height: None,
+                creator_id: None,
             }
             .into();
             store_document(
@@ -1472,11 +1480,11 @@ mod tests {
                     field: "status".to_string(),
                     operator: WhereOperator::In,
                     value: Value::Array(vec![
-                        Value::U8(0),
-                        Value::U8(1),
-                        Value::U8(2),
-                        Value::U8(3),
-                        Value::U8(4),
+                        Value::I64(0),
+                        Value::I64(1),
+                        Value::I64(2),
+                        Value::I64(3),
+                        Value::I64(4),
                     ]),
                 }),
                 range_clause: None,
@@ -1486,7 +1494,7 @@ mod tests {
                         WhereClause {
                             field: "pooling".to_string(),
                             operator: WhereOperator::Equal,
-                            value: Value::U8(0),
+                            value: Value::I64(0),
                         },
                     ),
                     (
@@ -1494,7 +1502,7 @@ mod tests {
                         WhereClause {
                             field: "coreFeePerByte".to_string(),
                             operator: WhereOperator::Equal,
-                            value: Value::U32(1),
+                            value: Value::I64(1),
                         },
                     ),
                 ]),

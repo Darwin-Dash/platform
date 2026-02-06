@@ -1,0 +1,133 @@
+name: Code Coverage
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+    paths:
+      - 'packages/js-evo-sdk/**'
+      - '.github/workflows/js-evo-sdk-*.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+    paths:
+      - 'packages/js-evo-sdk/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: packages/js-evo-sdk
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Chrome for Karma
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Run unit tests with coverage
+        run: yarn test:coverage
+        env:
+          CHROME_BIN: chrome
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: packages/js-evo-sdk/coverage/lcov.info
+          flags: unittests
+          name: js-evo-sdk
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: packages/js-evo-sdk/coverage
+          retention-days: 14
+
+      - name: Check coverage thresholds
+        run: |
+          # Parse coverage from lcov
+          if [ -f coverage/lcov.info ]; then
+            COVERAGE=$(npx lcov-parse coverage/lcov.info | node -e "
+              const data = '';
+              process.stdin.on('data', d => data += d);
+              process.stdin.on('end', () => {
+                try {
+                  const info = JSON.parse(data);
+                  const total = info.reduce((acc, file) => {
+                    acc.lines += file.lines.hit;
+                    acc.total += file.lines.found;
+                    return acc;
+                  }, { lines: 0, total: 0 });
+                  const pct = total.total > 0 ? (total.lines / total.total * 100).toFixed(2) : 0;
+                  console.log(pct);
+                } catch (e) {
+                  console.log('0');
+                }
+              });
+            " 2>/dev/null || echo "0")
+
+            echo "Coverage: ${COVERAGE}%"
+
+            # Warn if below threshold (80%)
+            if (( $(echo "$COVERAGE < 80" | bc -l 2>/dev/null || echo "0") )); then
+              echo "::warning::Coverage is below 80% threshold"
+            fi
+          else
+            echo "No coverage report found"
+          fi
+        continue-on-error: true
+
+  coverage-badge:
+    name: Update Coverage Badge
+    runs-on: ubuntu-24.04
+    needs: coverage
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-${{ github.sha }}
+          path: coverage
+
+      - name: Generate badge
+        run: |
+          # This step would typically update a badge service
+          # For now, just log the coverage
+          echo "Coverage report generated. Badge update would happen here."
+        working-directory: .

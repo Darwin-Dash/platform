@@ -511,6 +511,37 @@ public final class PlatformGrpc {
     return getGetIdentityByPublicKeyHashMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> getGetIdentityByNonUniquePublicKeyHashMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getIdentityByNonUniquePublicKeyHash",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> getGetIdentityByNonUniquePublicKeyHashMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> getGetIdentityByNonUniquePublicKeyHashMethod;
+    if ((getGetIdentityByNonUniquePublicKeyHashMethod = PlatformGrpc.getGetIdentityByNonUniquePublicKeyHashMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetIdentityByNonUniquePublicKeyHashMethod = PlatformGrpc.getGetIdentityByNonUniquePublicKeyHashMethod) == null) {
+          PlatformGrpc.getGetIdentityByNonUniquePublicKeyHashMethod = getGetIdentityByNonUniquePublicKeyHashMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getIdentityByNonUniquePublicKeyHash"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getIdentityByNonUniquePublicKeyHash"))
+              .build();
+        }
+      }
+    }
+    return getGetIdentityByNonUniquePublicKeyHashMethod;
+  }
+
   private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest,
       org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse> getWaitForStateTransitionResultMethod;
 
@@ -664,6 +695,37 @@ public final class PlatformGrpc {
       }
     }
     return getGetEpochsInfoMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> getGetFinalizedEpochInfosMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getFinalizedEpochInfos",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> getGetFinalizedEpochInfosMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> getGetFinalizedEpochInfosMethod;
+    if ((getGetFinalizedEpochInfosMethod = PlatformGrpc.getGetFinalizedEpochInfosMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetFinalizedEpochInfosMethod = PlatformGrpc.getGetFinalizedEpochInfosMethod) == null) {
+          PlatformGrpc.getGetFinalizedEpochInfosMethod = getGetFinalizedEpochInfosMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getFinalizedEpochInfos"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getFinalizedEpochInfos"))
+              .build();
+        }
+      }
+    }
+    return getGetFinalizedEpochInfosMethod;
   }
 
   private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetContestedResourcesRequest,
@@ -1162,6 +1224,37 @@ public final class PlatformGrpc {
     return getGetTokenDirectPurchasePricesMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> getGetTokenContractInfoMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getTokenContractInfo",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> getGetTokenContractInfoMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> getGetTokenContractInfoMethod;
+    if ((getGetTokenContractInfoMethod = PlatformGrpc.getGetTokenContractInfoMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetTokenContractInfoMethod = PlatformGrpc.getGetTokenContractInfoMethod) == null) {
+          PlatformGrpc.getGetTokenContractInfoMethod = getGetTokenContractInfoMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getTokenContractInfo"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getTokenContractInfo"))
+              .build();
+        }
+      }
+    }
+    return getGetTokenContractInfoMethod;
+  }
+
   private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest,
       org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse> getGetTokenPreProgrammedDistributionsMethod;
 
@@ -1191,6 +1284,37 @@ public final class PlatformGrpc {
       }
     }
     return getGetTokenPreProgrammedDistributionsMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> getGetTokenPerpetualDistributionLastClaimMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getTokenPerpetualDistributionLastClaim",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> getGetTokenPerpetualDistributionLastClaimMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> getGetTokenPerpetualDistributionLastClaimMethod;
+    if ((getGetTokenPerpetualDistributionLastClaimMethod = PlatformGrpc.getGetTokenPerpetualDistributionLastClaimMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetTokenPerpetualDistributionLastClaimMethod = PlatformGrpc.getGetTokenPerpetualDistributionLastClaimMethod) == null) {
+          PlatformGrpc.getGetTokenPerpetualDistributionLastClaimMethod = getGetTokenPerpetualDistributionLastClaimMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getTokenPerpetualDistributionLastClaim"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getTokenPerpetualDistributionLastClaim"))
+              .build();
+        }
+      }
+    }
+    return getGetTokenPerpetualDistributionLastClaimMethod;
   }
 
   private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenTotalSupplyRequest,
@@ -1346,6 +1470,130 @@ public final class PlatformGrpc {
       }
     }
     return getGetGroupActionSignersMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> getGetAddressInfoMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getAddressInfo",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> getGetAddressInfoMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> getGetAddressInfoMethod;
+    if ((getGetAddressInfoMethod = PlatformGrpc.getGetAddressInfoMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetAddressInfoMethod = PlatformGrpc.getGetAddressInfoMethod) == null) {
+          PlatformGrpc.getGetAddressInfoMethod = getGetAddressInfoMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getAddressInfo"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getAddressInfo"))
+              .build();
+        }
+      }
+    }
+    return getGetAddressInfoMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> getGetAddressesInfosMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getAddressesInfos",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> getGetAddressesInfosMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> getGetAddressesInfosMethod;
+    if ((getGetAddressesInfosMethod = PlatformGrpc.getGetAddressesInfosMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetAddressesInfosMethod = PlatformGrpc.getGetAddressesInfosMethod) == null) {
+          PlatformGrpc.getGetAddressesInfosMethod = getGetAddressesInfosMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getAddressesInfos"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getAddressesInfos"))
+              .build();
+        }
+      }
+    }
+    return getGetAddressesInfosMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> getGetAddressesTrunkStateMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getAddressesTrunkState",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> getGetAddressesTrunkStateMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> getGetAddressesTrunkStateMethod;
+    if ((getGetAddressesTrunkStateMethod = PlatformGrpc.getGetAddressesTrunkStateMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetAddressesTrunkStateMethod = PlatformGrpc.getGetAddressesTrunkStateMethod) == null) {
+          PlatformGrpc.getGetAddressesTrunkStateMethod = getGetAddressesTrunkStateMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getAddressesTrunkState"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getAddressesTrunkState"))
+              .build();
+        }
+      }
+    }
+    return getGetAddressesTrunkStateMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> getGetAddressesBranchStateMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "getAddressesBranchState",
+      requestType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest.class,
+      responseType = org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest,
+      org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> getGetAddressesBranchStateMethod() {
+    io.grpc.MethodDescriptor<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> getGetAddressesBranchStateMethod;
+    if ((getGetAddressesBranchStateMethod = PlatformGrpc.getGetAddressesBranchStateMethod) == null) {
+      synchronized (PlatformGrpc.class) {
+        if ((getGetAddressesBranchStateMethod = PlatformGrpc.getGetAddressesBranchStateMethod) == null) {
+          PlatformGrpc.getGetAddressesBranchStateMethod = getGetAddressesBranchStateMethod =
+              io.grpc.MethodDescriptor.<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest, org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "getAddressesBranchState"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new PlatformMethodDescriptorSupplier("getAddressesBranchState"))
+              .build();
+        }
+      }
+    }
+    return getGetAddressesBranchStateMethod;
   }
 
   /**
@@ -1510,6 +1758,13 @@ public final class PlatformGrpc {
 
     /**
      */
+    public void getIdentityByNonUniquePublicKeyHash(org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetIdentityByNonUniquePublicKeyHashMethod(), responseObserver);
+    }
+
+    /**
+     */
     public void waitForStateTransitionResult(org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getWaitForStateTransitionResultMethod(), responseObserver);
@@ -1541,6 +1796,13 @@ public final class PlatformGrpc {
     public void getEpochsInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetEpochsInfoMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getFinalizedEpochInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetFinalizedEpochInfosMethod(), responseObserver);
     }
 
     /**
@@ -1672,9 +1934,23 @@ public final class PlatformGrpc {
 
     /**
      */
+    public void getTokenContractInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetTokenContractInfoMethod(), responseObserver);
+    }
+
+    /**
+     */
     public void getTokenPreProgrammedDistributions(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetTokenPreProgrammedDistributionsMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getTokenPerpetualDistributionLastClaim(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetTokenPerpetualDistributionLastClaimMethod(), responseObserver);
     }
 
     /**
@@ -1710,6 +1986,34 @@ public final class PlatformGrpc {
     public void getGroupActionSigners(org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetGroupActionSignersMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetAddressInfoMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetAddressesInfosMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesTrunkState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetAddressesTrunkStateMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesBranchState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getGetAddressesBranchStateMethod(), responseObserver);
     }
 
     @java.lang.Override public final io.grpc.ServerServiceDefinition bindService() {
@@ -1827,6 +2131,13 @@ public final class PlatformGrpc {
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByPublicKeyHashResponse>(
                   this, METHODID_GET_IDENTITY_BY_PUBLIC_KEY_HASH)))
           .addMethod(
+            getGetIdentityByNonUniquePublicKeyHashMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse>(
+                  this, METHODID_GET_IDENTITY_BY_NON_UNIQUE_PUBLIC_KEY_HASH)))
+          .addMethod(
             getWaitForStateTransitionResultMethod(),
             io.grpc.stub.ServerCalls.asyncUnaryCall(
               new MethodHandlers<
@@ -1861,6 +2172,13 @@ public final class PlatformGrpc {
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoRequest,
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoResponse>(
                   this, METHODID_GET_EPOCHS_INFO)))
+          .addMethod(
+            getGetFinalizedEpochInfosMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse>(
+                  this, METHODID_GET_FINALIZED_EPOCH_INFOS)))
           .addMethod(
             getGetContestedResourcesMethod(),
             io.grpc.stub.ServerCalls.asyncUnaryCall(
@@ -1974,12 +2292,26 @@ public final class PlatformGrpc {
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenDirectPurchasePricesResponse>(
                   this, METHODID_GET_TOKEN_DIRECT_PURCHASE_PRICES)))
           .addMethod(
+            getGetTokenContractInfoMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse>(
+                  this, METHODID_GET_TOKEN_CONTRACT_INFO)))
+          .addMethod(
             getGetTokenPreProgrammedDistributionsMethod(),
             io.grpc.stub.ServerCalls.asyncUnaryCall(
               new MethodHandlers<
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest,
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse>(
                   this, METHODID_GET_TOKEN_PRE_PROGRAMMED_DISTRIBUTIONS)))
+          .addMethod(
+            getGetTokenPerpetualDistributionLastClaimMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse>(
+                  this, METHODID_GET_TOKEN_PERPETUAL_DISTRIBUTION_LAST_CLAIM)))
           .addMethod(
             getGetTokenTotalSupplyMethod(),
             io.grpc.stub.ServerCalls.asyncUnaryCall(
@@ -2015,6 +2347,34 @@ public final class PlatformGrpc {
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersRequest,
                 org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersResponse>(
                   this, METHODID_GET_GROUP_ACTION_SIGNERS)))
+          .addMethod(
+            getGetAddressInfoMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse>(
+                  this, METHODID_GET_ADDRESS_INFO)))
+          .addMethod(
+            getGetAddressesInfosMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse>(
+                  this, METHODID_GET_ADDRESSES_INFOS)))
+          .addMethod(
+            getGetAddressesTrunkStateMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse>(
+                  this, METHODID_GET_ADDRESSES_TRUNK_STATE)))
+          .addMethod(
+            getGetAddressesBranchStateMethod(),
+            io.grpc.stub.ServerCalls.asyncUnaryCall(
+              new MethodHandlers<
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest,
+                org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse>(
+                  this, METHODID_GET_ADDRESSES_BRANCH_STATE)))
           .build();
     }
   }
@@ -2163,6 +2523,14 @@ public final class PlatformGrpc {
 
     /**
      */
+    public void getIdentityByNonUniquePublicKeyHash(org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetIdentityByNonUniquePublicKeyHashMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
     public void waitForStateTransitionResult(org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
@@ -2199,6 +2567,14 @@ public final class PlatformGrpc {
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getGetEpochsInfoMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getFinalizedEpochInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetFinalizedEpochInfosMethod(), getCallOptions()), request, responseObserver);
     }
 
     /**
@@ -2346,10 +2722,26 @@ public final class PlatformGrpc {
 
     /**
      */
+    public void getTokenContractInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetTokenContractInfoMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
     public void getTokenPreProgrammedDistributions(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest request,
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getGetTokenPreProgrammedDistributionsMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getTokenPerpetualDistributionLastClaim(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetTokenPerpetualDistributionLastClaimMethod(), getCallOptions()), request, responseObserver);
     }
 
     /**
@@ -2390,6 +2782,38 @@ public final class PlatformGrpc {
         io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getGetGroupActionSignersMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetAddressInfoMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetAddressesInfosMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesTrunkState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetAddressesTrunkStateMethod(), getCallOptions()), request, responseObserver);
+    }
+
+    /**
+     */
+    public void getAddressesBranchState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest request,
+        io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getGetAddressesBranchStateMethod(), getCallOptions()), request, responseObserver);
     }
   }
 
@@ -2521,6 +2945,13 @@ public final class PlatformGrpc {
 
     /**
      */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse getIdentityByNonUniquePublicKeyHash(org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetIdentityByNonUniquePublicKeyHashMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
     public org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse waitForStateTransitionResult(org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getWaitForStateTransitionResultMethod(), getCallOptions(), request);
@@ -2552,6 +2983,13 @@ public final class PlatformGrpc {
     public org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoResponse getEpochsInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getGetEpochsInfoMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse getFinalizedEpochInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetFinalizedEpochInfosMethod(), getCallOptions(), request);
     }
 
     /**
@@ -2683,9 +3121,23 @@ public final class PlatformGrpc {
 
     /**
      */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse getTokenContractInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetTokenContractInfoMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
     public org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse getTokenPreProgrammedDistributions(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getGetTokenPreProgrammedDistributionsMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse getTokenPerpetualDistributionLastClaim(org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetTokenPerpetualDistributionLastClaimMethod(), getCallOptions(), request);
     }
 
     /**
@@ -2721,6 +3173,34 @@ public final class PlatformGrpc {
     public org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersResponse getGroupActionSigners(org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getGetGroupActionSignersMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse getAddressInfo(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetAddressInfoMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse getAddressesInfos(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetAddressesInfosMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse getAddressesTrunkState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetAddressesTrunkStateMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse getAddressesBranchState(org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getGetAddressesBranchStateMethod(), getCallOptions(), request);
     }
   }
 
@@ -2868,6 +3348,14 @@ public final class PlatformGrpc {
 
     /**
      */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse> getIdentityByNonUniquePublicKeyHash(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetIdentityByNonUniquePublicKeyHashMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
     public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse> waitForStateTransitionResult(
         org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
@@ -2904,6 +3392,14 @@ public final class PlatformGrpc {
         org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getGetEpochsInfoMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse> getFinalizedEpochInfos(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetFinalizedEpochInfosMethod(), getCallOptions()), request);
     }
 
     /**
@@ -3051,10 +3547,26 @@ public final class PlatformGrpc {
 
     /**
      */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse> getTokenContractInfo(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetTokenContractInfoMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
     public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse> getTokenPreProgrammedDistributions(
         org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getGetTokenPreProgrammedDistributionsMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse> getTokenPerpetualDistributionLastClaim(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetTokenPerpetualDistributionLastClaimMethod(), getCallOptions()), request);
     }
 
     /**
@@ -3096,6 +3608,38 @@ public final class PlatformGrpc {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getGetGroupActionSignersMethod(), getCallOptions()), request);
     }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse> getAddressInfo(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetAddressInfoMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse> getAddressesInfos(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetAddressesInfosMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse> getAddressesTrunkState(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetAddressesTrunkStateMethod(), getCallOptions()), request);
+    }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse> getAddressesBranchState(
+        org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getGetAddressesBranchStateMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_BROADCAST_STATE_TRANSITION = 0;
@@ -3114,33 +3658,41 @@ public final class PlatformGrpc {
   private static final int METHODID_GET_DATA_CONTRACTS = 13;
   private static final int METHODID_GET_DOCUMENTS = 14;
   private static final int METHODID_GET_IDENTITY_BY_PUBLIC_KEY_HASH = 15;
-  private static final int METHODID_WAIT_FOR_STATE_TRANSITION_RESULT = 16;
-  private static final int METHODID_GET_CONSENSUS_PARAMS = 17;
-  private static final int METHODID_GET_PROTOCOL_VERSION_UPGRADE_STATE = 18;
-  private static final int METHODID_GET_PROTOCOL_VERSION_UPGRADE_VOTE_STATUS = 19;
-  private static final int METHODID_GET_EPOCHS_INFO = 20;
-  private static final int METHODID_GET_CONTESTED_RESOURCES = 21;
-  private static final int METHODID_GET_CONTESTED_RESOURCE_VOTE_STATE = 22;
-  private static final int METHODID_GET_CONTESTED_RESOURCE_VOTERS_FOR_IDENTITY = 23;
-  private static final int METHODID_GET_CONTESTED_RESOURCE_IDENTITY_VOTES = 24;
-  private static final int METHODID_GET_VOTE_POLLS_BY_END_DATE = 25;
-  private static final int METHODID_GET_PREFUNDED_SPECIALIZED_BALANCE = 26;
-  private static final int METHODID_GET_TOTAL_CREDITS_IN_PLATFORM = 27;
-  private static final int METHODID_GET_PATH_ELEMENTS = 28;
-  private static final int METHODID_GET_STATUS = 29;
-  private static final int METHODID_GET_CURRENT_QUORUMS_INFO = 30;
-  private static final int METHODID_GET_IDENTITY_TOKEN_BALANCES = 31;
-  private static final int METHODID_GET_IDENTITIES_TOKEN_BALANCES = 32;
-  private static final int METHODID_GET_IDENTITY_TOKEN_INFOS = 33;
-  private static final int METHODID_GET_IDENTITIES_TOKEN_INFOS = 34;
-  private static final int METHODID_GET_TOKEN_STATUSES = 35;
-  private static final int METHODID_GET_TOKEN_DIRECT_PURCHASE_PRICES = 36;
-  private static final int METHODID_GET_TOKEN_PRE_PROGRAMMED_DISTRIBUTIONS = 37;
-  private static final int METHODID_GET_TOKEN_TOTAL_SUPPLY = 38;
-  private static final int METHODID_GET_GROUP_INFO = 39;
-  private static final int METHODID_GET_GROUP_INFOS = 40;
-  private static final int METHODID_GET_GROUP_ACTIONS = 41;
-  private static final int METHODID_GET_GROUP_ACTION_SIGNERS = 42;
+  private static final int METHODID_GET_IDENTITY_BY_NON_UNIQUE_PUBLIC_KEY_HASH = 16;
+  private static final int METHODID_WAIT_FOR_STATE_TRANSITION_RESULT = 17;
+  private static final int METHODID_GET_CONSENSUS_PARAMS = 18;
+  private static final int METHODID_GET_PROTOCOL_VERSION_UPGRADE_STATE = 19;
+  private static final int METHODID_GET_PROTOCOL_VERSION_UPGRADE_VOTE_STATUS = 20;
+  private static final int METHODID_GET_EPOCHS_INFO = 21;
+  private static final int METHODID_GET_FINALIZED_EPOCH_INFOS = 22;
+  private static final int METHODID_GET_CONTESTED_RESOURCES = 23;
+  private static final int METHODID_GET_CONTESTED_RESOURCE_VOTE_STATE = 24;
+  private static final int METHODID_GET_CONTESTED_RESOURCE_VOTERS_FOR_IDENTITY = 25;
+  private static final int METHODID_GET_CONTESTED_RESOURCE_IDENTITY_VOTES = 26;
+  private static final int METHODID_GET_VOTE_POLLS_BY_END_DATE = 27;
+  private static final int METHODID_GET_PREFUNDED_SPECIALIZED_BALANCE = 28;
+  private static final int METHODID_GET_TOTAL_CREDITS_IN_PLATFORM = 29;
+  private static final int METHODID_GET_PATH_ELEMENTS = 30;
+  private static final int METHODID_GET_STATUS = 31;
+  private static final int METHODID_GET_CURRENT_QUORUMS_INFO = 32;
+  private static final int METHODID_GET_IDENTITY_TOKEN_BALANCES = 33;
+  private static final int METHODID_GET_IDENTITIES_TOKEN_BALANCES = 34;
+  private static final int METHODID_GET_IDENTITY_TOKEN_INFOS = 35;
+  private static final int METHODID_GET_IDENTITIES_TOKEN_INFOS = 36;
+  private static final int METHODID_GET_TOKEN_STATUSES = 37;
+  private static final int METHODID_GET_TOKEN_DIRECT_PURCHASE_PRICES = 38;
+  private static final int METHODID_GET_TOKEN_CONTRACT_INFO = 39;
+  private static final int METHODID_GET_TOKEN_PRE_PROGRAMMED_DISTRIBUTIONS = 40;
+  private static final int METHODID_GET_TOKEN_PERPETUAL_DISTRIBUTION_LAST_CLAIM = 41;
+  private static final int METHODID_GET_TOKEN_TOTAL_SUPPLY = 42;
+  private static final int METHODID_GET_GROUP_INFO = 43;
+  private static final int METHODID_GET_GROUP_INFOS = 44;
+  private static final int METHODID_GET_GROUP_ACTIONS = 45;
+  private static final int METHODID_GET_GROUP_ACTION_SIGNERS = 46;
+  private static final int METHODID_GET_ADDRESS_INFO = 47;
+  private static final int METHODID_GET_ADDRESSES_INFOS = 48;
+  private static final int METHODID_GET_ADDRESSES_TRUNK_STATE = 49;
+  private static final int METHODID_GET_ADDRESSES_BRANCH_STATE = 50;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -3223,6 +3775,10 @@ public final class PlatformGrpc {
           serviceImpl.getIdentityByPublicKeyHash((org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByPublicKeyHashRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByPublicKeyHashResponse>) responseObserver);
           break;
+        case METHODID_GET_IDENTITY_BY_NON_UNIQUE_PUBLIC_KEY_HASH:
+          serviceImpl.getIdentityByNonUniquePublicKeyHash((org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetIdentityByNonUniquePublicKeyHashResponse>) responseObserver);
+          break;
         case METHODID_WAIT_FOR_STATE_TRANSITION_RESULT:
           serviceImpl.waitForStateTransitionResult((org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.WaitForStateTransitionResultResponse>) responseObserver);
@@ -3242,6 +3798,10 @@ public final class PlatformGrpc {
         case METHODID_GET_EPOCHS_INFO:
           serviceImpl.getEpochsInfo((org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetEpochsInfoResponse>) responseObserver);
+          break;
+        case METHODID_GET_FINALIZED_EPOCH_INFOS:
+          serviceImpl.getFinalizedEpochInfos((org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetFinalizedEpochInfosResponse>) responseObserver);
           break;
         case METHODID_GET_CONTESTED_RESOURCES:
           serviceImpl.getContestedResources((org.dash.platform.dapi.v0.PlatformOuterClass.GetContestedResourcesRequest) request,
@@ -3307,9 +3867,17 @@ public final class PlatformGrpc {
           serviceImpl.getTokenDirectPurchasePrices((org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenDirectPurchasePricesRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenDirectPurchasePricesResponse>) responseObserver);
           break;
+        case METHODID_GET_TOKEN_CONTRACT_INFO:
+          serviceImpl.getTokenContractInfo((org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenContractInfoResponse>) responseObserver);
+          break;
         case METHODID_GET_TOKEN_PRE_PROGRAMMED_DISTRIBUTIONS:
           serviceImpl.getTokenPreProgrammedDistributions((org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPreProgrammedDistributionsResponse>) responseObserver);
+          break;
+        case METHODID_GET_TOKEN_PERPETUAL_DISTRIBUTION_LAST_CLAIM:
+          serviceImpl.getTokenPerpetualDistributionLastClaim((org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenPerpetualDistributionLastClaimResponse>) responseObserver);
           break;
         case METHODID_GET_TOKEN_TOTAL_SUPPLY:
           serviceImpl.getTokenTotalSupply((org.dash.platform.dapi.v0.PlatformOuterClass.GetTokenTotalSupplyRequest) request,
@@ -3330,6 +3898,22 @@ public final class PlatformGrpc {
         case METHODID_GET_GROUP_ACTION_SIGNERS:
           serviceImpl.getGroupActionSigners((org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersRequest) request,
               (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetGroupActionSignersResponse>) responseObserver);
+          break;
+        case METHODID_GET_ADDRESS_INFO:
+          serviceImpl.getAddressInfo((org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressInfoResponse>) responseObserver);
+          break;
+        case METHODID_GET_ADDRESSES_INFOS:
+          serviceImpl.getAddressesInfos((org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesInfosResponse>) responseObserver);
+          break;
+        case METHODID_GET_ADDRESSES_TRUNK_STATE:
+          serviceImpl.getAddressesTrunkState((org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesTrunkStateResponse>) responseObserver);
+          break;
+        case METHODID_GET_ADDRESSES_BRANCH_STATE:
+          serviceImpl.getAddressesBranchState((org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateRequest) request,
+              (io.grpc.stub.StreamObserver<org.dash.platform.dapi.v0.PlatformOuterClass.GetAddressesBranchStateResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -3408,11 +3992,13 @@ public final class PlatformGrpc {
               .addMethod(getGetDataContractsMethod())
               .addMethod(getGetDocumentsMethod())
               .addMethod(getGetIdentityByPublicKeyHashMethod())
+              .addMethod(getGetIdentityByNonUniquePublicKeyHashMethod())
               .addMethod(getWaitForStateTransitionResultMethod())
               .addMethod(getGetConsensusParamsMethod())
               .addMethod(getGetProtocolVersionUpgradeStateMethod())
               .addMethod(getGetProtocolVersionUpgradeVoteStatusMethod())
               .addMethod(getGetEpochsInfoMethod())
+              .addMethod(getGetFinalizedEpochInfosMethod())
               .addMethod(getGetContestedResourcesMethod())
               .addMethod(getGetContestedResourceVoteStateMethod())
               .addMethod(getGetContestedResourceVotersForIdentityMethod())
@@ -3429,12 +4015,18 @@ public final class PlatformGrpc {
               .addMethod(getGetIdentitiesTokenInfosMethod())
               .addMethod(getGetTokenStatusesMethod())
               .addMethod(getGetTokenDirectPurchasePricesMethod())
+              .addMethod(getGetTokenContractInfoMethod())
               .addMethod(getGetTokenPreProgrammedDistributionsMethod())
+              .addMethod(getGetTokenPerpetualDistributionLastClaimMethod())
               .addMethod(getGetTokenTotalSupplyMethod())
               .addMethod(getGetGroupInfoMethod())
               .addMethod(getGetGroupInfosMethod())
               .addMethod(getGetGroupActionsMethod())
               .addMethod(getGetGroupActionSignersMethod())
+              .addMethod(getGetAddressInfoMethod())
+              .addMethod(getGetAddressesInfosMethod())
+              .addMethod(getGetAddressesTrunkStateMethod())
+              .addMethod(getGetAddressesBranchStateMethod())
               .build();
         }
       }

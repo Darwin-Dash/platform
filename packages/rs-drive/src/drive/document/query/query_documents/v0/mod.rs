@@ -6,7 +6,6 @@ use dpp::block::epoch::Epoch;
 use dpp::document::serialization_traits::DocumentPlatformConversionMethodsV0;
 use dpp::document::Document;
 use dpp::version::PlatformVersion;
-use dpp::ProtocolError;
 use grovedb::TransactionArg;
 
 /// The outcome of a query
@@ -69,7 +68,7 @@ impl Drive {
     /// # Returns
     ///
     /// * `Result<QueryDocumentsOutcome, Error>` - Returns `QueryDocumentsOutcome` on success with the list of documents,
-    ///    number of skipped items, and cost. If the operation fails, it returns an `Error`.
+    ///   number of skipped items, and cost. If the operation fails, it returns an `Error`.
     #[inline(always)]
     pub(super) fn query_documents_v0(
         &self,
@@ -93,8 +92,18 @@ impl Drive {
             .into_iter()
             .map(|serialized| {
                 Document::from_bytes(serialized.as_slice(), query.document_type, platform_version)
+                    .map_err(|e| {
+                        Error::ProtocolWithInfoString(
+                            Box::new(e),
+                            format!(
+                                "document bytes are {}, query is using contract {:?}",
+                                hex::encode(serialized),
+                                query.contract
+                            ),
+                        )
+                    })
             })
-            .collect::<Result<Vec<Document>, ProtocolError>>()?;
+            .collect::<Result<Vec<Document>, Error>>()?;
         let cost = if let Some(epoch) = epoch {
             let fee_result = Drive::calculate_fee(
                 None,

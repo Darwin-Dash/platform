@@ -1,0 +1,1768 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6] [cursor=pointer]:
+        - img "Dash" [ref=e7]
+        - heading "Dash Identity Manager" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - button "Select identity" [ref=e11] [cursor=pointer]:
+          - generic [ref=e12]:
+            - generic [ref=e13]: Select Identity
+            - generic [ref=e14]: "--"
+          - img [ref=e15]
+        - button "Identity actions" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+          - generic [ref=e21]: Actions
+        - button "DPNS Name Resolver" [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+          - generic [ref=e27]: Name Lookup
+        - button "Operations" [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+        - button "Logout" [ref=e32] [cursor=pointer]
+        - button "Select network" [ref=e34] [cursor=pointer]:
+          - generic [ref=e36]: Testnet
+          - img [ref=e37]
+  - main [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - generic [ref=e44]: Identities
+            - generic [ref=e45]: "241"
+          - generic [ref=e47]:
+            - generic [ref=e48]: Balance
+            - generic [ref=e49]: 2.01648531 DASH
+          - generic [ref=e51]:
+            - generic [ref=e52]: Names
+            - generic [ref=e53]: "0"
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - heading "Your Identities" [level=2] [ref=e56]
+            - button "Create Identity" [ref=e57] [cursor=pointer]:
+              - img [ref=e58]
+              - text: Create Identity
+          - generic [ref=e60]:
+            - generic [ref=e61] [cursor=pointer]:
+              - generic [ref=e63]:
+                - generic [ref=e64]: Unnamed Identity
+                - generic [ref=e65]: DcoJJ3W9...ifNq
+              - generic [ref=e66]:
+                - generic [ref=e67]: 0.06727043 DASH
+                - generic [ref=e68]: 6,727,043,232 credits
+            - generic [ref=e69] [cursor=pointer]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: Unnamed Identity
+                - generic [ref=e73]: FHQWJrKB...mg6o
+              - generic [ref=e74]:
+                - generic [ref=e75]: 0.00280785 DASH
+                - generic [ref=e76]: 280,785,270 credits
+            - generic [ref=e77] [cursor=pointer]:
+              - generic [ref=e79]:
+                - generic [ref=e80]: Unnamed Identity
+                - generic [ref=e81]: DRcmPSN9...nvtN
+              - generic [ref=e82]:
+                - generic [ref=e83]: 0.00353662 DASH
+                - generic [ref=e84]: 353,662,420 credits
+            - generic [ref=e85] [cursor=pointer]:
+              - generic [ref=e87]:
+                - generic [ref=e88]: Unnamed Identity
+                - generic [ref=e89]: HHSTnwrt...zS4H
+              - generic [ref=e90]:
+                - generic [ref=e91]: 0.00803199 DASH
+                - generic [ref=e92]: 803,199,460 credits
+            - generic [ref=e93] [cursor=pointer]:
+              - generic [ref=e95]:
+                - generic [ref=e96]: Unnamed Identity
+                - generic [ref=e97]: FSSPP35V...6c39
+              - generic [ref=e98]:
+                - generic [ref=e99]: 0.0080313 DASH
+                - generic [ref=e100]: 803,129,940 credits
+            - generic [ref=e101] [cursor=pointer]:
+              - generic [ref=e103]:
+                - generic [ref=e104]: Unnamed Identity
+                - generic [ref=e105]: EcriBjVS...GmQ5
+              - generic [ref=e106]:
+                - generic [ref=e107]: 0.00880091 DASH
+                - generic [ref=e108]: 880,090,640 credits
+            - generic [ref=e109] [cursor=pointer]:
+              - generic [ref=e111]:
+                - generic [ref=e112]: Unnamed Identity
+                - generic [ref=e113]: 4yjr4tdS...hjf5
+              - generic [ref=e114]:
+                - generic [ref=e115]: 0.00917728 DASH
+                - generic [ref=e116]: 917,727,658 credits
+            - generic [ref=e117] [cursor=pointer]:
+              - generic [ref=e119]:
+                - generic [ref=e120]: Unnamed Identity
+                - generic [ref=e121]: 2UHzFW9N...5sLL
+              - generic [ref=e122]:
+                - generic [ref=e123]: 0.00698112 DASH
+                - generic [ref=e124]: 698,111,940 credits
+            - generic [ref=e125] [cursor=pointer]:
+              - generic [ref=e127]:
+                - generic [ref=e128]: Unnamed Identity
+                - generic [ref=e129]: EKTtGzyD...Wy3q
+              - generic [ref=e130]:
+                - generic [ref=e131]: 0.00879804 DASH
+                - generic [ref=e132]: 879,804,420 credits
+            - generic [ref=e133] [cursor=pointer]:
+              - generic [ref=e135]:
+                - generic [ref=e136]: Unnamed Identity
+                - generic [ref=e137]: 27MV6wMD...p1gz
+              - generic [ref=e138]:
+                - generic [ref=e139]: 0.00772143 DASH
+                - generic [ref=e140]: 772,142,690 credits
+            - generic [ref=e141] [cursor=pointer]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: Unnamed Identity
+                - generic [ref=e145]: EhGUnphj...eLMi
+              - generic [ref=e146]:
+                - generic [ref=e147]: 0.00730784 DASH
+                - generic [ref=e148]: 730,783,890 credits
+            - generic [ref=e149] [cursor=pointer]:
+              - generic [ref=e151]:
+                - generic [ref=e152]: Unnamed Identity
+                - generic [ref=e153]: G3yCKwx9...hhSi
+              - generic [ref=e154]:
+                - generic [ref=e155]: 0.01164637 DASH
+                - generic [ref=e156]: 1,164,637,188 credits
+            - generic [ref=e157] [cursor=pointer]:
+              - generic [ref=e159]:
+                - generic [ref=e160]: Unnamed Identity
+                - generic [ref=e161]: GqkeDqcF...sAHE
+              - generic [ref=e162]:
+                - generic [ref=e163]: 0.00879701 DASH
+                - generic [ref=e164]: 879,700,520 credits
+            - generic [ref=e165] [cursor=pointer]:
+              - generic [ref=e167]:
+                - generic [ref=e168]: Unnamed Identity
+                - generic [ref=e169]: E9YxmSEf...v9FS
+              - generic [ref=e170]:
+                - generic [ref=e171]: 0.0084595 DASH
+                - generic [ref=e172]: 845,950,080 credits
+            - generic [ref=e173] [cursor=pointer]:
+              - generic [ref=e175]:
+                - generic [ref=e176]: Unnamed Identity
+                - generic [ref=e177]: GVkJXfy3...6Knt
+              - generic [ref=e178]:
+                - generic [ref=e179]: 0.00879709 DASH
+                - generic [ref=e180]: 879,709,080 credits
+            - generic [ref=e181] [cursor=pointer]:
+              - generic [ref=e183]:
+                - generic [ref=e184]: Unnamed Identity
+                - generic [ref=e185]: HaajTmPW...KhRe
+              - generic [ref=e186]:
+                - generic [ref=e187]: 0.00879666 DASH
+                - generic [ref=e188]: 879,666,380 credits
+            - generic [ref=e189] [cursor=pointer]:
+              - generic [ref=e191]:
+                - generic [ref=e192]: Unnamed Identity
+                - generic [ref=e193]: 6QYSSQ8S...Lugp
+              - generic [ref=e194]:
+                - generic [ref=e195]: 0.00879666 DASH
+                - generic [ref=e196]: 879,666,240 credits
+            - generic [ref=e197] [cursor=pointer]:
+              - generic [ref=e199]:
+                - generic [ref=e200]: Unnamed Identity
+                - generic [ref=e201]: DRSFgiCH...Pjeh
+              - generic [ref=e202]:
+                - generic [ref=e203]: 0.00879763 DASH
+                - generic [ref=e204]: 879,763,280 credits
+            - generic [ref=e205] [cursor=pointer]:
+              - generic [ref=e207]:
+                - generic [ref=e208]: Unnamed Identity
+                - generic [ref=e209]: 7iSiX2Qj...kNCG
+              - generic [ref=e210]:
+                - generic [ref=e211]: 0.00879603 DASH
+                - generic [ref=e212]: 879,603,360 credits
+            - generic [ref=e213] [cursor=pointer]:
+              - generic [ref=e215]:
+                - generic [ref=e216]: Unnamed Identity
+                - generic [ref=e217]: CumJpCB7...G8KS
+              - generic [ref=e218]:
+                - generic [ref=e219]: 0.00879607 DASH
+                - generic [ref=e220]: 879,606,560 credits
+            - generic [ref=e221] [cursor=pointer]:
+              - generic [ref=e223]:
+                - generic [ref=e224]: Unnamed Identity
+                - generic [ref=e225]: 5HTf2TEo...1z9a
+              - generic [ref=e226]:
+                - generic [ref=e227]: 0.00879668 DASH
+                - generic [ref=e228]: 879,667,760 credits
+            - generic [ref=e229] [cursor=pointer]:
+              - generic [ref=e231]:
+                - generic [ref=e232]: Unnamed Identity
+                - generic [ref=e233]: zLFTRi9J...QG5e
+              - generic [ref=e234]:
+                - generic [ref=e235]: 0.00879386 DASH
+                - generic [ref=e236]: 879,385,960 credits
+            - generic [ref=e237] [cursor=pointer]:
+              - generic [ref=e239]:
+                - generic [ref=e240]: Unnamed Identity
+                - generic [ref=e241]: BF5d2Nfm...st37
+              - generic [ref=e242]:
+                - generic [ref=e243]: 0.00879344 DASH
+                - generic [ref=e244]: 879,344,200 credits
+            - generic [ref=e245] [cursor=pointer]:
+              - generic [ref=e247]:
+                - generic [ref=e248]: Unnamed Identity
+                - generic [ref=e249]: 6PgxzQWW...NE8x
+              - generic [ref=e250]:
+                - generic [ref=e251]: 0.00879468 DASH
+                - generic [ref=e252]: 879,468,480 credits
+            - generic [ref=e253] [cursor=pointer]:
+              - generic [ref=e255]:
+                - generic [ref=e256]: Unnamed Identity
+                - generic [ref=e257]: 6oHEa3kn...XhSj
+              - generic [ref=e258]:
+                - generic [ref=e259]: 0.00879384 DASH
+                - generic [ref=e260]: 879,384,420 credits
+            - generic [ref=e261] [cursor=pointer]:
+              - generic [ref=e263]:
+                - generic [ref=e264]: Unnamed Identity
+                - generic [ref=e265]: Bnqub7Rv...dj1v
+              - generic [ref=e266]:
+                - generic [ref=e267]: 0.00879881 DASH
+                - generic [ref=e268]: 879,881,360 credits
+            - generic [ref=e269] [cursor=pointer]:
+              - generic [ref=e271]:
+                - generic [ref=e272]: Unnamed Identity
+                - generic [ref=e273]: ByBbGndz...tjpz
+              - generic [ref=e274]:
+                - generic [ref=e275]: 0.00879318 DASH
+                - generic [ref=e276]: 879,318,480 credits
+            - generic [ref=e277] [cursor=pointer]:
+              - generic [ref=e279]:
+                - generic [ref=e280]: Unnamed Identity
+                - generic [ref=e281]: 9Frwu29N...2TWG
+              - generic [ref=e282]:
+                - generic [ref=e283]: 0.0087961 DASH
+                - generic [ref=e284]: 879,609,700 credits
+            - generic [ref=e285] [cursor=pointer]:
+              - generic [ref=e287]:
+                - generic [ref=e288]: Unnamed Identity
+                - generic [ref=e289]: EsZnKEqH...fqeJ
+              - generic [ref=e290]:
+                - generic [ref=e291]: 0.00879805 DASH
+                - generic [ref=e292]: 879,805,140 credits
+            - generic [ref=e293] [cursor=pointer]:
+              - generic [ref=e295]:
+                - generic [ref=e296]: Unnamed Identity
+                - generic [ref=e297]: J7cMsGry...tUPv
+              - generic [ref=e298]:
+                - generic [ref=e299]: 0.00880044 DASH
+                - generic [ref=e300]: 880,043,680 credits
+            - generic [ref=e301] [cursor=pointer]:
+              - generic [ref=e303]:
+                - generic [ref=e304]: Unnamed Identity
+                - generic [ref=e305]: DwjLVndL...4BF4
+              - generic [ref=e306]:
+                - generic [ref=e307]: 0.0087936 DASH
+                - generic [ref=e308]: 879,360,440 credits
+            - generic [ref=e309] [cursor=pointer]:
+              - generic [ref=e311]:
+                - generic [ref=e312]: Unnamed Identity
+                - generic [ref=e313]: 3QfMvrgL...rwWQ
+              - generic [ref=e314]:
+                - generic [ref=e315]: 0.00879357 DASH
+                - generic [ref=e316]: 879,357,060 credits
+            - generic [ref=e317] [cursor=pointer]:
+              - generic [ref=e319]:
+                - generic [ref=e320]: Unnamed Identity
+                - generic [ref=e321]: FuCJTfdo...fZNM
+              - generic [ref=e322]:
+                - generic [ref=e323]: 0.00879672 DASH
+                - generic [ref=e324]: 879,672,160 credits
+            - generic [ref=e325] [cursor=pointer]:
+              - generic [ref=e327]:
+                - generic [ref=e328]: Unnamed Identity
+                - generic [ref=e329]: 2QLB5UWT...RASQ
+              - generic [ref=e330]:
+                - generic [ref=e331]: 0.00879901 DASH
+                - generic [ref=e332]: 879,900,580 credits
+            - generic [ref=e333] [cursor=pointer]:
+              - generic [ref=e335]:
+                - generic [ref=e336]: Unnamed Identity
+                - generic [ref=e337]: 37hPabp2...2334
+              - generic [ref=e338]:
+                - generic [ref=e339]: 0.0087974 DASH
+                - generic [ref=e340]: 879,740,080 credits
+            - generic [ref=e341] [cursor=pointer]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: Unnamed Identity
+                - generic [ref=e345]: 7uEdJJWs...hnJx
+              - generic [ref=e346]:
+                - generic [ref=e347]: 0.00879499 DASH
+                - generic [ref=e348]: 879,499,100 credits
+            - generic [ref=e349] [cursor=pointer]:
+              - generic [ref=e351]:
+                - generic [ref=e352]: Unnamed Identity
+                - generic [ref=e353]: DRUDFaez...6qxv
+              - generic [ref=e354]:
+                - generic [ref=e355]: 0.00879611 DASH
+                - generic [ref=e356]: 879,611,180 credits
+            - generic [ref=e357] [cursor=pointer]:
+              - generic [ref=e359]:
+                - generic [ref=e360]: Unnamed Identity
+                - generic [ref=e361]: FvbNEcwY...cnLA
+              - generic [ref=e362]:
+                - generic [ref=e363]: 0.00879685 DASH
+                - generic [ref=e364]: 879,685,440 credits
+            - generic [ref=e365] [cursor=pointer]:
+              - generic [ref=e367]:
+                - generic [ref=e368]: Unnamed Identity
+                - generic [ref=e369]: 5tcGGMQW...Ubj7
+              - generic [ref=e370]:
+                - generic [ref=e371]: 0.00879459 DASH
+                - generic [ref=e372]: 879,458,740 credits
+            - generic [ref=e373] [cursor=pointer]:
+              - generic [ref=e375]:
+                - generic [ref=e376]: Unnamed Identity
+                - generic [ref=e377]: GHQyDMgF...NWZF
+              - generic [ref=e378]:
+                - generic [ref=e379]: 0.0087946 DASH
+                - generic [ref=e380]: 879,459,780 credits
+            - generic [ref=e381] [cursor=pointer]:
+              - generic [ref=e383]:
+                - generic [ref=e384]: Unnamed Identity
+                - generic [ref=e385]: 5SoquAvs...ctF3
+              - generic [ref=e386]:
+                - generic [ref=e387]: 0.00879456 DASH
+                - generic [ref=e388]: 879,456,060 credits
+            - generic [ref=e389] [cursor=pointer]:
+              - generic [ref=e391]:
+                - generic [ref=e392]: Unnamed Identity
+                - generic [ref=e393]: 2qhydfZZ...PrXj
+              - generic [ref=e394]:
+                - generic [ref=e395]: 0.00880024 DASH
+                - generic [ref=e396]: 880,024,020 credits
+            - generic [ref=e397] [cursor=pointer]:
+              - generic [ref=e399]:
+                - generic [ref=e400]: Unnamed Identity
+                - generic [ref=e401]: 8S6EQurA...4Nqc
+              - generic [ref=e402]:
+                - generic [ref=e403]: 0.00879663 DASH
+                - generic [ref=e404]: 879,662,580 credits
+            - generic [ref=e405] [cursor=pointer]:
+              - generic [ref=e407]:
+                - generic [ref=e408]: Unnamed Identity
+                - generic [ref=e409]: 99LY1zmm...XAdS
+              - generic [ref=e410]:
+                - generic [ref=e411]: 0.00879685 DASH
+                - generic [ref=e412]: 879,684,900 credits
+            - generic [ref=e413] [cursor=pointer]:
+              - generic [ref=e415]:
+                - generic [ref=e416]: Unnamed Identity
+                - generic [ref=e417]: AAzu5kC6...BPaC
+              - generic [ref=e418]:
+                - generic [ref=e419]: 0.00880164 DASH
+                - generic [ref=e420]: 880,164,040 credits
+            - generic [ref=e421] [cursor=pointer]:
+              - generic [ref=e423]:
+                - generic [ref=e424]: Unnamed Identity
+                - generic [ref=e425]: 8zoNtDmt...DXFs
+              - generic [ref=e426]:
+                - generic [ref=e427]: 0.00879657 DASH
+                - generic [ref=e428]: 879,656,960 credits
+            - generic [ref=e429] [cursor=pointer]:
+              - generic [ref=e431]:
+                - generic [ref=e432]: Unnamed Identity
+                - generic [ref=e433]: C25Zrvm6...giZB
+              - generic [ref=e434]:
+                - generic [ref=e435]: 0.00879803 DASH
+                - generic [ref=e436]: 879,803,020 credits
+            - generic [ref=e437] [cursor=pointer]:
+              - generic [ref=e439]:
+                - generic [ref=e440]: Unnamed Identity
+                - generic [ref=e441]: EHHpAoo2...gViG
+              - generic [ref=e442]:
+                - generic [ref=e443]: 0.00879923 DASH
+                - generic [ref=e444]: 879,922,820 credits
+            - generic [ref=e445] [cursor=pointer]:
+              - generic [ref=e447]:
+                - generic [ref=e448]: Unnamed Identity
+                - generic [ref=e449]: 3h4FuawR...x9Qn
+              - generic [ref=e450]:
+                - generic [ref=e451]: 0.00879597 DASH
+                - generic [ref=e452]: 879,597,240 credits
+            - generic [ref=e453] [cursor=pointer]:
+              - generic [ref=e455]:
+                - generic [ref=e456]: Unnamed Identity
+                - generic [ref=e457]: 726Ft54K...NV9z
+              - generic [ref=e458]:
+                - generic [ref=e459]: 0.00879694 DASH
+                - generic [ref=e460]: 879,694,080 credits
+            - generic [ref=e461] [cursor=pointer]:
+              - generic [ref=e463]:
+                - generic [ref=e464]: Unnamed Identity
+                - generic [ref=e465]: vyniUsjK...J6Wp
+              - generic [ref=e466]:
+                - generic [ref=e467]: 0.00879177 DASH
+                - generic [ref=e468]: 879,176,860 credits
+            - generic [ref=e469] [cursor=pointer]:
+              - generic [ref=e471]:
+                - generic [ref=e472]: Unnamed Identity
+                - generic [ref=e473]: 4vXVMt4P...FL3W
+              - generic [ref=e474]:
+                - generic [ref=e475]: 0.00879336 DASH
+                - generic [ref=e476]: 879,336,300 credits
+            - generic [ref=e477] [cursor=pointer]:
+              - generic [ref=e479]:
+                - generic [ref=e480]: Unnamed Identity
+                - generic [ref=e481]: xg4L7tfd...bgzU
+              - generic [ref=e482]:
+                - generic [ref=e483]: 0.00879362 DASH
+                - generic [ref=e484]: 879,361,660 credits
+            - generic [ref=e485] [cursor=pointer]:
+              - generic [ref=e487]:
+                - generic [ref=e488]: Unnamed Identity
+                - generic [ref=e489]: G1JYCCuE...vq6D
+              - generic [ref=e490]:
+                - generic [ref=e491]: 0.00879672 DASH
+                - generic [ref=e492]: 879,671,600 credits
+            - generic [ref=e493] [cursor=pointer]:
+              - generic [ref=e495]:
+                - generic [ref=e496]: Unnamed Identity
+                - generic [ref=e497]: 4GG2LwbC...B62k
+              - generic [ref=e498]:
+                - generic [ref=e499]: 0.0087996 DASH
+                - generic [ref=e500]: 879,960,340 credits
+            - generic [ref=e501] [cursor=pointer]:
+              - generic [ref=e503]:
+                - generic [ref=e504]: Unnamed Identity
+                - generic [ref=e505]: ZptE6uZB...w32X
+              - generic [ref=e506]:
+                - generic [ref=e507]: 0.00879421 DASH
+                - generic [ref=e508]: 879,420,860 credits
+            - generic [ref=e509] [cursor=pointer]:
+              - generic [ref=e511]:
+                - generic [ref=e512]: Unnamed Identity
+                - generic [ref=e513]: DjNJw6Ad...45Jc
+              - generic [ref=e514]:
+                - generic [ref=e515]: 0.00879884 DASH
+                - generic [ref=e516]: 879,884,260 credits
+            - generic [ref=e517] [cursor=pointer]:
+              - generic [ref=e519]:
+                - generic [ref=e520]: Unnamed Identity
+                - generic [ref=e521]: 7p9duLfG...bcYX
+              - generic [ref=e522]:
+                - generic [ref=e523]: 0.00879307 DASH
+                - generic [ref=e524]: 879,306,800 credits
+            - generic [ref=e525] [cursor=pointer]:
+              - generic [ref=e527]:
+                - generic [ref=e528]: Unnamed Identity
+                - generic [ref=e529]: FxSNf32k...WkEw
+              - generic [ref=e530]:
+                - generic [ref=e531]: 0.00879806 DASH
+                - generic [ref=e532]: 879,806,160 credits
+            - generic [ref=e533] [cursor=pointer]:
+              - generic [ref=e535]:
+                - generic [ref=e536]: Unnamed Identity
+                - generic [ref=e537]: 4mmLZaLp...jsSp
+              - generic [ref=e538]:
+                - generic [ref=e539]: 0.00879833 DASH
+                - generic [ref=e540]: 879,832,680 credits
+            - generic [ref=e541] [cursor=pointer]:
+              - generic [ref=e543]:
+                - generic [ref=e544]: Unnamed Identity
+                - generic [ref=e545]: Cx95DVHc...2NuH
+              - generic [ref=e546]:
+                - generic [ref=e547]: 0.00879492 DASH
+                - generic [ref=e548]: 879,491,520 credits
+            - generic [ref=e549] [cursor=pointer]:
+              - generic [ref=e551]:
+                - generic [ref=e552]: Unnamed Identity
+                - generic [ref=e553]: B99N3Bh3...dyoP
+              - generic [ref=e554]:
+                - generic [ref=e555]: 0.00879498 DASH
+                - generic [ref=e556]: 879,497,960 credits
+            - generic [ref=e557] [cursor=pointer]:
+              - generic [ref=e559]:
+                - generic [ref=e560]: Unnamed Identity
+                - generic [ref=e561]: yaMSMw9V...5MRp
+              - generic [ref=e562]:
+                - generic [ref=e563]: 0.00740966 DASH
+                - generic [ref=e564]: 740,966,200 credits
+            - generic [ref=e565] [cursor=pointer]:
+              - generic [ref=e567]:
+                - generic [ref=e568]: Unnamed Identity
+                - generic [ref=e569]: 66Dpo1M1...QJZV
+              - generic [ref=e570]:
+                - generic [ref=e571]: 0.00879904 DASH
+                - generic [ref=e572]: 879,904,040 credits
+            - generic [ref=e573] [cursor=pointer]:
+              - generic [ref=e575]:
+                - generic [ref=e576]: Unnamed Identity
+                - generic [ref=e577]: 57Ee4T2R...kGNs
+              - generic [ref=e578]:
+                - generic [ref=e579]: 0.00879448 DASH
+                - generic [ref=e580]: 879,447,680 credits
+            - generic [ref=e581] [cursor=pointer]:
+              - generic [ref=e583]:
+                - generic [ref=e584]: Unnamed Identity
+                - generic [ref=e585]: 7SWFsdYu...vNx2
+              - generic [ref=e586]:
+                - generic [ref=e587]: 0.00879595 DASH
+                - generic [ref=e588]: 879,594,860 credits
+            - generic [ref=e589] [cursor=pointer]:
+              - generic [ref=e591]:
+                - generic [ref=e592]: Unnamed Identity
+                - generic [ref=e593]: 4cgzuzYD...fvqw
+              - generic [ref=e594]:
+                - generic [ref=e595]: 0.0087988 DASH
+                - generic [ref=e596]: 879,879,920 credits
+            - generic [ref=e597] [cursor=pointer]:
+              - generic [ref=e599]:
+                - generic [ref=e600]: Unnamed Identity
+                - generic [ref=e601]: 5sujBsA5...1PrP
+              - generic [ref=e602]:
+                - generic [ref=e603]: 0.00879758 DASH
+                - generic [ref=e604]: 879,757,920 credits
+            - generic [ref=e605] [cursor=pointer]:
+              - generic [ref=e607]:
+                - generic [ref=e608]: Unnamed Identity
+                - generic [ref=e609]: 9hJyT477...9L3f
+              - generic [ref=e610]:
+                - generic [ref=e611]: 0.00879534 DASH
+                - generic [ref=e612]: 879,534,280 credits
+            - generic [ref=e613] [cursor=pointer]:
+              - generic [ref=e615]:
+                - generic [ref=e616]: Unnamed Identity
+                - generic [ref=e617]: 9TvogK1r...7BYd
+              - generic [ref=e618]:
+                - generic [ref=e619]: 0.00879693 DASH
+                - generic [ref=e620]: 879,693,440 credits
+            - generic [ref=e621] [cursor=pointer]:
+              - generic [ref=e623]:
+                - generic [ref=e624]: Unnamed Identity
+                - generic [ref=e625]: AdUG1QEt...PYfw
+              - generic [ref=e626]:
+                - generic [ref=e627]: 0.00879463 DASH
+                - generic [ref=e628]: 879,462,580 credits
+            - generic [ref=e629] [cursor=pointer]:
+              - generic [ref=e631]:
+                - generic [ref=e632]: Unnamed Identity
+                - generic [ref=e633]: 2AhYbfXZ...adTi
+              - generic [ref=e634]:
+                - generic [ref=e635]: 0.00964116 DASH
+                - generic [ref=e636]: 964,116,180 credits
+            - generic [ref=e637] [cursor=pointer]:
+              - generic [ref=e639]:
+                - generic [ref=e640]: Unnamed Identity
+                - generic [ref=e641]: 4C6ZJVeP...Vk79
+              - generic [ref=e642]:
+                - generic [ref=e643]: 0.00879673 DASH
+                - generic [ref=e644]: 879,672,940 credits
+            - generic [ref=e645] [cursor=pointer]:
+              - generic [ref=e647]:
+                - generic [ref=e648]: Unnamed Identity
+                - generic [ref=e649]: SS1fpz6t...N6Rv
+              - generic [ref=e650]:
+                - generic [ref=e651]: 0.00963881 DASH
+                - generic [ref=e652]: 963,880,580 credits
+            - generic [ref=e653] [cursor=pointer]:
+              - generic [ref=e655]:
+                - generic [ref=e656]: Unnamed Identity
+                - generic [ref=e657]: 9wcDvCMZ...T9Sz
+              - generic [ref=e658]:
+                - generic [ref=e659]: 0.00879579 DASH
+                - generic [ref=e660]: 879,578,720 credits
+            - generic [ref=e661] [cursor=pointer]:
+              - generic [ref=e663]:
+                - generic [ref=e664]: Unnamed Identity
+                - generic [ref=e665]: GG7cMYFu...C9qk
+              - generic [ref=e666]:
+                - generic [ref=e667]: 0.00879465 DASH
+                - generic [ref=e668]: 879,465,060 credits
+            - generic [ref=e669] [cursor=pointer]:
+              - generic [ref=e671]:
+                - generic [ref=e672]: Unnamed Identity
+                - generic [ref=e673]: 7pvX49qL...jvhq
+              - generic [ref=e674]:
+                - generic [ref=e675]: 0.00879767 DASH
+                - generic [ref=e676]: 879,767,400 credits
+            - generic [ref=e677] [cursor=pointer]:
+              - generic [ref=e679]:
+                - generic [ref=e680]: Unnamed Identity
+                - generic [ref=e681]: 92qKEr2V...xr3u
+              - generic [ref=e682]:
+                - generic [ref=e683]: 0.00879807 DASH
+                - generic [ref=e684]: 879,807,320 credits
+            - generic [ref=e685] [cursor=pointer]:
+              - generic [ref=e687]:
+                - generic [ref=e688]: Unnamed Identity
+                - generic [ref=e689]: FXn3AUgU...JaMf
+              - generic [ref=e690]:
+                - generic [ref=e691]: 0.00879601 DASH
+                - generic [ref=e692]: 879,601,340 credits
+            - generic [ref=e693] [cursor=pointer]:
+              - generic [ref=e695]:
+                - generic [ref=e696]: Unnamed Identity
+                - generic [ref=e697]: Ch7e9DpK...guhM
+              - generic [ref=e698]:
+                - generic [ref=e699]: 0.00879273 DASH
+                - generic [ref=e700]: 879,272,960 credits
+            - generic [ref=e701] [cursor=pointer]:
+              - generic [ref=e703]:
+                - generic [ref=e704]: Unnamed Identity
+                - generic [ref=e705]: DqXAQBAK...q2Da
+              - generic [ref=e706]:
+                - generic [ref=e707]: 0.00879461 DASH
+                - generic [ref=e708]: 879,460,860 credits
+            - generic [ref=e709] [cursor=pointer]:
+              - generic [ref=e711]:
+                - generic [ref=e712]: Unnamed Identity
+                - generic [ref=e713]: DUjDwk2Q...gqx1
+              - generic [ref=e714]:
+                - generic [ref=e715]: 0.00879692 DASH
+                - generic [ref=e716]: 879,691,860 credits
+            - generic [ref=e717] [cursor=pointer]:
+              - generic [ref=e719]:
+                - generic [ref=e720]: Unnamed Identity
+                - generic [ref=e721]: 87fHecYZ...7CHz
+              - generic [ref=e722]:
+                - generic [ref=e723]: 0.00110324 DASH
+                - generic [ref=e724]: 110,324,080 credits
+            - generic [ref=e725] [cursor=pointer]:
+              - generic [ref=e727]:
+                - generic [ref=e728]: Unnamed Identity
+                - generic [ref=e729]: HoJc9PKj...e7mS
+              - generic [ref=e730]:
+                - generic [ref=e731]: 0.00879536 DASH
+                - generic [ref=e732]: 879,535,820 credits
+            - generic [ref=e733] [cursor=pointer]:
+              - generic [ref=e735]:
+                - generic [ref=e736]: Unnamed Identity
+                - generic [ref=e737]: 7AbRG7mF...UjKr
+              - generic [ref=e738]:
+                - generic [ref=e739]: 0.00879605 DASH
+                - generic [ref=e740]: 879,605,040 credits
+            - generic [ref=e741] [cursor=pointer]:
+              - generic [ref=e743]:
+                - generic [ref=e744]: Unnamed Identity
+                - generic [ref=e745]: sPUT7iC2...GtvW
+              - generic [ref=e746]:
+                - generic [ref=e747]: 0.00879586 DASH
+                - generic [ref=e748]: 879,585,520 credits
+            - generic [ref=e749] [cursor=pointer]:
+              - generic [ref=e751]:
+                - generic [ref=e752]: Unnamed Identity
+                - generic [ref=e753]: EaieygPj...goUJ
+              - generic [ref=e754]:
+                - generic [ref=e755]: 0.00879409 DASH
+                - generic [ref=e756]: 879,408,760 credits
+            - generic [ref=e757] [cursor=pointer]:
+              - generic [ref=e759]:
+                - generic [ref=e760]: Unnamed Identity
+                - generic [ref=e761]: 3M7kqRaD...WUXM
+              - generic [ref=e762]:
+                - generic [ref=e763]: 0.00879949 DASH
+                - generic [ref=e764]: 879,949,080 credits
+            - generic [ref=e765] [cursor=pointer]:
+              - generic [ref=e767]:
+                - generic [ref=e768]: Unnamed Identity
+                - generic [ref=e769]: 8LMoGayE...FjNa
+              - generic [ref=e770]:
+                - generic [ref=e771]: 0.00764923 DASH
+                - generic [ref=e772]: 764,923,370 credits
+            - generic [ref=e773] [cursor=pointer]:
+              - generic [ref=e775]:
+                - generic [ref=e776]: Unnamed Identity
+                - generic [ref=e777]: 5c32m7QE...AKqa
+              - generic [ref=e778]:
+                - generic [ref=e779]: 0.00879693 DASH
+                - generic [ref=e780]: 879,692,720 credits
+            - generic [ref=e781] [cursor=pointer]:
+              - generic [ref=e783]:
+                - generic [ref=e784]: Unnamed Identity
+                - generic [ref=e785]: 5yMKG3HP...Lv82
+              - generic [ref=e786]:
+                - generic [ref=e787]: 0.01006471 DASH
+                - generic [ref=e788]: 1,006,470,620 credits
+            - generic [ref=e789] [cursor=pointer]:
+              - generic [ref=e791]:
+                - generic [ref=e792]: Unnamed Identity
+                - generic [ref=e793]: 6etjoQ1B...Mjmn
+              - generic [ref=e794]:
+                - generic [ref=e795]: 0.00879583 DASH
+                - generic [ref=e796]: 879,583,220 credits
+            - generic [ref=e797] [cursor=pointer]:
+              - generic [ref=e799]:
+                - generic [ref=e800]: Unnamed Identity
+                - generic [ref=e801]: Aa1ZUSjK...5y4M
+              - generic [ref=e802]:
+                - generic [ref=e803]: 0.00699369 DASH
+                - generic [ref=e804]: 699,368,770 credits
+            - generic [ref=e805] [cursor=pointer]:
+              - generic [ref=e807]:
+                - generic [ref=e808]: Unnamed Identity
+                - generic [ref=e809]: CXoPkUEd...2Xsf
+              - generic [ref=e810]:
+                - generic [ref=e811]: 0.00764906 DASH
+                - generic [ref=e812]: 764,906,350 credits
+            - generic [ref=e813] [cursor=pointer]:
+              - generic [ref=e815]:
+                - generic [ref=e816]: Unnamed Identity
+                - generic [ref=e817]: 5vCYHvVU...YtNN
+              - generic [ref=e818]:
+                - generic [ref=e819]: 0.00844481 DASH
+                - generic [ref=e820]: 844,481,260 credits
+            - generic [ref=e821] [cursor=pointer]:
+              - generic [ref=e823]:
+                - generic [ref=e824]: Unnamed Identity
+                - generic [ref=e825]: 4sMU5sdW...qCAq
+              - generic [ref=e826]:
+                - generic [ref=e827]: 0.00592449 DASH
+                - generic [ref=e828]: 592,449,270 credits
+            - generic [ref=e829] [cursor=pointer]:
+              - generic [ref=e831]:
+                - generic [ref=e832]: Unnamed Identity
+                - generic [ref=e833]: 7NEproDW...K5ws
+              - generic [ref=e834]:
+                - generic [ref=e835]: 0.00695933 DASH
+                - generic [ref=e836]: 695,933,180 credits
+            - generic [ref=e837] [cursor=pointer]:
+              - generic [ref=e839]:
+                - generic [ref=e840]: Unnamed Identity
+                - generic [ref=e841]: 35X1HpkE...T46y
+              - generic [ref=e842]:
+                - generic [ref=e843]: 0.00313245 DASH
+                - generic [ref=e844]: 313,245,460 credits
+            - generic [ref=e845] [cursor=pointer]:
+              - generic [ref=e847]:
+                - generic [ref=e848]: Unnamed Identity
+                - generic [ref=e849]: GU52SdTs...7zKK
+              - generic [ref=e850]:
+                - generic [ref=e851]: 0.00879378 DASH
+                - generic [ref=e852]: 879,377,780 credits
+            - generic [ref=e853] [cursor=pointer]:
+              - generic [ref=e855]:
+                - generic [ref=e856]: Unnamed Identity
+                - generic [ref=e857]: 9xSABso7...iquR
+              - generic [ref=e858]:
+                - generic [ref=e859]: 0.00879708 DASH
+                - generic [ref=e860]: 879,708,380 credits
+            - generic [ref=e861] [cursor=pointer]:
+              - generic [ref=e863]:
+                - generic [ref=e864]: Unnamed Identity
+                - generic [ref=e865]: CmFdbi2y...ZDin
+              - generic [ref=e866]:
+                - generic [ref=e867]: 0.00879396 DASH
+                - generic [ref=e868]: 879,396,060 credits
+            - generic [ref=e869] [cursor=pointer]:
+              - generic [ref=e871]:
+                - generic [ref=e872]: Unnamed Identity
+                - generic [ref=e873]: 87PkwuBu...FNDo
+              - generic [ref=e874]:
+                - generic [ref=e875]: 0.00879487 DASH
+                - generic [ref=e876]: 879,487,440 credits
+            - generic [ref=e877] [cursor=pointer]:
+              - generic [ref=e879]:
+                - generic [ref=e880]: Unnamed Identity
+                - generic [ref=e881]: A626bmwR...2r24
+              - generic [ref=e882]:
+                - generic [ref=e883]: 0.00812855 DASH
+                - generic [ref=e884]: 812,855,400 credits
+            - generic [ref=e885] [cursor=pointer]:
+              - generic [ref=e887]:
+                - generic [ref=e888]: Unnamed Identity
+                - generic [ref=e889]: EqyzJdLB...PzqC
+              - generic [ref=e890]:
+                - generic [ref=e891]: 0.00879519 DASH
+                - generic [ref=e892]: 879,518,740 credits
+            - generic [ref=e893] [cursor=pointer]:
+              - generic [ref=e895]:
+                - generic [ref=e896]: Unnamed Identity
+                - generic [ref=e897]: AjsDVQt3...FQDL
+              - generic [ref=e898]:
+                - generic [ref=e899]: 0.00879756 DASH
+                - generic [ref=e900]: 879,755,780 credits
+            - generic [ref=e901] [cursor=pointer]:
+              - generic [ref=e903]:
+                - generic [ref=e904]: Unnamed Identity
+                - generic [ref=e905]: 6ShxokMn...LBTz
+              - generic [ref=e906]:
+                - generic [ref=e907]: 0.00880159 DASH
+                - generic [ref=e908]: 880,159,260 credits
+            - generic [ref=e909] [cursor=pointer]:
+              - generic [ref=e911]:
+                - generic [ref=e912]: Unnamed Identity
+                - generic [ref=e913]: AFGKyAC3...qcax
+              - generic [ref=e914]:
+                - generic [ref=e915]: 0.00879807 DASH
+                - generic [ref=e916]: 879,807,240 credits
+            - generic [ref=e917] [cursor=pointer]:
+              - generic [ref=e919]:
+                - generic [ref=e920]: Unnamed Identity
+                - generic [ref=e921]: E6Xev1Xi...mnQD
+              - generic [ref=e922]:
+                - generic [ref=e923]: 0.0087974 DASH
+                - generic [ref=e924]: 879,739,680 credits
+            - generic [ref=e925] [cursor=pointer]:
+              - generic [ref=e927]:
+                - generic [ref=e928]: Unnamed Identity
+                - generic [ref=e929]: 6oR3txj8...CT6A
+              - generic [ref=e930]:
+                - generic [ref=e931]: 0.0087939 DASH
+                - generic [ref=e932]: 879,389,940 credits
+            - generic [ref=e933] [cursor=pointer]:
+              - generic [ref=e935]:
+                - generic [ref=e936]: Unnamed Identity
+                - generic [ref=e937]: 6419yfeh...9h18
+              - generic [ref=e938]:
+                - generic [ref=e939]: 0.00879717 DASH
+                - generic [ref=e940]: 879,717,320 credits
+            - generic [ref=e941] [cursor=pointer]:
+              - generic [ref=e943]:
+                - generic [ref=e944]: Unnamed Identity
+                - generic [ref=e945]: GqpBSmzc...3jgz
+              - generic [ref=e946]:
+                - generic [ref=e947]: 0.00879021 DASH
+                - generic [ref=e948]: 879,021,060 credits
+            - generic [ref=e949] [cursor=pointer]:
+              - generic [ref=e951]:
+                - generic [ref=e952]: Unnamed Identity
+                - generic [ref=e953]: CZgYXMca...NXAr
+              - generic [ref=e954]:
+                - generic [ref=e955]: 0.00921718 DASH
+                - generic [ref=e956]: 921,717,740 credits
+            - generic [ref=e957] [cursor=pointer]:
+              - generic [ref=e959]:
+                - generic [ref=e960]: Unnamed Identity
+                - generic [ref=e961]: 2YdrdbCr...kdrY
+              - generic [ref=e962]:
+                - generic [ref=e963]: 0.00879359 DASH
+                - generic [ref=e964]: 879,359,200 credits
+            - generic [ref=e965] [cursor=pointer]:
+              - generic [ref=e967]:
+                - generic [ref=e968]: Unnamed Identity
+                - generic [ref=e969]: 3f2W2d2T...jouE
+              - generic [ref=e970]:
+                - generic [ref=e971]: 0.00921874 DASH
+                - generic [ref=e972]: 921,874,440 credits
+            - generic [ref=e973] [cursor=pointer]:
+              - generic [ref=e975]:
+                - generic [ref=e976]: Unnamed Identity
+                - generic [ref=e977]: GxhjezMa...G4x3
+              - generic [ref=e978]:
+                - generic [ref=e979]: 0.00921463 DASH
+                - generic [ref=e980]: 921,462,840 credits
+            - generic [ref=e981] [cursor=pointer]:
+              - generic [ref=e983]:
+                - generic [ref=e984]: Unnamed Identity
+                - generic [ref=e985]: 68XDPeuk...rQKv
+              - generic [ref=e986]:
+                - generic [ref=e987]: 0.00879203 DASH
+                - generic [ref=e988]: 879,203,100 credits
+            - generic [ref=e989] [cursor=pointer]:
+              - generic [ref=e991]:
+                - generic [ref=e992]: Unnamed Identity
+                - generic [ref=e993]: 5W9Dsxep...Cjix
+              - generic [ref=e994]:
+                - generic [ref=e995]: 0.00922351 DASH
+                - generic [ref=e996]: 922,350,620 credits
+            - generic [ref=e997] [cursor=pointer]:
+              - generic [ref=e999]:
+                - generic [ref=e1000]: Unnamed Identity
+                - generic [ref=e1001]: FXHXkr41...5GzA
+              - generic [ref=e1002]:
+                - generic [ref=e1003]: 0.00879003 DASH
+                - generic [ref=e1004]: 879,002,520 credits
+            - generic [ref=e1005] [cursor=pointer]:
+              - generic [ref=e1007]:
+                - generic [ref=e1008]: Unnamed Identity
+                - generic [ref=e1009]: 5MN3dbvE...spxv
+              - generic [ref=e1010]:
+                - generic [ref=e1011]: 0.00879634 DASH
+                - generic [ref=e1012]: 879,634,460 credits
+            - generic [ref=e1013] [cursor=pointer]:
+              - generic [ref=e1015]:
+                - generic [ref=e1016]: Unnamed Identity
+                - generic [ref=e1017]: EQ469nj8...A4Gv
+              - generic [ref=e1018]:
+                - generic [ref=e1019]: 0.00880238 DASH
+                - generic [ref=e1020]: 880,237,660 credits
+            - generic [ref=e1021] [cursor=pointer]:
+              - generic [ref=e1023]:
+                - generic [ref=e1024]: Unnamed Identity
+                - generic [ref=e1025]: H2ARTAWa...NWto
+              - generic [ref=e1026]:
+                - generic [ref=e1027]: 0.00964471 DASH
+                - generic [ref=e1028]: 964,471,060 credits
+            - generic [ref=e1029] [cursor=pointer]:
+              - generic [ref=e1031]:
+                - generic [ref=e1032]: Unnamed Identity
+                - generic [ref=e1033]: 7XbqJfkQ...hdbA
+              - generic [ref=e1034]:
+                - generic [ref=e1035]: 0.00879525 DASH
+                - generic [ref=e1036]: 879,524,920 credits
+            - generic [ref=e1037] [cursor=pointer]:
+              - generic [ref=e1039]:
+                - generic [ref=e1040]: Unnamed Identity
+                - generic [ref=e1041]: 8fe7648g...CBM8
+              - generic [ref=e1042]:
+                - generic [ref=e1043]: 0.0087938 DASH
+                - generic [ref=e1044]: 879,379,620 credits
+            - generic [ref=e1045] [cursor=pointer]:
+              - generic [ref=e1047]:
+                - generic [ref=e1048]: Unnamed Identity
+                - generic [ref=e1049]: 6i5rcY6Z...ptYq
+              - generic [ref=e1050]:
+                - generic [ref=e1051]: 0.00879706 DASH
+                - generic [ref=e1052]: 879,705,560 credits
+            - generic [ref=e1053] [cursor=pointer]:
+              - generic [ref=e1055]:
+                - generic [ref=e1056]: Unnamed Identity
+                - generic [ref=e1057]: 56xGDpoK...wSn4
+              - generic [ref=e1058]:
+                - generic [ref=e1059]: 0.00879456 DASH
+                - generic [ref=e1060]: 879,456,100 credits
+            - generic [ref=e1061] [cursor=pointer]:
+              - generic [ref=e1063]:
+                - generic [ref=e1064]: Unnamed Identity
+                - generic [ref=e1065]: HiX3QRcp...P7ys
+              - generic [ref=e1066]:
+                - generic [ref=e1067]: 0.00879337 DASH
+                - generic [ref=e1068]: 879,337,440 credits
+            - generic [ref=e1069] [cursor=pointer]:
+              - generic [ref=e1071]:
+                - generic [ref=e1072]: Unnamed Identity
+                - generic [ref=e1073]: 2ntgwfF8...5KJQ
+              - generic [ref=e1074]:
+                - generic [ref=e1075]: 0.00879472 DASH
+                - generic [ref=e1076]: 879,472,180 credits
+            - generic [ref=e1077] [cursor=pointer]:
+              - generic [ref=e1079]:
+                - generic [ref=e1080]: Unnamed Identity
+                - generic [ref=e1081]: 6XfTn9Ev...tZxp
+              - generic [ref=e1082]:
+                - generic [ref=e1083]: 0.00879739 DASH
+                - generic [ref=e1084]: 879,739,000 credits
+            - generic [ref=e1085] [cursor=pointer]:
+              - generic [ref=e1087]:
+                - generic [ref=e1088]: Unnamed Identity
+                - generic [ref=e1089]: Er9gXrXM...H9wo
+              - generic [ref=e1090]:
+                - generic [ref=e1091]: 0.00879595 DASH
+                - generic [ref=e1092]: 879,595,020 credits
+            - generic [ref=e1093] [cursor=pointer]:
+              - generic [ref=e1095]:
+                - generic [ref=e1096]: Unnamed Identity
+                - generic [ref=e1097]: GSTYEJQP...KVGt
+              - generic [ref=e1098]:
+                - generic [ref=e1099]: 0.00879616 DASH
+                - generic [ref=e1100]: 879,616,020 credits
+            - generic [ref=e1101] [cursor=pointer]:
+              - generic [ref=e1103]:
+                - generic [ref=e1104]: Unnamed Identity
+                - generic [ref=e1105]: 3TDfESrX...CXGw
+              - generic [ref=e1106]:
+                - generic [ref=e1107]: 0.00879203 DASH
+                - generic [ref=e1108]: 879,202,700 credits
+            - generic [ref=e1109] [cursor=pointer]:
+              - generic [ref=e1111]:
+                - generic [ref=e1112]: Unnamed Identity
+                - generic [ref=e1113]: 9G8rhquu...moRm
+              - generic [ref=e1114]:
+                - generic [ref=e1115]: 0.00879681 DASH
+                - generic [ref=e1116]: 879,680,960 credits
+            - generic [ref=e1117] [cursor=pointer]:
+              - generic [ref=e1119]:
+                - generic [ref=e1120]: Unnamed Identity
+                - generic [ref=e1121]: 9t7t3xop...YVME
+              - generic [ref=e1122]:
+                - generic [ref=e1123]: 0.00879665 DASH
+                - generic [ref=e1124]: 879,665,460 credits
+            - generic [ref=e1125] [cursor=pointer]:
+              - generic [ref=e1127]:
+                - generic [ref=e1128]: Unnamed Identity
+                - generic [ref=e1129]: 9zsn8PsC...hD3g
+              - generic [ref=e1130]:
+                - generic [ref=e1131]: 0.00879535 DASH
+                - generic [ref=e1132]: 879,535,500 credits
+            - generic [ref=e1133] [cursor=pointer]:
+              - generic [ref=e1135]:
+                - generic [ref=e1136]: Unnamed Identity
+                - generic [ref=e1137]: 79xfFKfE...C1Dv
+              - generic [ref=e1138]:
+                - generic [ref=e1139]: 0.00879667 DASH
+                - generic [ref=e1140]: 879,666,520 credits
+            - generic [ref=e1141] [cursor=pointer]:
+              - generic [ref=e1143]:
+                - generic [ref=e1144]: Unnamed Identity
+                - generic [ref=e1145]: 9T2ZcCuQ...dV7V
+              - generic [ref=e1146]:
+                - generic [ref=e1147]: 0.00879463 DASH
+                - generic [ref=e1148]: 879,462,660 credits
+            - generic [ref=e1149] [cursor=pointer]:
+              - generic [ref=e1151]:
+                - generic [ref=e1152]: Unnamed Identity
+                - generic [ref=e1153]: FWAef8vB...wcos
+              - generic [ref=e1154]:
+                - generic [ref=e1155]: 0.00846934 DASH
+                - generic [ref=e1156]: 846,934,300 credits
+            - generic [ref=e1157] [cursor=pointer]:
+              - generic [ref=e1159]:
+                - generic [ref=e1160]: Unnamed Identity
+                - generic [ref=e1161]: DoyRY4N2...WkH8
+              - generic [ref=e1162]:
+                - generic [ref=e1163]: 0.00879191 DASH
+                - generic [ref=e1164]: 879,190,940 credits
+            - generic [ref=e1165] [cursor=pointer]:
+              - generic [ref=e1167]:
+                - generic [ref=e1168]: Unnamed Identity
+                - generic [ref=e1169]: DY8F7fyz...VBsi
+              - generic [ref=e1170]:
+                - generic [ref=e1171]: 0.00879688 DASH
+                - generic [ref=e1172]: 879,687,620 credits
+            - generic [ref=e1173] [cursor=pointer]:
+              - generic [ref=e1175]:
+                - generic [ref=e1176]: Unnamed Identity
+                - generic [ref=e1177]: 4J5PjQHS...yUyC
+              - generic [ref=e1178]:
+                - generic [ref=e1179]: 0.00879261 DASH
+                - generic [ref=e1180]: 879,261,400 credits
+            - generic [ref=e1181] [cursor=pointer]:
+              - generic [ref=e1183]:
+                - generic [ref=e1184]: Unnamed Identity
+                - generic [ref=e1185]: HMWpSTtN...CbTd
+              - generic [ref=e1186]:
+                - generic [ref=e1187]: 0.00879591 DASH
+                - generic [ref=e1188]: 879,591,120 credits
+            - generic [ref=e1189] [cursor=pointer]:
+              - generic [ref=e1191]:
+                - generic [ref=e1192]: Unnamed Identity
+                - generic [ref=e1193]: 8MVYbJRa...qJa8
+              - generic [ref=e1194]:
+                - generic [ref=e1195]: 0.00879524 DASH
+                - generic [ref=e1196]: 879,523,960 credits
+            - generic [ref=e1197] [cursor=pointer]:
+              - generic [ref=e1199]:
+                - generic [ref=e1200]: Unnamed Identity
+                - generic [ref=e1201]: AfoVwMB9...MJwA
+              - generic [ref=e1202]:
+                - generic [ref=e1203]: 0.00879539 DASH
+                - generic [ref=e1204]: 879,539,280 credits
+            - generic [ref=e1205] [cursor=pointer]:
+              - generic [ref=e1207]:
+                - generic [ref=e1208]: Unnamed Identity
+                - generic [ref=e1209]: H7gMEYzW...DVVE
+              - generic [ref=e1210]:
+                - generic [ref=e1211]: 0.00879282 DASH
+                - generic [ref=e1212]: 879,281,720 credits
+            - generic [ref=e1213] [cursor=pointer]:
+              - generic [ref=e1215]:
+                - generic [ref=e1216]: Unnamed Identity
+                - generic [ref=e1217]: 9oSq5b6f...PEtQ
+              - generic [ref=e1218]:
+                - generic [ref=e1219]: 0.00879625 DASH
+                - generic [ref=e1220]: 879,624,780 credits
+            - generic [ref=e1221] [cursor=pointer]:
+              - generic [ref=e1223]:
+                - generic [ref=e1224]: Unnamed Identity
+                - generic [ref=e1225]: EHa7mW7t...1qep
+              - generic [ref=e1226]:
+                - generic [ref=e1227]: 0.00878994 DASH
+                - generic [ref=e1228]: 878,993,740 credits
+            - generic [ref=e1229] [cursor=pointer]:
+              - generic [ref=e1231]:
+                - generic [ref=e1232]: Unnamed Identity
+                - generic [ref=e1233]: DeT51vkT...C5Ee
+              - generic [ref=e1234]:
+                - generic [ref=e1235]: 0.00879565 DASH
+                - generic [ref=e1236]: 879,565,240 credits
+            - generic [ref=e1237] [cursor=pointer]:
+              - generic [ref=e1239]:
+                - generic [ref=e1240]: Unnamed Identity
+                - generic [ref=e1241]: GRQ4u7Vj...ziKc
+              - generic [ref=e1242]:
+                - generic [ref=e1243]: 0.00879451 DASH
+                - generic [ref=e1244]: 879,451,220 credits
+            - generic [ref=e1245] [cursor=pointer]:
+              - generic [ref=e1247]:
+                - generic [ref=e1248]: Unnamed Identity
+                - generic [ref=e1249]: Ct4UFo2t...zFsC
+              - generic [ref=e1250]:
+                - generic [ref=e1251]: 0.00879357 DASH
+                - generic [ref=e1252]: 879,356,860 credits
+            - generic [ref=e1253] [cursor=pointer]:
+              - generic [ref=e1255]:
+                - generic [ref=e1256]: Unnamed Identity
+                - generic [ref=e1257]: DdXbXsL7...H5CB
+              - generic [ref=e1258]:
+                - generic [ref=e1259]: 0.00879305 DASH
+                - generic [ref=e1260]: 879,304,940 credits
+            - generic [ref=e1261] [cursor=pointer]:
+              - generic [ref=e1263]:
+                - generic [ref=e1264]: Unnamed Identity
+                - generic [ref=e1265]: A1xFWWNi...YiXu
+              - generic [ref=e1266]:
+                - generic [ref=e1267]: 0.00879483 DASH
+                - generic [ref=e1268]: 879,483,220 credits
+            - generic [ref=e1269] [cursor=pointer]:
+              - generic [ref=e1271]:
+                - generic [ref=e1272]: Unnamed Identity
+                - generic [ref=e1273]: GARpapPv...xNSd
+              - generic [ref=e1274]:
+                - generic [ref=e1275]: 0.00879533 DASH
+                - generic [ref=e1276]: 879,533,220 credits
+            - generic [ref=e1277] [cursor=pointer]:
+              - generic [ref=e1279]:
+                - generic [ref=e1280]: Unnamed Identity
+                - generic [ref=e1281]: 5yN1xt3x...ydCN
+              - generic [ref=e1282]:
+                - generic [ref=e1283]: 0.00878958 DASH
+                - generic [ref=e1284]: 878,957,900 credits
+            - generic [ref=e1285] [cursor=pointer]:
+              - generic [ref=e1287]:
+                - generic [ref=e1288]: Unnamed Identity
+                - generic [ref=e1289]: 3vpDDRkr...LYxq
+              - generic [ref=e1290]:
+                - generic [ref=e1291]: 0.00879532 DASH
+                - generic [ref=e1292]: 879,532,340 credits
+            - generic [ref=e1293] [cursor=pointer]:
+              - generic [ref=e1295]:
+                - generic [ref=e1296]: Unnamed Identity
+                - generic [ref=e1297]: 7BTc5uBg...naBB
+              - generic [ref=e1298]:
+                - generic [ref=e1299]: 0.00879538 DASH
+                - generic [ref=e1300]: 879,538,180 credits
+            - generic [ref=e1301] [cursor=pointer]:
+              - generic [ref=e1303]:
+                - generic [ref=e1304]: Unnamed Identity
+                - generic [ref=e1305]: c9UMRepP...NMGH
+              - generic [ref=e1306]:
+                - generic [ref=e1307]: 0.00879632 DASH
+                - generic [ref=e1308]: 879,632,200 credits
+            - generic [ref=e1309] [cursor=pointer]:
+              - generic [ref=e1311]:
+                - generic [ref=e1312]: Unnamed Identity
+                - generic [ref=e1313]: HDTnpfiY...3sYQ
+              - generic [ref=e1314]:
+                - generic [ref=e1315]: 0.00880097 DASH
+                - generic [ref=e1316]: 880,096,820 credits
+            - generic [ref=e1317] [cursor=pointer]:
+              - generic [ref=e1319]:
+                - generic [ref=e1320]: Unnamed Identity
+                - generic [ref=e1321]: AKw1u1oi...HBYn
+              - generic [ref=e1322]:
+                - generic [ref=e1323]: 0.00879141 DASH
+                - generic [ref=e1324]: 879,141,240 credits
+            - generic [ref=e1325] [cursor=pointer]:
+              - generic [ref=e1327]:
+                - generic [ref=e1328]: Unnamed Identity
+                - generic [ref=e1329]: 3iUxLTKz...jDr8
+              - generic [ref=e1330]:
+                - generic [ref=e1331]: 0.00879263 DASH
+                - generic [ref=e1332]: 879,262,740 credits
+            - generic [ref=e1333] [cursor=pointer]:
+              - generic [ref=e1335]:
+                - generic [ref=e1336]: Unnamed Identity
+                - generic [ref=e1337]: 6AqUi1ej...RWtz
+              - generic [ref=e1338]:
+                - generic [ref=e1339]: 0.00879459 DASH
+                - generic [ref=e1340]: 879,459,200 credits
+            - generic [ref=e1341] [cursor=pointer]:
+              - generic [ref=e1343]:
+                - generic [ref=e1344]: Unnamed Identity
+                - generic [ref=e1345]: FEw6q6DU...ahXB
+              - generic [ref=e1346]:
+                - generic [ref=e1347]: 0.0087995 DASH
+                - generic [ref=e1348]: 879,949,820 credits
+            - generic [ref=e1349] [cursor=pointer]:
+              - generic [ref=e1351]:
+                - generic [ref=e1352]: Unnamed Identity
+                - generic [ref=e1353]: CxNtsikD...QoCX
+              - generic [ref=e1354]:
+                - generic [ref=e1355]: 0.00879329 DASH
+                - generic [ref=e1356]: 879,329,040 credits
+            - generic [ref=e1357] [cursor=pointer]:
+              - generic [ref=e1359]:
+                - generic [ref=e1360]: Unnamed Identity
+                - generic [ref=e1361]: E7YxuVFp...y3Ax
+              - generic [ref=e1362]:
+                - generic [ref=e1363]: 0.00879194 DASH
+                - generic [ref=e1364]: 879,194,460 credits
+            - generic [ref=e1365] [cursor=pointer]:
+              - generic [ref=e1367]:
+                - generic [ref=e1368]: Unnamed Identity
+                - generic [ref=e1369]: FBRPCm5d...G8iH
+              - generic [ref=e1370]:
+                - generic [ref=e1371]: 0.00879045 DASH
+                - generic [ref=e1372]: 879,045,140 credits
+            - generic [ref=e1373] [cursor=pointer]:
+              - generic [ref=e1375]:
+                - generic [ref=e1376]: Unnamed Identity
+                - generic [ref=e1377]: Aubq2bJB...E34G
+              - generic [ref=e1378]:
+                - generic [ref=e1379]: 0.00879598 DASH
+                - generic [ref=e1380]: 879,597,680 credits
+            - generic [ref=e1381] [cursor=pointer]:
+              - generic [ref=e1383]:
+                - generic [ref=e1384]: Unnamed Identity
+                - generic [ref=e1385]: Ckd2hxor...2vcU
+              - generic [ref=e1386]:
+                - generic [ref=e1387]: 0.00879753 DASH
+                - generic [ref=e1388]: 879,753,080 credits
+            - generic [ref=e1389] [cursor=pointer]:
+              - generic [ref=e1391]:
+                - generic [ref=e1392]: Unnamed Identity
+                - generic [ref=e1393]: 7BCajjmo...zndn
+              - generic [ref=e1394]:
+                - generic [ref=e1395]: 0.00879478 DASH
+                - generic [ref=e1396]: 879,477,620 credits
+            - generic [ref=e1397] [cursor=pointer]:
+              - generic [ref=e1399]:
+                - generic [ref=e1400]: Unnamed Identity
+                - generic [ref=e1401]: 7UEchGEZ...Dykh
+              - generic [ref=e1402]:
+                - generic [ref=e1403]: 0.00879632 DASH
+                - generic [ref=e1404]: 879,631,800 credits
+            - generic [ref=e1405] [cursor=pointer]:
+              - generic [ref=e1407]:
+                - generic [ref=e1408]: Unnamed Identity
+                - generic [ref=e1409]: 391F2rGq...N1H6
+              - generic [ref=e1410]:
+                - generic [ref=e1411]: 0.00879149 DASH
+                - generic [ref=e1412]: 879,148,800 credits
+            - generic [ref=e1413] [cursor=pointer]:
+              - generic [ref=e1415]:
+                - generic [ref=e1416]: Unnamed Identity
+                - generic [ref=e1417]: Ccf3UnV2...wSbR
+              - generic [ref=e1418]:
+                - generic [ref=e1419]: 0.00879813 DASH
+                - generic [ref=e1420]: 879,813,080 credits
+            - generic [ref=e1421] [cursor=pointer]:
+              - generic [ref=e1423]:
+                - generic [ref=e1424]: Unnamed Identity
+                - generic [ref=e1425]: DJ8zeKei...e18w
+              - generic [ref=e1426]:
+                - generic [ref=e1427]: 0.00879954 DASH
+                - generic [ref=e1428]: 879,954,100 credits
+            - generic [ref=e1429] [cursor=pointer]:
+              - generic [ref=e1431]:
+                - generic [ref=e1432]: Unnamed Identity
+                - generic [ref=e1433]: 3DSzGY39...TKdr
+              - generic [ref=e1434]:
+                - generic [ref=e1435]: 0.00879604 DASH
+                - generic [ref=e1436]: 879,603,660 credits
+            - generic [ref=e1437] [cursor=pointer]:
+              - generic [ref=e1439]:
+                - generic [ref=e1440]: Unnamed Identity
+                - generic [ref=e1441]: 7Yhq82Zn...LRvk
+              - generic [ref=e1442]:
+                - generic [ref=e1443]: 0.00879324 DASH
+                - generic [ref=e1444]: 879,324,000 credits
+            - generic [ref=e1445] [cursor=pointer]:
+              - generic [ref=e1447]:
+                - generic [ref=e1448]: Unnamed Identity
+                - generic [ref=e1449]: 7uGNcfqL...298i
+              - generic [ref=e1450]:
+                - generic [ref=e1451]: 0.00879452 DASH
+                - generic [ref=e1452]: 879,452,040 credits
+            - generic [ref=e1453] [cursor=pointer]:
+              - generic [ref=e1455]:
+                - generic [ref=e1456]: Unnamed Identity
+                - generic [ref=e1457]: ENDzWZgj...EDKt
+              - generic [ref=e1458]:
+                - generic [ref=e1459]: 0.00879486 DASH
+                - generic [ref=e1460]: 879,486,420 credits
+            - generic [ref=e1461] [cursor=pointer]:
+              - generic [ref=e1463]:
+                - generic [ref=e1464]: Unnamed Identity
+                - generic [ref=e1465]: 5MfRjbVJ...RmPS
+              - generic [ref=e1466]:
+                - generic [ref=e1467]: 0.00879758 DASH
+                - generic [ref=e1468]: 879,757,500 credits
+            - generic [ref=e1469] [cursor=pointer]:
+              - generic [ref=e1471]:
+                - generic [ref=e1472]: Unnamed Identity
+                - generic [ref=e1473]: B3rvrcfS...jp7p
+              - generic [ref=e1474]:
+                - generic [ref=e1475]: 0.00879388 DASH
+                - generic [ref=e1476]: 879,388,240 credits
+            - generic [ref=e1477] [cursor=pointer]:
+              - generic [ref=e1479]:
+                - generic [ref=e1480]: Unnamed Identity
+                - generic [ref=e1481]: 2BLNSSgq...gvot
+              - generic [ref=e1482]:
+                - generic [ref=e1483]: 0.00879541 DASH
+                - generic [ref=e1484]: 879,540,860 credits
+            - generic [ref=e1485] [cursor=pointer]:
+              - generic [ref=e1487]:
+                - generic [ref=e1488]: Unnamed Identity
+                - generic [ref=e1489]: BvZMk35t...xsUS
+              - generic [ref=e1490]:
+                - generic [ref=e1491]: 0.00879233 DASH
+                - generic [ref=e1492]: 879,233,180 credits
+            - generic [ref=e1493] [cursor=pointer]:
+              - generic [ref=e1495]:
+                - generic [ref=e1496]: Unnamed Identity
+                - generic [ref=e1497]: 9qnSsvRd...tXux
+              - generic [ref=e1498]:
+                - generic [ref=e1499]: 0.00879452 DASH
+                - generic [ref=e1500]: 879,452,480 credits
+            - generic [ref=e1501] [cursor=pointer]:
+              - generic [ref=e1503]:
+                - generic [ref=e1504]: Unnamed Identity
+                - generic [ref=e1505]: 9iwmATDj...mSit
+              - generic [ref=e1506]:
+                - generic [ref=e1507]: 0.00879227 DASH
+                - generic [ref=e1508]: 879,226,500 credits
+            - generic [ref=e1509] [cursor=pointer]:
+              - generic [ref=e1511]:
+                - generic [ref=e1512]: Unnamed Identity
+                - generic [ref=e1513]: DVcRRzrw...Sx2w
+              - generic [ref=e1514]:
+                - generic [ref=e1515]: 0.0087914 DASH
+                - generic [ref=e1516]: 879,140,440 credits
+            - generic [ref=e1517] [cursor=pointer]:
+              - generic [ref=e1519]:
+                - generic [ref=e1520]: Unnamed Identity
+                - generic [ref=e1521]: 5MrBfuVz...YX8V
+              - generic [ref=e1522]:
+                - generic [ref=e1523]: 0.00879561 DASH
+                - generic [ref=e1524]: 879,560,980 credits
+            - generic [ref=e1525] [cursor=pointer]:
+              - generic [ref=e1527]:
+                - generic [ref=e1528]: Unnamed Identity
+                - generic [ref=e1529]: GP8GZyFG...wG3G
+              - generic [ref=e1530]:
+                - generic [ref=e1531]: 0.00879755 DASH
+                - generic [ref=e1532]: 879,754,600 credits
+            - generic [ref=e1533] [cursor=pointer]:
+              - generic [ref=e1535]:
+                - generic [ref=e1536]: Unnamed Identity
+                - generic [ref=e1537]: Hf2X7D2H...gZhf
+              - generic [ref=e1538]:
+                - generic [ref=e1539]: 0.00879414 DASH
+                - generic [ref=e1540]: 879,413,860 credits
+            - generic [ref=e1541] [cursor=pointer]:
+              - generic [ref=e1543]:
+                - generic [ref=e1544]: Unnamed Identity
+                - generic [ref=e1545]: 5rqS73Fj...gBpk
+              - generic [ref=e1546]:
+                - generic [ref=e1547]: 0.00880032 DASH
+                - generic [ref=e1548]: 880,032,480 credits
+            - generic [ref=e1549] [cursor=pointer]:
+              - generic [ref=e1551]:
+                - generic [ref=e1552]: Unnamed Identity
+                - generic [ref=e1553]: 216j5JQo...u8an
+              - generic [ref=e1554]:
+                - generic [ref=e1555]: 0.00879603 DASH
+                - generic [ref=e1556]: 879,602,980 credits
+            - generic [ref=e1557] [cursor=pointer]:
+              - generic [ref=e1559]:
+                - generic [ref=e1560]: Unnamed Identity
+                - generic [ref=e1561]: HBoBR97W...GeZC
+              - generic [ref=e1562]:
+                - generic [ref=e1563]: 0.00879551 DASH
+                - generic [ref=e1564]: 879,551,280 credits
+            - generic [ref=e1565] [cursor=pointer]:
+              - generic [ref=e1567]:
+                - generic [ref=e1568]: Unnamed Identity
+                - generic [ref=e1569]: GtWBLXyb...VScX
+              - generic [ref=e1570]:
+                - generic [ref=e1571]: 0.00879467 DASH
+                - generic [ref=e1572]: 879,467,080 credits
+            - generic [ref=e1573] [cursor=pointer]:
+              - generic [ref=e1575]:
+                - generic [ref=e1576]: Unnamed Identity
+                - generic [ref=e1577]: F3FSDsSf...eybH
+              - generic [ref=e1578]:
+                - generic [ref=e1579]: 0.00879379 DASH
+                - generic [ref=e1580]: 879,378,720 credits
+            - generic [ref=e1581] [cursor=pointer]:
+              - generic [ref=e1583]:
+                - generic [ref=e1584]: Unnamed Identity
+                - generic [ref=e1585]: 7xmFXBNr...TJxM
+              - generic [ref=e1586]:
+                - generic [ref=e1587]: 0.00879004 DASH
+                - generic [ref=e1588]: 879,003,880 credits
+            - generic [ref=e1589] [cursor=pointer]:
+              - generic [ref=e1591]:
+                - generic [ref=e1592]: Unnamed Identity
+                - generic [ref=e1593]: HT6aByqT...H5kj
+              - generic [ref=e1594]:
+                - generic [ref=e1595]: 0.00879848 DASH
+                - generic [ref=e1596]: 879,848,380 credits
+            - generic [ref=e1597] [cursor=pointer]:
+              - generic [ref=e1599]:
+                - generic [ref=e1600]: Unnamed Identity
+                - generic [ref=e1601]: Eeprzsks...qJ1g
+              - generic [ref=e1602]:
+                - generic [ref=e1603]: 0.00879396 DASH
+                - generic [ref=e1604]: 879,396,140 credits
+            - generic [ref=e1605] [cursor=pointer]:
+              - generic [ref=e1607]:
+                - generic [ref=e1608]: Unnamed Identity
+                - generic [ref=e1609]: EA7mmGAb...Qswk
+              - generic [ref=e1610]:
+                - generic [ref=e1611]: 0.00879815 DASH
+                - generic [ref=e1612]: 879,815,240 credits
+            - generic [ref=e1613] [cursor=pointer]:
+              - generic [ref=e1615]:
+                - generic [ref=e1616]: Unnamed Identity
+                - generic [ref=e1617]: GJQi4RAz...cue3
+              - generic [ref=e1618]:
+                - generic [ref=e1619]: 0.00879525 DASH
+                - generic [ref=e1620]: 879,525,120 credits
+            - generic [ref=e1621] [cursor=pointer]:
+              - generic [ref=e1623]:
+                - generic [ref=e1624]: Unnamed Identity
+                - generic [ref=e1625]: 7xEzEsUS...59A2
+              - generic [ref=e1626]:
+                - generic [ref=e1627]: 0.00879586 DASH
+                - generic [ref=e1628]: 879,586,060 credits
+            - generic [ref=e1629] [cursor=pointer]:
+              - generic [ref=e1631]:
+                - generic [ref=e1632]: Unnamed Identity
+                - generic [ref=e1633]: 6A13pBas...dRur
+              - generic [ref=e1634]:
+                - generic [ref=e1635]: 0.00879308 DASH
+                - generic [ref=e1636]: 879,308,380 credits
+            - generic [ref=e1637] [cursor=pointer]:
+              - generic [ref=e1639]:
+                - generic [ref=e1640]: Unnamed Identity
+                - generic [ref=e1641]: 57kbhrY1...N3ke
+              - generic [ref=e1642]:
+                - generic [ref=e1643]: 0.0087918 DASH
+                - generic [ref=e1644]: 879,179,680 credits
+            - generic [ref=e1645] [cursor=pointer]:
+              - generic [ref=e1647]:
+                - generic [ref=e1648]: Unnamed Identity
+                - generic [ref=e1649]: EguchCQ1...ft3M
+              - generic [ref=e1650]:
+                - generic [ref=e1651]: 0.00879069 DASH
+                - generic [ref=e1652]: 879,069,440 credits
+            - generic [ref=e1653] [cursor=pointer]:
+              - generic [ref=e1655]:
+                - generic [ref=e1656]: Unnamed Identity
+                - generic [ref=e1657]: YCkYVKix...H8eg
+              - generic [ref=e1658]:
+                - generic [ref=e1659]: 0.00879748 DASH
+                - generic [ref=e1660]: 879,748,340 credits
+            - generic [ref=e1661] [cursor=pointer]:
+              - generic [ref=e1663]:
+                - generic [ref=e1664]: Unnamed Identity
+                - generic [ref=e1665]: DPRCAiBe...4mjA
+              - generic [ref=e1666]:
+                - generic [ref=e1667]: 0.00879329 DASH
+                - generic [ref=e1668]: 879,329,140 credits
+            - generic [ref=e1669] [cursor=pointer]:
+              - generic [ref=e1671]:
+                - generic [ref=e1672]: Unnamed Identity
+                - generic [ref=e1673]: FzWcVuB9...sbmy
+              - generic [ref=e1674]:
+                - generic [ref=e1675]: 0.00879598 DASH
+                - generic [ref=e1676]: 879,598,200 credits
+            - generic [ref=e1677] [cursor=pointer]:
+              - generic [ref=e1679]:
+                - generic [ref=e1680]: Unnamed Identity
+                - generic [ref=e1681]: 6mAAQs79...ueds
+              - generic [ref=e1682]:
+                - generic [ref=e1683]: 0.0087918 DASH
+                - generic [ref=e1684]: 879,179,580 credits
+            - generic [ref=e1685] [cursor=pointer]:
+              - generic [ref=e1687]:
+                - generic [ref=e1688]: Unnamed Identity
+                - generic [ref=e1689]: 6joXnwM2...2kkt
+              - generic [ref=e1690]:
+                - generic [ref=e1691]: 0.00879683 DASH
+                - generic [ref=e1692]: 879,682,960 credits
+            - generic [ref=e1693] [cursor=pointer]:
+              - generic [ref=e1695]:
+                - generic [ref=e1696]: Unnamed Identity
+                - generic [ref=e1697]: HnSUetVx...Q8gZ
+              - generic [ref=e1698]:
+                - generic [ref=e1699]: 0.00879132 DASH
+                - generic [ref=e1700]: 879,131,920 credits
+            - generic [ref=e1701] [cursor=pointer]:
+              - generic [ref=e1703]:
+                - generic [ref=e1704]: Unnamed Identity
+                - generic [ref=e1705]: MBgXbSY5...tb5J
+              - generic [ref=e1706]:
+                - generic [ref=e1707]: 0.00879405 DASH
+                - generic [ref=e1708]: 879,405,460 credits
+            - generic [ref=e1709] [cursor=pointer]:
+              - generic [ref=e1711]:
+                - generic [ref=e1712]: Unnamed Identity
+                - generic [ref=e1713]: HjtbvGuw...hbec
+              - generic [ref=e1714]:
+                - generic [ref=e1715]: 0.0087976 DASH
+                - generic [ref=e1716]: 879,760,420 credits
+            - generic [ref=e1717] [cursor=pointer]:
+              - generic [ref=e1719]:
+                - generic [ref=e1720]: Unnamed Identity
+                - generic [ref=e1721]: 2WzrAuKm...WPqA
+              - generic [ref=e1722]:
+                - generic [ref=e1723]: 0.00879105 DASH
+                - generic [ref=e1724]: 879,104,680 credits
+            - generic [ref=e1725] [cursor=pointer]:
+              - generic [ref=e1727]:
+                - generic [ref=e1728]: Unnamed Identity
+                - generic [ref=e1729]: 4uwB7Wf6...hdoF
+              - generic [ref=e1730]:
+                - generic [ref=e1731]: 0.00879243 DASH
+                - generic [ref=e1732]: 879,242,520 credits
+            - generic [ref=e1733] [cursor=pointer]:
+              - generic [ref=e1735]:
+                - generic [ref=e1736]: Unnamed Identity
+                - generic [ref=e1737]: HEYsqfCR...4G5C
+              - generic [ref=e1738]:
+                - generic [ref=e1739]: 0.00879601 DASH
+                - generic [ref=e1740]: 879,600,940 credits
+            - generic [ref=e1741] [cursor=pointer]:
+              - generic [ref=e1743]:
+                - generic [ref=e1744]: Unnamed Identity
+                - generic [ref=e1745]: 6JQBgbSx...CQY5
+              - generic [ref=e1746]:
+                - generic [ref=e1747]: 0.00879588 DASH
+                - generic [ref=e1748]: 879,588,220 credits
+            - generic [ref=e1749] [cursor=pointer]:
+              - generic [ref=e1751]:
+                - generic [ref=e1752]: Unnamed Identity
+                - generic [ref=e1753]: HRxbGYCE...QbnX
+              - generic [ref=e1754]:
+                - generic [ref=e1755]: 0.00879574 DASH
+                - generic [ref=e1756]: 879,573,500 credits
+            - generic [ref=e1757] [cursor=pointer]:
+              - generic [ref=e1759]:
+                - generic [ref=e1760]: Unnamed Identity
+                - generic [ref=e1761]: 24Rwjxns...6Baq
+              - generic [ref=e1762]:
+                - generic [ref=e1763]: 0.00879786 DASH
+                - generic [ref=e1764]: 879,785,620 credits
+            - generic [ref=e1765] [cursor=pointer]:
+              - generic [ref=e1767]:
+                - generic [ref=e1768]: Unnamed Identity
+                - generic [ref=e1769]: 7tPt74Va...66tC
+              - generic [ref=e1770]:
+                - generic [ref=e1771]: 0.00879519 DASH
+                - generic [ref=e1772]: 879,519,040 credits
+            - generic [ref=e1773] [cursor=pointer]:
+              - generic [ref=e1775]:
+                - generic [ref=e1776]: Unnamed Identity
+                - generic [ref=e1777]: HddyoCyf...eBSa
+              - generic [ref=e1778]:
+                - generic [ref=e1779]: 0.00879234 DASH
+                - generic [ref=e1780]: 879,233,940 credits
+            - generic [ref=e1781] [cursor=pointer]:
+              - generic [ref=e1783]:
+                - generic [ref=e1784]: Unnamed Identity
+                - generic [ref=e1785]: 2HBhuRHN...h14T
+              - generic [ref=e1786]:
+                - generic [ref=e1787]: 0.00879673 DASH
+                - generic [ref=e1788]: 879,673,200 credits
+            - generic [ref=e1789] [cursor=pointer]:
+              - generic [ref=e1791]:
+                - generic [ref=e1792]: Unnamed Identity
+                - generic [ref=e1793]: DiWKBkSi...wBLG
+              - generic [ref=e1794]:
+                - generic [ref=e1795]: 0.00879399 DASH
+                - generic [ref=e1796]: 879,399,260 credits
+            - generic [ref=e1797] [cursor=pointer]:
+              - generic [ref=e1799]:
+                - generic [ref=e1800]: Unnamed Identity
+                - generic [ref=e1801]: 8vV6Y1Wg...DDoi
+              - generic [ref=e1802]:
+                - generic [ref=e1803]: 0.0087942 DASH
+                - generic [ref=e1804]: 879,419,800 credits
+            - generic [ref=e1805] [cursor=pointer]:
+              - generic [ref=e1807]:
+                - generic [ref=e1808]: Unnamed Identity
+                - generic [ref=e1809]: 25JxTTn9...iZhL
+              - generic [ref=e1810]:
+                - generic [ref=e1811]: 0.00879333 DASH
+                - generic [ref=e1812]: 879,332,880 credits
+            - generic [ref=e1813] [cursor=pointer]:
+              - generic [ref=e1815]:
+                - generic [ref=e1816]: Unnamed Identity
+                - generic [ref=e1817]: 4tE3MhvZ...UcCB
+              - generic [ref=e1818]:
+                - generic [ref=e1819]: 0.00879088 DASH
+                - generic [ref=e1820]: 879,087,820 credits
+            - generic [ref=e1821] [cursor=pointer]:
+              - generic [ref=e1823]:
+                - generic [ref=e1824]: Unnamed Identity
+                - generic [ref=e1825]: BxvPmN56...8wmm
+              - generic [ref=e1826]:
+                - generic [ref=e1827]: 0.00879224 DASH
+                - generic [ref=e1828]: 879,224,080 credits
+            - generic [ref=e1829] [cursor=pointer]:
+              - generic [ref=e1831]:
+                - generic [ref=e1832]: Unnamed Identity
+                - generic [ref=e1833]: D4U9aM1t...3gX5
+              - generic [ref=e1834]:
+                - generic [ref=e1835]: 0.00878934 DASH
+                - generic [ref=e1836]: 878,933,740 credits
+            - generic [ref=e1837] [cursor=pointer]:
+              - generic [ref=e1839]:
+                - generic [ref=e1840]: Unnamed Identity
+                - generic [ref=e1841]: 7nfaTyX9...cFSL
+              - generic [ref=e1842]:
+                - generic [ref=e1843]: 0.00879716 DASH
+                - generic [ref=e1844]: 879,715,680 credits
+            - generic [ref=e1845] [cursor=pointer]:
+              - generic [ref=e1847]:
+                - generic [ref=e1848]: Unnamed Identity
+                - generic [ref=e1849]: ACYn6x23...BWv9
+              - generic [ref=e1850]:
+                - generic [ref=e1851]: 0.00879226 DASH
+                - generic [ref=e1852]: 879,225,820 credits
+            - generic [ref=e1853] [cursor=pointer]:
+              - generic [ref=e1855]:
+                - generic [ref=e1856]: Unnamed Identity
+                - generic [ref=e1857]: Cq7S7e6E...cx7P
+              - generic [ref=e1858]:
+                - generic [ref=e1859]: 0.00879403 DASH
+                - generic [ref=e1860]: 879,402,500 credits
+            - generic [ref=e1861] [cursor=pointer]:
+              - generic [ref=e1863]:
+                - generic [ref=e1864]: Unnamed Identity
+                - generic [ref=e1865]: mst6puwV...9hKc
+              - generic [ref=e1866]:
+                - generic [ref=e1867]: 0.00079598 DASH
+                - generic [ref=e1868]: 79,597,860 credits
+            - generic [ref=e1869] [cursor=pointer]:
+              - generic [ref=e1871]:
+                - generic [ref=e1872]: Unnamed Identity
+                - generic [ref=e1873]: AeJjWY7L...QC2B
+              - generic [ref=e1874]:
+                - generic [ref=e1875]: 0.00079275 DASH
+                - generic [ref=e1876]: 79,274,660 credits
+            - generic [ref=e1877] [cursor=pointer]:
+              - generic [ref=e1879]:
+                - generic [ref=e1880]: Unnamed Identity
+                - generic [ref=e1881]: FAv86FSQ...WkDq
+              - generic [ref=e1882]:
+                - generic [ref=e1883]: 0.00079328 DASH
+                - generic [ref=e1884]: 79,328,200 credits
+            - generic [ref=e1885] [cursor=pointer]:
+              - generic [ref=e1887]:
+                - generic [ref=e1888]: Unnamed Identity
+                - generic [ref=e1889]: Gc9jE5Rs...gqFC
+              - generic [ref=e1890]:
+                - generic [ref=e1891]: 0.00079008 DASH
+                - generic [ref=e1892]: 79,008,420 credits
+            - generic [ref=e1893] [cursor=pointer]:
+              - generic [ref=e1895]:
+                - generic [ref=e1896]: Unnamed Identity
+                - generic [ref=e1897]: BHYg6jTx...BWN7
+              - generic [ref=e1898]:
+                - generic [ref=e1899]: 0.00078581 DASH
+                - generic [ref=e1900]: 78,580,780 credits
+            - generic [ref=e1901] [cursor=pointer]:
+              - generic [ref=e1903]:
+                - generic [ref=e1904]: Unnamed Identity
+                - generic [ref=e1905]: 7jV1HVgk...aKx7
+              - generic [ref=e1906]:
+                - generic [ref=e1907]: 0.00079529 DASH
+                - generic [ref=e1908]: 79,529,140 credits
+            - generic [ref=e1909] [cursor=pointer]:
+              - generic [ref=e1911]:
+                - generic [ref=e1912]: Unnamed Identity
+                - generic [ref=e1913]: 8saMvH3i...a9fS
+              - generic [ref=e1914]:
+                - generic [ref=e1915]: 0.00079274 DASH
+                - generic [ref=e1916]: 79,273,660 credits
+            - generic [ref=e1917] [cursor=pointer]:
+              - generic [ref=e1919]:
+                - generic [ref=e1920]: Unnamed Identity
+                - generic [ref=e1921]: BjWqJ5xX...svFA
+              - generic [ref=e1922]:
+                - generic [ref=e1923]: 0.00079188 DASH
+                - generic [ref=e1924]: 79,187,680 credits
+            - generic [ref=e1925] [cursor=pointer]:
+              - generic [ref=e1927]:
+                - generic [ref=e1928]: Unnamed Identity
+                - generic [ref=e1929]: CQzLCETT...KYnf
+              - generic [ref=e1930]:
+                - generic [ref=e1931]: 0.00080094 DASH
+                - generic [ref=e1932]: 80,094,220 credits
+            - generic [ref=e1933] [cursor=pointer]:
+              - generic [ref=e1935]:
+                - generic [ref=e1936]: Unnamed Identity
+                - generic [ref=e1937]: A2KC9APH...qkjG
+              - generic [ref=e1938]:
+                - generic [ref=e1939]: 0.00079409 DASH
+                - generic [ref=e1940]: 79,409,360 credits
+            - generic [ref=e1941] [cursor=pointer]:
+              - generic [ref=e1943]:
+                - generic [ref=e1944]: Unnamed Identity
+                - generic [ref=e1945]: J528fMRz...fpXV
+              - generic [ref=e1946]:
+                - generic [ref=e1947]: 0.00079258 DASH
+                - generic [ref=e1948]: 79,258,160 credits
+            - generic [ref=e1949] [cursor=pointer]:
+              - generic [ref=e1951]:
+                - generic [ref=e1952]: Unnamed Identity
+                - generic [ref=e1953]: 6TeLTiow...3iFY
+              - generic [ref=e1954]:
+                - generic [ref=e1955]: 0.0007948 DASH
+                - generic [ref=e1956]: 79,479,780 credits
+            - generic [ref=e1957] [cursor=pointer]:
+              - generic [ref=e1959]:
+                - generic [ref=e1960]: Unnamed Identity
+                - generic [ref=e1961]: 34Sccb7T...H9fi
+              - generic [ref=e1962]:
+                - generic [ref=e1963]: 0.00079398 DASH
+                - generic [ref=e1964]: 79,398,040 credits
+            - generic [ref=e1965] [cursor=pointer]:
+              - generic [ref=e1967]:
+                - generic [ref=e1968]: Unnamed Identity
+                - generic [ref=e1969]: 88HoMEyy...12iG
+              - generic [ref=e1970]:
+                - generic [ref=e1971]: 0.00078916 DASH
+                - generic [ref=e1972]: 78,915,680 credits
+            - generic [ref=e1973] [cursor=pointer]:
+              - generic [ref=e1975]:
+                - generic [ref=e1976]: Unnamed Identity
+                - generic [ref=e1977]: 68QyGVze...8h3p
+              - generic [ref=e1978]:
+                - generic [ref=e1979]: 0.00079247 DASH
+                - generic [ref=e1980]: 79,246,820 credits
+            - generic [ref=e1981] [cursor=pointer]:
+              - generic [ref=e1983]:
+                - generic [ref=e1984]: Unnamed Identity
+                - generic [ref=e1985]: 7hQcMRAw...s74o
+              - generic [ref=e1986]:
+                - generic [ref=e1987]: 0.00078954 DASH
+                - generic [ref=e1988]: 78,954,340 credits
+      - generic [ref=e1993]:
+        - heading "Waiting for Your Transaction" [level=2] [ref=e1994]
+        - paragraph [ref=e1995]: Send DASH to the address below. We'll detect it via InstantSend or ChainLock - whichever confirms first!
+        - generic [ref=e1996]:
+          - generic [ref=e1997]: "Send DASH to this address:"
+          - generic [ref=e1998]:
+            - code [ref=e1999]: yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy
+            - button "Copy address" [ref=e2000] [cursor=pointer]:
+              - img [ref=e2001]
+          - img "QR Code" [ref=e2005]
+        - generic [ref=e2006]:
+          - img [ref=e2008]
+          - paragraph [ref=e2011]: Transaction detected!
+          - paragraph [ref=e2012]: Waiting for InstantLock confirmation...
+          - paragraph [ref=e2013]: "TX: 9bc30a088b4d325a..."
+        - generic [ref=e2015]:
+          - generic [ref=e2016]:
+            - img [ref=e2018]
+            - text: Transaction
+          - generic [ref=e2021]:
+            - img [ref=e2023]
+            - text: InstantLock
+          - generic [ref=e2025]:
+            - img [ref=e2027]
+            - text: ChainLock
+        - generic [ref=e2029]:
+          - paragraph [ref=e2030]:
+            - strong [ref=e2031]: "Minimum:"
+            - text: 0.001 DASH
+          - paragraph [ref=e2032]:
+            - strong [ref=e2033]: "Recommended:"
+            - text: 0.01+ DASH for multiple operations
+        - button "Cancel" [ref=e2035] [cursor=pointer]
+```

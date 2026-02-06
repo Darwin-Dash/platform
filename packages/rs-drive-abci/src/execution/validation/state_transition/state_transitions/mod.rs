@@ -25,6 +25,22 @@ pub mod data_contract_update;
 /// Module for voting from a masternode.
 pub mod masternode_vote;
 
+/// Identity create from addresses
+pub mod identity_create_from_addresses;
+
+/// Module for validation of address funding from asset lock transitions
+pub mod address_funding_from_asset_lock;
+
+/// Module for validation of credit transfer from an identity to addresses
+pub mod identity_credit_transfer_to_addresses;
+
+/// Module for validation of address credit withdrawal transitions
+pub mod address_credit_withdrawal;
+
+/// Module for validation of address funds transfer transitions
+pub mod address_funds_transfer;
+mod identity_top_up_from_addresses;
+
 /// The validation mode we are using
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ValidationMode {
@@ -51,6 +67,9 @@ impl ValidationMode {
 }
 
 #[cfg(test)]
+pub(in crate::execution) mod test_helpers;
+
+#[cfg(test)]
 pub(in crate::execution) mod tests {
     use crate::rpc::core::MockCoreRPCLike;
     use crate::test::helpers::setup::{TempPlatform, TestPlatformBuilder};
@@ -70,13 +89,14 @@ pub(in crate::execution) mod tests {
     use rand::prelude::StdRng;
     use rand::{Rng, SeedableRng};
     use simple_signer::signer::SimpleSigner;
+    use std::borrow::Cow;
     use std::collections::BTreeMap;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::ops::Deref;
     use std::sync::Arc;
     use arc_swap::Guard;
     use assert_matches::assert_matches;
-    use dashcore_rpc::dashcore_rpc_json::{DMNState, MasternodeListItem, MasternodeType};
+    use dpp::dashcore_rpc::dashcore_rpc_json::{DMNState, MasternodeListItem, MasternodeType};
     use dapi_grpc::platform::v0::{get_contested_resource_vote_state_request, get_contested_resource_vote_state_response, GetContestedResourceVoteStateRequest, GetContestedResourceVoteStateResponse};
     use dapi_grpc::platform::v0::get_contested_resource_vote_state_request::get_contested_resource_vote_state_request_v0::ResultType;
     use dapi_grpc::platform::v0::get_contested_resource_vote_state_request::{get_contested_resource_vote_state_request_v0, GetContestedResourceVoteStateRequestV0};
@@ -86,7 +106,7 @@ pub(in crate::execution) mod tests {
     use dpp::dash_to_credits;
     use dpp::dashcore::{ProTxHash, Txid};
     use dpp::dashcore::hashes::Hash;
-    use dpp::data_contract::accessors::v0::DataContractV0Getters;
+    use dpp::data_contract::accessors::v0::{DataContractV0Getters, DataContractV0Setters};
     use dpp::data_contract::accessors::v1::{DataContractV1Getters, DataContractV1Setters};
     use dpp::data_contract::{DataContract, GroupContractPosition, TokenContractPosition};
     use dpp::data_contract::document_type::accessors::{DocumentTypeV0Getters, DocumentTypeV1Setters};
@@ -125,7 +145,7 @@ pub(in crate::execution) mod tests {
     use crate::execution::types::block_execution_context::v0::BlockExecutionContextV0;
     use crate::expect_match;
     use crate::platform_types::platform_state::PlatformState;
-    use crate::platform_types::platform_state::v0::PlatformStateV0Methods;
+    use crate::platform_types::platform_state::PlatformStateV0Methods;
     use crate::platform_types::state_transitions_processing_result::{StateTransitionExecutionResult, StateTransitionsProcessingResult};
     use crate::platform_types::state_transitions_processing_result::StateTransitionExecutionResult::{SuccessfulExecution, UnpaidConsensusError};
     use crate::execution::types::block_state_info::BlockStateInfo;
@@ -139,6 +159,7 @@ pub(in crate::execution) mod tests {
     use dpp::tokens::gas_fees_paid_by::GasFeesPaidBy;
     use dpp::tokens::token_amount_on_contract_token::{DocumentActionTokenCost, DocumentActionTokenEffect};
     use dpp::data_contract::document_type::accessors::DocumentTypeV0MutGetters;
+    use dpp::serialization::PlatformDeserializableWithPotentialValidationFromVersionedStructure;
 
     /// We add an identity, but we also add the same amount to system credits
     pub(in crate::execution) fn setup_identity_with_system_credits(
@@ -172,7 +193,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (critical_public_key, private_key) =
             IdentityPublicKey::random_ecdsa_critical_level_authentication_key_with_rng(
@@ -182,7 +203,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(critical_public_key.clone(), private_key);
+        signer.add_identity_public_key(critical_public_key.clone(), private_key);
 
         let identity: Identity = IdentityV0 {
             id: Identifier::random_with_rng(&mut rng),
@@ -229,7 +250,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (critical_public_key, private_key) =
             IdentityPublicKey::random_ecdsa_critical_level_authentication_key_with_rng(
@@ -239,7 +260,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(critical_public_key.clone(), private_key);
+        signer.add_identity_public_key(critical_public_key.clone(), private_key);
 
         let identity: Identity = IdentityV0 {
             id: Identifier::random_with_rng(&mut rng),
@@ -259,7 +280,7 @@ pub(in crate::execution) mod tests {
         platform: &mut TempPlatform<MockCoreRPCLike>,
         seed: u64,
         credits: Credits,
-    ) -> (Identity, SimpleSigner, IdentityPublicKey) {
+    ) -> (Identity, SimpleSigner, IdentityPublicKey, IdentityPublicKey) {
         let platform_version = PlatformVersion::latest();
         let mut signer = SimpleSigner::default();
 
@@ -273,7 +294,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (critical_public_key, private_key) =
             IdentityPublicKey::random_ecdsa_critical_level_authentication_key_with_rng(
@@ -283,7 +304,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(critical_public_key.clone(), private_key);
+        signer.add_identity_public_key(critical_public_key.clone(), private_key);
 
         let identity: Identity = IdentityV0 {
             id: Identifier::random_with_rng(&mut rng),
@@ -310,7 +331,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to add a new identity");
 
-        (identity, signer, master_key)
+        (identity, signer, critical_public_key, master_key)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -340,7 +361,7 @@ pub(in crate::execution) mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         identity.add_public_key(key.clone());
 
@@ -382,7 +403,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (critical_public_key, private_key) =
             IdentityPublicKey::random_ecdsa_critical_level_authentication_key_with_rng(
@@ -392,7 +413,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(critical_public_key.clone(), private_key);
+        signer.add_identity_public_key(critical_public_key.clone(), private_key);
 
         let (withdrawal_public_key, withdrawal_private_key) =
             IdentityPublicKey::random_key_with_known_attributes(
@@ -406,7 +427,7 @@ pub(in crate::execution) mod tests {
             )
             .expect("expected to get key pair");
 
-        signer.add_key(withdrawal_public_key.clone(), withdrawal_private_key);
+        signer.add_identity_public_key(withdrawal_public_key.clone(), withdrawal_private_key);
 
         let identity: Identity = IdentityV0 {
             id: Identifier::random_with_rng(&mut rng),
@@ -501,7 +522,7 @@ pub(in crate::execution) mod tests {
             .expect("expected to process state transition");
 
         let fee_results = processing_result.execution_results().iter().map(|result| {
-            let fee_result = expect_match!(result, StateTransitionExecutionResult::SuccessfulExecution(_, fee_result) => fee_result);
+            let fee_result = expect_match!(result, StateTransitionExecutionResult::SuccessfulExecution{ fee_result, .. } => fee_result);
             fee_result.clone()
         }).collect();
 
@@ -521,6 +542,7 @@ pub(in crate::execution) mod tests {
             }),
             epoch_info: EpochInfo::V0(EpochInfoV0::default()),
             unsigned_withdrawal_transactions: Default::default(),
+            block_address_balance_changes: Default::default(),
             block_platform_state: platform_state.clone(),
             proposer_results: None,
         });
@@ -596,8 +618,8 @@ pub(in crate::execution) mod tests {
             .public_key_hash()
             .expect("expected a public key hash");
 
-        signer.add_key(transfer_key.clone(), transfer_private_key);
-        signer.add_key(owner_key.clone(), owner_private_key);
+        signer.add_identity_public_key(transfer_key.clone(), transfer_private_key);
+        signer.add_identity_public_key(owner_key.clone(), owner_private_key);
 
         let pro_tx_hash_bytes: [u8; 32] = rng.gen();
 
@@ -679,7 +701,7 @@ pub(in crate::execution) mod tests {
             IdentityPublicKey::random_voting_key_with_rng(0, &mut rng, platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(voting_key.clone(), voting_private_key);
+        signer.add_identity_public_key(voting_key.clone(), voting_private_key);
 
         let pro_tx_hash_bytes: [u8; 32] = rng.gen();
 
@@ -770,6 +792,103 @@ pub(in crate::execution) mod tests {
         }
 
         platform.state.store(Arc::new(platform_state));
+    }
+
+    #[allow(dead_code)]
+    pub(in crate::execution) enum IdentityTestInfo<'a> {
+        Given {
+            identity: &'a Identity,
+            signer: &'a SimpleSigner,
+            public_key: &'a IdentityPublicKey,
+            identity_nonce: IdentityNonce,
+        },
+        UseSeed(u64),
+        UseRng(&'a mut StdRng),
+    }
+
+    pub(in crate::execution) fn register_contract_from_bytes(
+        platform: &mut TempPlatform<MockCoreRPCLike>,
+        platform_state: &PlatformState,
+        contract_bytes: Vec<u8>,
+        identity_info: IdentityTestInfo,
+        platform_version: &PlatformVersion,
+    ) -> DataContract {
+        // Deserialize the data contract from bytes
+        let mut data_contract =
+            DataContract::versioned_deserialize(&contract_bytes, false, platform_version)
+                .expect("expected to deserialize data contract");
+
+        // Get identity info based on the enum variant
+        let (identity_cow, signer_cow, key_cow, nonce) = match identity_info {
+            IdentityTestInfo::Given {
+                identity,
+                signer,
+                public_key,
+                identity_nonce,
+            } => (
+                Cow::Borrowed(identity),
+                Cow::Borrowed(signer),
+                Cow::Borrowed(public_key),
+                identity_nonce,
+            ),
+            IdentityTestInfo::UseSeed(seed) => {
+                let (identity, signer, key) = setup_identity(platform, seed, dash_to_credits!(1));
+                (Cow::Owned(identity), Cow::Owned(signer), Cow::Owned(key), 1)
+            }
+            IdentityTestInfo::UseRng(rng) => {
+                let seed = rng.gen();
+                let (identity, signer, key) = setup_identity(platform, seed, dash_to_credits!(1));
+                (Cow::Owned(identity), Cow::Owned(signer), Cow::Owned(key), 1)
+            }
+        };
+
+        let contract_id = DataContract::generate_data_contract_id_v0(identity_cow.id(), nonce);
+
+        data_contract.set_id(contract_id);
+
+        // Create and sign the data contract create transition
+        let state_transition = DataContractCreateTransition::new_from_data_contract(
+            data_contract.clone(),
+            nonce,
+            &identity_cow.as_ref().clone().into_partial_identity_info(),
+            key_cow.id(),
+            signer_cow.as_ref(),
+            platform_version,
+            None,
+        )
+        .expect("expected to create and sign data contract create transition");
+
+        // Serialize the state transition
+        let state_transition_bytes = state_transition
+            .serialize_to_bytes()
+            .expect("expected to serialize state transition");
+
+        let transaction = platform.drive.grove.start_transaction();
+
+        let processing_result = platform
+            .platform
+            .process_raw_state_transitions(
+                &[state_transition_bytes],
+                platform_state,
+                &BlockInfo::default(),
+                &transaction,
+                platform_version,
+                false,
+                None,
+            )
+            .expect("expected to process state transition");
+
+        platform
+            .drive
+            .grove
+            .commit_transaction(transaction)
+            .unwrap()
+            .expect("expected to commit transaction");
+
+        let execution_result = processing_result.into_execution_results().remove(0);
+        assert_matches!(execution_result, SuccessfulExecution { .. });
+
+        data_contract
     }
 
     pub(in crate::execution) fn create_dpns_name_contest_give_key_info(
@@ -1214,7 +1333,7 @@ pub(in crate::execution) mod tests {
                 .filter(|result| {
                     assert_matches!(
                         result,
-                        StateTransitionExecutionResult::SuccessfulExecution(_, _)
+                        StateTransitionExecutionResult::SuccessfulExecution { .. }
                     );
                     true
                 })
@@ -1259,7 +1378,7 @@ pub(in crate::execution) mod tests {
             .filter(|result| {
                 assert_matches!(
                     result,
-                    StateTransitionExecutionResult::SuccessfulExecution(_, _)
+                    StateTransitionExecutionResult::SuccessfulExecution { .. }
                 );
                 true
             })
@@ -1725,7 +1844,10 @@ pub(in crate::execution) mod tests {
         if let Some(expected_err) = expect_err {
             let result = processing_result.into_execution_results().remove(0);
 
-            let StateTransitionExecutionResult::PaidConsensusError(consensus_error, _) = result
+            let StateTransitionExecutionResult::PaidConsensusError {
+                error: consensus_error,
+                ..
+            } = result
             else {
                 panic!("expected a paid consensus error");
             };
@@ -2020,7 +2142,7 @@ pub(in crate::execution) mod tests {
             };
             assert_eq!(consensus_error.to_string(), error_msg)
         } else {
-            assert_matches!(execution_result, SuccessfulExecution(..));
+            assert_matches!(execution_result, SuccessfulExecution { .. });
         }
     }
 
@@ -2600,8 +2722,8 @@ pub(in crate::execution) mod tests {
             let execution_result = processing_result.into_execution_results().remove(0);
             assert_matches!(
                 execution_result,
-                StateTransitionExecutionResult::PaidConsensusError(err, _)
-                    if err.to_string().contains("not allowed because of the document type's creation restriction mode")
+                StateTransitionExecutionResult::PaidConsensusError{ error, .. }
+                    if error.to_string().contains("not allowed because of the document type's creation restriction mode")
             );
         }
 
@@ -2663,8 +2785,8 @@ pub(in crate::execution) mod tests {
             let execution_result = processing_result.into_execution_results().remove(0);
             assert_matches!(
                 execution_result,
-                StateTransitionExecutionResult::PaidConsensusError(err, _)
-                    if err.to_string().contains("not allowed because of the document type's creation restriction mode")
+                StateTransitionExecutionResult::PaidConsensusError{ error, .. }
+                    if error.to_string().contains("not allowed because of the document type's creation restriction mode")
             );
         }
 
@@ -2726,8 +2848,8 @@ pub(in crate::execution) mod tests {
             let execution_result = processing_result.into_execution_results().remove(0);
             assert_matches!(
                 execution_result,
-                StateTransitionExecutionResult::PaidConsensusError(err, _)
-                    if err.to_string().contains("not allowed because of the document type's creation restriction mode")
+                StateTransitionExecutionResult::PaidConsensusError{ error, .. }
+                    if error.to_string().contains("not allowed because of the document type's creation restriction mode")
             );
         }
 
@@ -2791,7 +2913,7 @@ pub(in crate::execution) mod tests {
 
             assert_matches!(
                 processing_result.execution_results().as_slice(),
-                [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+                [StateTransitionExecutionResult::SuccessfulExecution { .. }]
             );
 
             platform
@@ -2870,7 +2992,7 @@ pub(in crate::execution) mod tests {
 
             assert_matches!(
                 processing_result.into_execution_results().remove(0),
-                SuccessfulExecution(..)
+                SuccessfulExecution { .. }
             );
         }
 
@@ -2935,12 +3057,12 @@ pub(in crate::execution) mod tests {
                 .expect("process");
             assert_matches!(
                 processing_result.execution_results().as_slice(),
-                [PaidConsensusError(
-                    ConsensusError::BasicError(
+                [PaidConsensusError {
+                    error: ConsensusError::BasicError(
                         BasicError::InvalidDocumentTransitionActionError { .. }
                     ),
-                    _
-                )]
+                    ..
+                }]
             );
         }
     }

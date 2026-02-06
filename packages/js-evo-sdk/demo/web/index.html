@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dash Platform Identity Management - Create, manage, and interact with your Dash identities">
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' wss: https:;">
+    <title>Dash Identity Manager</title>
+    <link rel="icon" type="image/svg+xml" href="./blue-d.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <img src="./white-d.svg" alt="Dash" class="logo" width="32" height="32" />
+                        <h1 class="app-title">Dash Identity Manager</h1>
+                    </div>
+                    <div class="header-controls">
+                        <!-- Identity Selector Dropdown -->
+                        <div id="identity-selector-container" class="identity-selector">
+                            <button class="selector-trigger" aria-label="Select identity" aria-expanded="false">
+                                <span class="identity-preview">
+                                    <span class="identity-label">Select Identity</span>
+                                    <span class="identity-balance">--</span>
+                                </span>
+                                <svg class="chevron-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <div class="selector-dropdown" role="listbox" aria-label="Identity list" hidden>
+                                <input type="text" class="search-input" placeholder="Search identities..." aria-label="Search identities" />
+                                <ul class="identity-list" role="group">
+                                    <!-- Dynamically populated -->
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- Actions Menu (always visible, context-aware) -->
+                        <div class="actions-menu" id="actions-menu-container">
+                            <button class="actions-menu-trigger" aria-label="Identity actions" aria-expanded="false">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                <span>Actions</span>
+                            </button>
+                            <div class="actions-dropdown" hidden role="menu">
+                                <button type="button" class="action-item" data-action="create-identity" data-requires-identity="false" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Create Identity</span>
+                                </button>
+                                <div class="actions-divider" role="separator"></div>
+                                <button type="button" class="action-item" data-action="topup" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M10 5v10M5 10l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Top Up</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="withdraw" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M10 15V5M15 10l-5 5-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Withdraw</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="transfer" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M5 10h10M10 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Transfer</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="register-name" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Register Name</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="manage-keys" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M10 2a3 3 0 00-3 3v1a2 2 0 00-2 2v5a2 2 0 002 2h6a2 2 0 002-2V8a2 2 0 00-2-2V5a3 3 0 00-3-3zm0 2a1 1 0 011 1v1H9V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Manage Keys</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="add-contact" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M8 7a3 3 0 11-6 0 3 3 0 016 0zM14 7h4M16 5v4M2 18s0-4 5-4 5 4 5 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Add Contact</span>
+                                </button>
+                                <button type="button" class="action-item" data-action="name-lookup" data-requires-identity="true" role="menuitem">
+                                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                        <path d="M8 8a3 3 0 106 0 3 3 0 00-6 0zM21 21l-4.35-4.35M8 15A7 7 0 118 1a7 7 0 010 14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Name Lookup</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Name Resolver (hidden trigger, opened via Actions menu) -->
+                        <div id="name-resolver-container" class="name-resolver-container"></div>
+                        <!-- Notification Bell -->
+                        <div class="notification-bell-container">
+                            <button class="btn-icon" id="notification-bell" aria-label="Operations" aria-expanded="false">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span class="notification-badge" hidden>0</span>
+                            </button>
+                            <div class="notification-center-dropdown" hidden>
+                                <div class="notification-center-header">
+                                    <h3>Operations</h3>
+                                </div>
+                                <div class="operations-list">
+                                    <!-- Dynamically populated -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Logout Button -->
+                        <button class="btn btn-ghost" id="logout-btn" style="padding: var(--space-2) var(--space-3); font-size: var(--text-sm);">
+                            Logout
+                        </button>
+                        <!-- Network Switcher -->
+                        <div class="network-switcher" id="network-switcher-container">
+                            <button class="network-selector-trigger" aria-label="Select network" aria-expanded="false">
+                                <span class="network-indicator"></span>
+                                <span class="network-name" id="current-network-name">Testnet</span>
+                                <svg class="chevron-icon" width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <div class="network-dropdown" hidden>
+                                <button class="network-option" data-network="testnet">
+                                    <span class="network-indicator"></span>
+                                    <span class="network-label">Testnet</span>
+                                    <svg class="checkmark-icon" width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                        <path d="M5 10L8.5 13.5L15 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                                <button class="network-option" data-network="mainnet">
+                                    <span class="network-indicator network-indicator-mainnet"></span>
+                                    <span class="network-label">Mainnet</span>
+                                    <svg class="checkmark-icon" width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                        <path d="M5 10L8.5 13.5L15 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <div class="container">
+                <!-- Login View (first screen before authentication) -->
+                <div id="login-view" class="login-view" hidden>
+                    <div class="login-card">
+                        <img src="./blue-d.svg" alt="Dash" class="login-icon" width="80" height="80" />
+                        <h2>Connect Your Wallet</h2>
+                        <p>Enter your wallet mnemonic to access your identities</p>
+
+                        <form id="login-form">
+                            <div class="form-group">
+                                <textarea id="login-mnemonic" rows="3"
+                                    placeholder="12 or 24 word recovery phrase" readonly
+                                    style="font-family: var(--font-mono); font-size: var(--text-sm); resize: none; color: var(--text-muted);"></textarea>
+                            </div>
+
+                            <div class="form-actions" style="margin-top: var(--space-6);">
+                                <button type="submit" class="btn btn-primary btn-large" style="width: 100%;">
+                                    Connect Wallet
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Discovery Progress View (shown during identity discovery) -->
+                <div id="discovery-progress-view" class="discovery-progress-view" hidden>
+                    <div class="discovery-card">
+                        <div class="spinner-large"></div>
+                        <h2>Discovering Your Identities</h2>
+                        <p class="discovery-status">Searching Dash Platform...</p>
+                        <div class="discovery-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Identities Found</span>
+                                <span class="stat-value" id="discovery-count">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Keys Scanned</span>
+                                <span class="stat-value" id="discovery-scanned">0</span>
+                            </div>
+                        </div>
+                        <p class="discovery-note">This may take a few minutes for wallets with many identities...</p>
+                    </div>
+                </div>
+
+                <!-- Welcome State (when no identity selected) -->
+                <div id="welcome-state" class="welcome-state" hidden>
+                    <div class="welcome-card">
+                        <img src="./blue-d.svg" alt="Dash" class="welcome-icon" width="64" height="64" />
+                        <h2>Welcome to Dash Identity Manager</h2>
+                        <p>Select an existing identity or create a new one to get started</p>
+                        <button class="btn btn-primary btn-large" id="create-identity-btn">
+                            <svg class="icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            Create New Identity
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard View (when multiple identities exist) -->
+                <div id="dashboard-view" class="dashboard-view" hidden>
+                    <!-- Overview Stats - Combined into Single Card -->
+                    <div class="dashboard-summary-card">
+                        <div class="summary-stat">
+                            <span class="summary-label">Identities</span>
+                            <span class="summary-value" id="stat-identities">0</span>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Balance</span>
+                            <span class="summary-value" id="stat-balance">0 DASH</span>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Names</span>
+                            <span class="summary-value" id="stat-names">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Identity Cards Grid -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Your Identities</h2>
+                            <button class="btn btn-primary" id="dashboard-create-btn">
+                                <svg class="icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                Create Identity
+                            </button>
+                        </div>
+                        <div class="identity-cards-grid" id="identity-cards">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Identity View (when identity is selected) -->
+                <div id="identity-view" class="identity-view" hidden>
+                    <!-- Overview Card -->
+                    <div class="card overview-card">
+                        <div class="card-header">
+                            <h2>Identity Overview</h2>
+                            <button class="btn-icon" aria-label="Refresh" id="refresh-btn" title="Refresh identity">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="info-grid" id="identity-info">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+
+
+                    <!-- My Contacts Card -->
+                    <div class="card contacts-card">
+                        <h2>My Contacts</h2>
+                        <div id="contacts-viewer">
+                            <!-- Dynamically populated by ContactsViewer component -->
+                        </div>
+                    </div>
+
+                    <!-- Contact Requests Card -->
+                    <div class="card contact-requests-card">
+                        <h2>Contact Requests</h2>
+                        <div id="contact-requests-viewer">
+                            <!-- Dynamically populated by ContactRequestsManager component -->
+                        </div>
+                    </div>
+
+                    <!-- My Documents Card -->
+                    <div class="card documents-card">
+                        <h2>My Documents</h2>
+                        <div id="documents-viewer">
+                            <!-- Dynamically populated by DocumentViewer component -->
+                        </div>
+                    </div>
+
+                    <!-- My Contested Names Card -->
+                    <div class="card contested-names-card">
+                        <h2>My Contested Names</h2>
+                        <div id="contested-names-viewer">
+                            <!-- Dynamically populated -->
+                        </div>
+                    </div>
+
+                    <!-- My Tokens Card -->
+                    <div class="card tokens-card">
+                        <h2>Tokens</h2>
+                        <div id="token-viewer">
+                            <!-- Dynamically populated by TokenViewer component -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Operation Progress Modal (Generic for all operations) -->
+                <div id="operation-progress-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 id="operation-modal-title">Operation in Progress</h2>
+                            <button class="btn-icon modal-minimize" aria-label="Minimize to activity list" title="Minimize">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M5 15h10M10 10v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="progress-header">
+                                <p class="progress-message" id="operation-progress-message">Initializing...</p>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="operation-progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wallet Funding Modal -->
+                <div id="wallet-funding-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content funding-modal-content">
+                        <div id="funding-flow-content">
+                            <!-- Dynamically populated by WalletFundingFlow component -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Identity Modal -->
+                <div id="create-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Create New Identity</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="create-identity-form">
+                                <div class="form-group">
+                                    <label for="funding-amount">Initial Funding Amount</label>
+                                    <div class="amount-input-group">
+                                        <input type="number" id="funding-amount" step="0.00000001" min="0.001" required />
+                                        <select class="unit-selector" id="unit-selector">
+                                            <option value="dash">DASH</option>
+                                            <option value="duffs">duffs</option>
+                                        </select>
+                                    </div>
+                                    <span class="input-help">Minimum: 0.001 DASH (1,000,000 duffs)</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="identity-label">Label (Optional)</label>
+                                    <input type="text" id="identity-label" placeholder="e.g., Personal, Business, Gaming" />
+                                    <span class="input-help">A friendly name to help you identify this identity</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="use-test-wallet" style="margin-right: 8px;" />
+                                        Use test wallet for development
+                                    </label>
+                                    <span class="input-help" style="color: var(--warning); display: flex; align-items: center; gap: 4px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                        WARNING: Test wallet only! Never use in production
+                                    </span>
+                                </div>
+                                <div class="form-group" id="mnemonic-group" hidden>
+                                    <label for="wallet-mnemonic">Wallet Mnemonic</label>
+                                    <input type="text" id="wallet-mnemonic" placeholder="12 or 24 word phrase" readonly style="font-family: var(--font-mono); font-size: var(--text-sm);" />
+                                    <span class="input-help">This mnemonic will be used to fund the identity</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-cancel">Cancel</button>
+                            <button type="submit" form="create-identity-form" class="btn btn-primary">Create Identity</button>
+                        </div>
+                        <div class="modal-progress" hidden>
+                            <div class="progress-header">
+                                <p class="progress-message">Initializing...</p>
+                                <button class="btn-icon modal-minimize" aria-label="Minimize to activity panel" title="Minimize to activity panel">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M5 15h10M10 10v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keys Management Modal -->
+                <div id="keys-modal" class="modal modal-keys" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content modal-keys-content">
+                        <div class="modal-header">
+                            <h2>Manage Identity Keys</h2>
+                            <div class="keys-modal-header-actions">
+                                <input type="text" id="keys-search" class="keys-search-input" placeholder="Search keys..." />
+                                <button class="btn btn-primary btn-sm" id="add-key-btn">
+                                    <svg class="icon" width="16" height="16" viewBox="0 0 20 20" fill="none">
+                                        <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    Add Key
+                                </button>
+                                <button class="btn-icon modal-close" aria-label="Close">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="modal-body keys-modal-body">
+                            <div id="keys-list" class="keys-list">
+                                <!-- Dynamically populated with key cards -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Private Key Viewer Modal -->
+                <div id="private-key-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Private Key</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="private-key-warning">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0;">
+                                    <path d="M12 9v4m0 4h.01M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <strong>Never share your private keys!</strong>
+                                <p style="margin-top: var(--space-2); font-size: var(--text-sm);">Anyone with access to your private keys can control this identity key.</p>
+                            </div>
+
+                            <div class="private-key-section">
+                                <label>WIF Format</label>
+                                <div class="private-key-display">
+                                    <code id="private-key-wif" class="private-key-value">Loading...</code>
+                                    <button class="btn btn-secondary btn-sm" data-copy-private-wif>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="private-key-section">
+                                <label>Hex Format</label>
+                                <div class="private-key-display">
+                                    <code id="private-key-hex" class="private-key-value">Loading...</code>
+                                    <button class="btn btn-secondary btn-sm" data-copy-private-hex>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Footer removed - X button in header is sufficient -->
+                    </div>
+                </div>
+
+                <!-- Add Key Modal -->
+                <div id="add-key-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Add New Key</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="add-key-form">
+                                <div class="form-group">
+                                    <label for="key-purpose">Key Purpose</label>
+                                    <select id="key-purpose" required>
+                                        <option value="">Select purpose...</option>
+                                        <option value="0">Authentication</option>
+                                        <option value="2">Transfer</option>
+                                        <option value="3">Encryption</option>
+                                        <option value="4">Decryption</option>
+                                    </select>
+                                    <span class="input-help">Choose the purpose for this key</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="key-security">Security Level</label>
+                                    <select id="key-security" required>
+                                        <option value="">Select security level...</option>
+                                        <option value="0">Master</option>
+                                        <option value="1">Critical</option>
+                                        <option value="2">High</option>
+                                        <option value="3">Medium</option>
+                                    </select>
+                                    <span class="input-help">Higher security levels provide better protection</span>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="auto-generate" checked style="margin-right: 8px;" />
+                                        Auto-generate key pair
+                                    </label>
+                                    <span class="input-help">Automatically generate a secure key pair (recommended)</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="add-key-form" class="btn btn-primary">Add Key</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disable Key Confirmation Modal -->
+                <div id="disable-key-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Disable Key</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="private-key-warning" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; color: var(--error);">
+                                    <path d="M12 9v4m0 4h.01M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <strong>This action cannot be undone!</strong>
+                                <p style="margin-top: var(--space-2); font-size: var(--text-sm);">Disabling this key will permanently prevent it from being used. You will need to create a new key to replace its functionality.</p>
+                            </div>
+
+                            <div id="disable-key-info" class="form-group" style="margin-top: var(--space-4);">
+                                <label>Key Details</label>
+                                <div style="background: var(--background-secondary); padding: var(--space-3); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: var(--text-sm);">
+                                    <div><strong>ID:</strong> <span id="disable-key-id">-</span></div>
+                                    <div><strong>Purpose:</strong> <span id="disable-key-purpose">-</span></div>
+                                    <div><strong>Security:</strong> <span id="disable-key-security">-</span></div>
+                                </div>
+                            </div>
+
+                            <p style="margin-top: var(--space-4); color: var(--text-secondary); font-size: var(--text-sm);">
+                                Are you sure you want to disable this key?
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="confirm-disable-key">Disable Key</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Withdraw Modal -->
+                <div id="withdraw-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Withdraw Credits</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="withdraw-form">
+                                <div class="form-group">
+                                    <label for="withdraw-address">Destination Address</label>
+                                    <input type="text" id="withdraw-address" placeholder="yXkMDsZm..." required />
+                                    <span class="input-help">Enter a valid Dash address</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="withdraw-amount">Amount (DASH)</label>
+                                    <input type="number" id="withdraw-amount" step="0.00000001" min="0.0005" required />
+                                    <div id="withdraw-conversion" class="conversion-display">≈ 0 credits</div>
+                                    <span class="input-help" id="withdraw-balance-help">Available: 0 DASH (0 credits)</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="withdraw-form" class="btn btn-primary">Execute Withdrawal</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer Modal -->
+                <div id="transfer-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Transfer Credits</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="transfer-form">
+                                <div class="form-group">
+                                    <label for="transfer-recipient">Recipient Identity</label>
+                                    <input type="text"
+                                           id="transfer-recipient"
+                                           list="transfer-recipient-list"
+                                           placeholder="Select or enter identity ID..."
+                                           maxlength="44"
+                                           required />
+                                    <datalist id="transfer-recipient-list">
+                                        <!-- Dynamically populated with identity options -->
+                                    </datalist>
+                                    <span class="input-help" id="transfer-recipient-validation">Select from your identities or enter a custom 44-character identity ID</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="transfer-amount">Amount (DASH)</label>
+                                    <input type="number" id="transfer-amount" step="0.00000001" min="0.0005" required />
+                                    <div id="transfer-conversion" class="conversion-display">≈ 0 credits</div>
+                                    <span class="input-help" id="transfer-balance-help">Available: 0 DASH (0 credits)</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="transfer-form" class="btn btn-primary">Execute Transfer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Register Name Modal -->
+                <div id="register-name-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content modal-content-wide">
+                        <div class="modal-header">
+                            <h2>Register DPNS Name</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="register-name-form">
+                                <div class="form-group">
+                                    <label for="dpns-name">Username</label>
+                                    <div style="display: flex; gap: var(--space-2); align-items: center;">
+                                        <input type="text" id="dpns-name"
+                                            placeholder="myname"
+                                            pattern="[a-z0-9-]+"
+                                            required
+                                            style="flex: 1;" />
+                                        <span style="font-weight: var(--font-medium); font-family: var(--font-mono);">.dash</span>
+                                    </div>
+                                    <span class="input-help">3-63 characters: lowercase letters, numbers, and hyphens only</span>
+                                    <div id="normalization-preview" class="normalization-preview"></div>
+                                    <div id="live-name-type" class="live-name-type"></div>
+                                    <div id="name-availability-status" class="name-availability-status"></div>
+                                </div>
+
+                                <div class="dpns-comparison-section">
+                                    <h4 style="margin-bottom: var(--space-4); color: var(--text-primary);">Name Types Comparison</h4>
+                                    <table class="dpns-comparison-table">
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th class="comparison-regular">
+                                                    <div class="comparison-header">
+                                                        <span class="comparison-icon">
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="color: var(--color-success); vertical-align: text-bottom;">
+                                                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                                                <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                            </svg>
+                                                        </span>
+                                                        <span>Regular Names</span>
+                                                        <span class="comparison-badge badge-success">Instant</span>
+                                                    </div>
+                                                </th>
+                                                <th class="comparison-premium">
+                                                    <div class="comparison-header">
+                                                        <span class="comparison-icon">
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="color: var(--color-warning); vertical-align: text-bottom;">
+                                                                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2"/>
+                                                                <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                            </svg>
+                                                        </span>
+                                                        <span>Premium Names</span>
+                                                        <span class="comparison-badge badge-warning">Voting Required</span>
+                                                    </div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="comparison-label">Requirements</td>
+                                                <td class="comparison-regular">
+                                                    <span class="comparison-value">20+ characters</span>
+                                                    <span class="comparison-detail">OR contains digits 2-9</span>
+                                                </td>
+                                                <td class="comparison-premium">
+                                                    <span class="comparison-value">3-19 characters</span>
+                                                    <span class="comparison-detail">Only a-z, 0, 1, hyphens</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="comparison-label">Cost</td>
+                                                <td class="comparison-regular">
+                                                    <span class="comparison-value comparison-price">~0.002 DASH</span>
+                                                    <span class="comparison-detail">Transaction fee only</span>
+                                                </td>
+                                                <td class="comparison-premium">
+                                                    <span class="comparison-value comparison-price">~0.2 DASH</span>
+                                                    <span class="comparison-detail">Masternode voting fee</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="comparison-label">Registration Time</td>
+                                                <td class="comparison-regular">
+                                                    <span class="comparison-value comparison-time">Instant</span>
+                                                    <span class="comparison-detail">Registered immediately</span>
+                                                </td>
+                                                <td class="comparison-premium">
+                                                    <span class="comparison-value comparison-time">~2 weeks</span>
+                                                    <span class="comparison-detail">Competitive voting period</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="comparison-label">Examples</td>
+                                                <td class="comparison-regular">
+                                                    <span class="comparison-examples">alice-personal, myname123, alice2</span>
+                                                </td>
+                                                <td class="comparison-premium">
+                                                    <span class="comparison-examples">alice, bob, cool</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="dpns-tip">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align: text-bottom; margin-right: 4px; color: var(--color-warning);">
+                                            <path d="M9 18c0 2 2 3 3 3s3-1 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            <path d="M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        <strong>Pro Tip:</strong> Add a digit (2-9) to any name to make it regular and get instant, cheaper registration!
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="register-name-form" id="register-name-submit" class="btn btn-primary" disabled>Register Name</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rename Identity Modal -->
+                <div id="rename-identity-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Edit Identity Name</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="rename-identity-form">
+                                <div class="form-group">
+                                    <label for="custom-identity-label">Identity Name</label>
+                                    <input type="text" id="custom-identity-label" placeholder="e.g., Personal, Business, Gaming" maxlength="50" />
+                                    <span class="input-help">Type a custom name or select from your registered names below</span>
+                                </div>
+
+                                <div class="form-group" id="dpns-names-section" hidden>
+                                    <label>Or Select from Registered DPNS Names</label>
+                                    <div class="dpns-name-button-group" id="dpns-name-options">
+                                        <!-- Dynamically populated with buttons -->
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Preview</label>
+                                    <div class="name-preview" id="rename-preview">
+                                        <span class="preview-label">How it will appear:</span>
+                                        <span class="preview-name" id="rename-preview-name">Unnamed Identity</span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="rename-identity-form" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Send Contact Request Modal -->
+                <div id="send-contact-request-modal" class="modal" hidden>
+                    <div class="modal-backdrop"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>Add Contact</h2>
+                            <button class="btn-icon modal-close" aria-label="Close">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="send-contact-request-form">
+                                <div class="form-group">
+                                    <label for="contact-request-recipient">Username</label>
+                                    <input type="text"
+                                           id="contact-request-recipient"
+                                           placeholder="Enter username (e.g., alice.dash)"
+                                           required />
+                                    <span class="input-help" id="contact-request-validation">Enter the DPNS name of the person you want to add</span>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-ghost modal-close">Cancel</button>
+                            <button type="submit" form="send-contact-request-form" class="btn btn-primary">Send Request</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Notification Container -->
+        <div id="notification-container" class="notification-container">
+            <!-- Dynamically populated -->
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay" hidden>
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p class="loading-message">Loading...</p>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

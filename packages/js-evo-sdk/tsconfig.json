@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "declaration": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@dashevo/wasm-sdk/compressed": ["./src/types/wasm-sdk.d.ts"],
+      "@dashevo/wasm-sdk": ["./src/types/wasm-sdk.d.ts"],
+      "@dashevo/wasm-sdk/*": ["./src/types/wasm-sdk.d.ts"]
+    }
+  },
+  "include": ["./src/**/*", "./src/types/**/*"],
+  "exclude": ["node_modules"]
+}

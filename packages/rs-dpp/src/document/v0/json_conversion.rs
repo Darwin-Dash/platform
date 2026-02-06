@@ -60,6 +60,27 @@ impl DocumentJsonMethodsV0<'_> for DocumentV0 {
                 JsonValue::Number(updated_at_core_block_height.into()),
             );
         }
+        if let Some(transferred_at) = self.transferred_at {
+            value_mut.insert(
+                property_names::TRANSFERRED_AT.to_string(),
+                JsonValue::Number(transferred_at.into()),
+            );
+        }
+        if let Some(transferred_at_block_height) = self.transferred_at_block_height {
+            value_mut.insert(
+                property_names::TRANSFERRED_AT_BLOCK_HEIGHT.to_string(),
+                JsonValue::Number(transferred_at_block_height.into()),
+            );
+        }
+        if let Some(transferred_at_core_block_height) = self.transferred_at_core_block_height {
+            value_mut.insert(
+                property_names::TRANSFERRED_AT_CORE_BLOCK_HEIGHT.to_string(),
+                JsonValue::Number(transferred_at_core_block_height.into()),
+            );
+        }
+        if let Some(creator_id) = self.creator_id {
+            value_mut.insert(property_names::CREATOR_ID.to_string(), json!(creator_id));
+        }
         if let Some(revision) = self.revision {
             value_mut.insert(
                 property_names::REVISION.to_string(),
@@ -83,24 +104,29 @@ impl DocumentJsonMethodsV0<'_> for DocumentV0 {
             .map(|v| v.try_into().map_err(ProtocolError::ValueError))?
     }
 
-    fn from_json_value<S>(
+    fn from_json_value<S, E>(
         mut document_value: JsonValue,
         _platform_version: &PlatformVersion,
     ) -> Result<Self, ProtocolError>
     where
-        for<'de> S: Deserialize<'de> + TryInto<Identifier, Error = ProtocolError>,
+        for<'de> S: Deserialize<'de> + TryInto<Identifier, Error = E>,
+        E: Into<ProtocolError>,
     {
         let mut document = Self {
             ..Default::default()
         };
 
         if let Ok(value) = document_value.remove(property_names::ID) {
-            let data: S = serde_json::from_value(value)?;
-            document.id = data.try_into()?;
+            if !value.is_null() {
+                let data: S = serde_json::from_value(value)?;
+                document.id = data.try_into().map_err(Into::into)?;
+            }
         }
         if let Ok(value) = document_value.remove(property_names::OWNER_ID) {
-            let data: S = serde_json::from_value(value)?;
-            document.owner_id = data.try_into()?;
+            if !value.is_null() {
+                let data: S = serde_json::from_value(value)?;
+                document.owner_id = data.try_into().map_err(Into::into)?;
+            }
         }
         if let Ok(value) = document_value.remove(property_names::REVISION) {
             document.revision = serde_json::from_value(value)?
@@ -122,6 +148,21 @@ impl DocumentJsonMethodsV0<'_> for DocumentV0 {
         }
         if let Ok(value) = document_value.remove(property_names::UPDATED_AT_CORE_BLOCK_HEIGHT) {
             document.updated_at_core_block_height = serde_json::from_value(value)?;
+        }
+        if let Ok(value) = document_value.remove(property_names::TRANSFERRED_AT) {
+            document.transferred_at = serde_json::from_value(value)?;
+        }
+        if let Ok(value) = document_value.remove(property_names::TRANSFERRED_AT_BLOCK_HEIGHT) {
+            document.transferred_at_block_height = serde_json::from_value(value)?;
+        }
+        if let Ok(value) = document_value.remove(property_names::TRANSFERRED_AT_CORE_BLOCK_HEIGHT) {
+            document.transferred_at_core_block_height = serde_json::from_value(value)?;
+        }
+        if let Ok(value) = document_value.remove(property_names::CREATOR_ID) {
+            if !value.is_null() {
+                let data: S = serde_json::from_value(value)?;
+                document.creator_id = Some(data.try_into().map_err(Into::into)?);
+            }
         }
 
         let platform_value: Value = document_value.into();

@@ -28,13 +28,14 @@ mod creation_tests {
     use drive::query::vote_poll_vote_state_query::ResolvedContestedDocumentVotePollDriveQuery;
     use drive::util::test_helpers::setup_contract;
     use crate::execution::validation::state_transition::state_transitions::tests::{add_contender_to_dpns_name_contest, create_dpns_identity_name_contest, create_dpns_name_contest_give_key_info, perform_votes_multi};
-    use crate::platform_types::platform_state::v0::PlatformStateV0Methods;
+    use crate::platform_types::platform_state::PlatformStateV0Methods;
     use crate::platform_types::state_transitions_processing_result::StateTransitionExecutionResult::PaidConsensusError;
     use crate::test::helpers::fast_forward_to_block::fast_forward_to_block;
     use dpp::consensus::state::state_error::StateError;
     use dpp::dashcore::Network;
     use dpp::dashcore::Network::Testnet;
     use dpp::data_contract::{DataContract, TokenConfiguration};
+    use dpp::document::transfer::Transferable;
     use dpp::identity::SecurityLevel;
     use dpp::state_transition::batch_transition::document_base_transition::DocumentBaseTransition;
     use dpp::state_transition::batch_transition::document_create_transition::DocumentCreateTransitionV0;
@@ -123,7 +124,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -132,6 +133,104 @@ mod creation_tests {
             .commit_transaction(transaction)
             .unwrap()
             .expect("expected to commit transaction");
+    }
+
+    #[test]
+    fn test_document_creation_should_fail_when_creator_id_is_provided() {
+        let platform_version = PlatformVersion::latest();
+        let (mut platform, contract) = TestPlatformBuilder::new()
+            .build_with_mock_rpc()
+            .set_initial_state_structure()
+            .with_crypto_card_game_transfer_only(Transferable::Always);
+
+        let mut rng = StdRng::seed_from_u64(433);
+
+        let platform_state = platform.state.load();
+
+        let (identity, signer, key) = setup_identity(&mut platform, 958, dash_to_credits!(0.1));
+
+        let card_document_type = contract
+            .document_type_for_name("card")
+            .expect("expected a card document type");
+
+        let entropy = Bytes32::random_with_rng(&mut rng);
+
+        let mut document = card_document_type
+            .random_document_with_identifier_and_entropy(
+                &mut rng,
+                identity.id(),
+                entropy,
+                DocumentFieldFillType::FillIfNotRequired,
+                DocumentFieldFillSize::AnyDocumentFillSize,
+                platform_version,
+            )
+            .expect("expected a random document");
+
+        document.set("attack", 4.into());
+        document.set("defense", 7.into());
+        document.set("imageUrl", "https://example.com/card.png".into());
+
+        let forged_creator_bytes = Bytes32::random_with_rng(&mut rng);
+        let forged_creator = Identifier::from(forged_creator_bytes.0);
+        document.set("$creatorId", forged_creator.into());
+
+        let documents_batch_create_transition =
+            BatchTransition::new_document_creation_transition_from_document(
+                document,
+                card_document_type,
+                entropy.0,
+                &key,
+                2,
+                0,
+                None,
+                &signer,
+                platform_version,
+                None,
+            )
+            .expect("expect to create documents batch transition");
+
+        let documents_batch_create_serialized_transition = documents_batch_create_transition
+            .serialize_to_bytes()
+            .expect("expected documents batch serialized state transition");
+
+        let transaction = platform.drive.grove.start_transaction();
+
+        let processing_result = platform
+            .platform
+            .process_raw_state_transitions(
+                &vec![documents_batch_create_serialized_transition],
+                &platform_state,
+                &BlockInfo::default(),
+                &transaction,
+                platform_version,
+                false,
+                None,
+            )
+            .expect("expected to process state transition");
+
+        assert_eq!(processing_result.invalid_paid_count(), 1);
+
+        platform
+            .drive
+            .grove
+            .commit_transaction(transaction)
+            .unwrap()
+            .expect("expected to commit transaction");
+
+        let result = processing_result.into_execution_results().remove(0);
+        let PaidConsensusError {
+            error: consensus_error,
+            ..
+        } = result
+        else {
+            panic!("expected a paid consensus error");
+        };
+
+        assert!(
+            consensus_error.to_string().contains("$creatorId"),
+            "expected the error to mention $creatorId but got: {}",
+            consensus_error
+        );
     }
 
     #[test]
@@ -208,7 +307,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -269,10 +368,10 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(StateError::DocumentAlreadyPresentError { .. }),
-                _
-            )]
+            [PaidConsensusError {
+                error: ConsensusError::StateError(StateError::DocumentAlreadyPresentError { .. }),
+                ..
+            }]
         );
 
         platform
@@ -375,21 +474,21 @@ mod creation_tests {
             .expect("expected to process state transition");
         assert_eq!(
             processing_result.execution_results().first().unwrap(),
-            &PaidConsensusError(
-                ConsensusError::BasicError(BasicError::DocumentFieldMaxSizeExceededError(
+            &PaidConsensusError {
+                error: ConsensusError::BasicError(BasicError::DocumentFieldMaxSizeExceededError(
                     DocumentFieldMaxSizeExceededError::new(
                         "avatar".to_string(),
                         avatar_size as u64,
                         max_field_size as u64
                     )
                 )),
-                FeeResult {
+                actual_fees: FeeResult {
                     storage_fee: 11556000,
                     processing_fee: 526140,
                     fee_refunds: FeeRefunds::default(),
                     removed_bytes_from_system: 0
                 }
-            )
+            }
         );
 
         platform
@@ -1038,10 +1137,10 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(StateError::DocumentContestNotPaidForError(_)),
-                _
-            )]
+            [PaidConsensusError {
+                error: ConsensusError::StateError(StateError::DocumentContestNotPaidForError(_)),
+                ..
+            }]
         );
 
         // Now let's run a query for the vote totals
@@ -1309,7 +1408,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(..)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         // Now let's run a query for the vote totals
@@ -1749,12 +1848,12 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(
+            [PaidConsensusError {
+                error: ConsensusError::StateError(
                     StateError::DocumentContestDocumentWithSameIdAlreadyPresentError { .. }
                 ),
-                _
-            )]
+                ..
+            }]
         );
 
         // Now let's run a query for the vote totals
@@ -2136,7 +2235,11 @@ mod creation_tests {
 
         let result = processing_result.into_execution_results().remove(0);
 
-        let PaidConsensusError(consensus_error, _) = result else {
+        let PaidConsensusError {
+            error: consensus_error,
+            ..
+        } = result
+        else {
             panic!("expected a paid consensus error");
         };
         assert_eq!(consensus_error.to_string(), "An Identity with the id BjNejy4r9QAvLHpQ9Yq6yRMgNymeGZ46d48fJxJbMrfW is already a contestant for the vote_poll ContestedDocumentResourceVotePoll { contract_id: GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec, document_type_name: domain, index_name: parentNameAndLabel, index_values: [string dash, string quantum] }");
@@ -2426,7 +2529,11 @@ mod creation_tests {
 
         let result = processing_result.into_execution_results().remove(0);
 
-        let PaidConsensusError(consensus_error, _) = result else {
+        let PaidConsensusError {
+            error: consensus_error,
+            ..
+        } = result
+        else {
             panic!("expected a paid consensus error");
         };
         assert_eq!(consensus_error.to_string(), "Document Creation on 86LHvdC1Tqx5P97LQUSibGFqf2vnKFpB6VkqQ7oso86e:card is not allowed because of the document type's creation restriction mode Owner Only");
@@ -2535,8 +2642,6 @@ mod creation_tests {
             )
             .expect("expected to process state transition");
 
-        println!("Processing result: {:?}", processing_result);
-
         // Since the creationRestrictionMode is 2 (NoCreationAllowed), this should fail
         assert_eq!(
             processing_result.invalid_paid_count(),
@@ -2553,7 +2658,11 @@ mod creation_tests {
 
         // Check the returned consensus error
         let result = processing_result.into_execution_results().remove(0);
-        let PaidConsensusError(consensus_error, _) = result else {
+        let PaidConsensusError {
+            error: consensus_error,
+            ..
+        } = result
+        else {
             panic!("expected a paid consensus error");
         };
 
@@ -2672,7 +2781,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -2817,7 +2926,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -2960,7 +3069,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -3091,12 +3200,12 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(
+            [PaidConsensusError {
+                error: ConsensusError::StateError(
                     StateError::IdentityHasNotAgreedToPayRequiredTokenAmountError(_)
                 ),
-                _
-            )]
+                ..
+            }]
         );
 
         platform
@@ -3223,12 +3332,12 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(
+            [PaidConsensusError {
+                error: ConsensusError::StateError(
                     StateError::IdentityHasNotAgreedToPayRequiredTokenAmountError(_)
                 ),
-                _
-            )]
+                ..
+            }]
         );
 
         platform
@@ -3355,7 +3464,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -3476,10 +3585,12 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(StateError::RequiredTokenPaymentInfoNotSetError(_)),
-                _
-            )]
+            [PaidConsensusError {
+                error: ConsensusError::StateError(StateError::RequiredTokenPaymentInfoNotSetError(
+                    _
+                )),
+                ..
+            }]
         );
 
         platform
@@ -3607,12 +3718,12 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [PaidConsensusError(
-                ConsensusError::StateError(StateError::IdentityDoesNotHaveEnoughTokenBalanceError(
-                    _
-                )),
-                _
-            )]
+            [PaidConsensusError {
+                error: ConsensusError::StateError(
+                    StateError::IdentityDoesNotHaveEnoughTokenBalanceError(_)
+                ),
+                ..
+            }]
         );
 
         platform
@@ -3772,7 +3883,7 @@ mod creation_tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform

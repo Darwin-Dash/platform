@@ -1,0 +1,117 @@
+name: Publish to NPM
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g., v3.0.0, v3.0.0-rc.1)'
+        required: true
+      npm_tag:
+        description: 'NPM tag (latest, next, rc, dev)'
+        required: true
+        default: 'latest'
+        type: choice
+        options:
+          - latest
+          - next
+          - rc
+          - dev
+
+defaults:
+  run:
+    working-directory: packages/js-evo-sdk
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-publish:
+    name: Build and Publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Verify package version matches tag
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${{ inputs.tag || github.event.release.tag_name }}"
+          # Remove 'v' prefix if present
+          TAG_VERSION="${TAG_VERSION#v}"
+
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: Package version ($PACKAGE_VERSION) does not match tag version ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "Version verified: $PACKAGE_VERSION"
+
+      - name: Run TypeScript check
+        run: yarn tsc -p tsconfig.json --noEmit
+
+      - name: Run unit tests
+        run: yarn test:unit
+        env:
+          CHROME_BIN: chrome
+
+      - name: Build package
+        run: yarn build
+
+      - name: Determine NPM tag
+        id: npm-tag
+        run: |
+          if [ -n "${{ inputs.npm_tag }}" ]; then
+            echo "tag=${{ inputs.npm_tag }}" >> $GITHUB_OUTPUT
+          else
+            # Determine tag from version string
+            VERSION="${{ github.event.release.tag_name }}"
+            if [[ "$VERSION" == *"-rc"* ]]; then
+              echo "tag=rc" >> $GITHUB_OUTPUT
+            elif [[ "$VERSION" == *"-dev"* ]] || [[ "$VERSION" == *"-alpha"* ]]; then
+              echo "tag=dev" >> $GITHUB_OUTPUT
+            elif [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-next"* ]]; then
+              echo "tag=next" >> $GITHUB_OUTPUT
+            else
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Show publish info
+        run: |
+          echo "Publishing @dashevo/evo-sdk"
+          echo "Version: $(node -p "require('./package.json').version")"
+          echo "NPM tag: ${{ steps.npm-tag.outputs.tag }}"
+
+      - name: Publish to NPM
+        run: npm publish --access public --tag ${{ steps.npm-tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-evo-sdk-release-${{ github.sha }}
+          path: packages/js-evo-sdk/dist
+          retention-days: 30

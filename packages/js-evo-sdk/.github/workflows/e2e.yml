@@ -1,0 +1,239 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+    paths:
+      - 'packages/js-evo-sdk/**'
+      - '.github/workflows/js-evo-sdk-*.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+      - 'v*-dev'
+    paths:
+      - 'packages/js-evo-sdk/**'
+  workflow_dispatch:
+    inputs:
+      browsers:
+        description: 'Browsers to test (comma-separated: chromium,firefox,webkit)'
+        required: false
+        default: 'chromium'
+
+defaults:
+  run:
+    working-directory: packages/js-evo-sdk
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build demo application
+        run: yarn demo:web:build
+
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests
+        run: npx playwright test --project=${{ matrix.browser }}
+        env:
+          CI: true
+          DEMO_URL: http://localhost:8080
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.browser }}-${{ github.sha }}
+          path: packages/js-evo-sdk/playwright-report
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.browser }}-${{ github.sha }}
+          path: packages/js-evo-sdk/test-results
+          retention-days: 14
+
+      - name: Upload screenshots and videos
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-artifacts-${{ matrix.browser }}-${{ github.sha }}
+          path: |
+            packages/js-evo-sdk/test-results/**/*.png
+            packages/js-evo-sdk/test-results/**/*.webm
+          retention-days: 14
+
+  e2e-testnet:
+    name: E2E Tests (Testnet Read-Only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    # Only run testnet tests on main branch or manual trigger
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build demo application
+        run: yarn demo:web:build
+
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests against testnet (read-only)
+        run: npx playwright test --project=testnet
+        env:
+          CI: true
+          DEMO_URL: http://localhost:8080
+          DASH_NETWORK: testnet
+        continue-on-error: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-testnet-${{ github.sha }}
+          path: packages/js-evo-sdk/playwright-report
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-testnet-${{ github.sha }}
+          path: packages/js-evo-sdk/test-results
+          retention-days: 30
+
+  e2e-testnet-funded:
+    name: E2E Tests (Testnet Funded)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    # Only run funded testnet tests on main branch or manual trigger when secret is available
+    if: (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.repository == 'dashpay/platform'
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build demo application
+        run: yarn demo:web:build
+
+      - name: Start demo server
+        run: |
+          yarn demo:web:serve &
+          npx wait-on http://localhost:8080 --timeout 60000
+
+      - name: Run E2E tests against testnet (funded wallet)
+        run: npx playwright test --project=testnet-funded
+        env:
+          CI: true
+          DEMO_URL: http://localhost:8080
+          DASH_NETWORK: testnet
+          MNEMONIC: ${{ secrets.TESTNET_WALLET_MNEMONIC }}
+          UTXO_TIMEOUT_MS: 300000
+          OPERATION_TIMEOUT_MS: 120000
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-testnet-funded-${{ github.sha }}
+          path: packages/js-evo-sdk/playwright-report
+          retention-days: 30
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-testnet-funded-${{ github.sha }}
+          path: packages/js-evo-sdk/test-results
+          retention-days: 30
+
+  e2e-summary:
+    name: E2E Summary
+    runs-on: ubuntu-24.04
+    needs: [e2e-tests]
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" == "failure" ]; then
+            echo "Some E2E tests failed. Check the artifacts for details."
+            exit 1
+          fi
+          echo "All E2E tests passed!"
+        working-directory: .

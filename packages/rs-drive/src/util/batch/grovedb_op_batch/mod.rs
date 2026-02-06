@@ -50,6 +50,7 @@ enum KnownPath {
     PoolsRoot,                                                        //Level 1
     PoolsInsideEpoch(Epoch),                                          //Level 2
     PreFundedSpecializedBalancesRoot,                                 //Level 1
+    SavedBlockTransactionsRoot,                                       //Level 1
     SpentAssetLockTransactionsRoot,                                   //Level 1
     MiscRoot,                                                         //Level 1
     WithdrawalTransactionsRoot,                                       //Level 1
@@ -67,6 +68,7 @@ enum KnownPath {
     VersionsRoot,                                                     //Level 1
     VotesRoot,                                                        //Level 1
     GroupActionsRoot,                                                 //Level 1
+    SingleUseKeyBalancesRoot,                                         //Level 1
 }
 
 impl From<RootTree> for KnownPath {
@@ -82,6 +84,7 @@ impl From<RootTree> for KnownPath {
             }
             RootTree::Pools => KnownPath::PoolsRoot,
             RootTree::PreFundedSpecializedBalances => KnownPath::PreFundedSpecializedBalancesRoot,
+            RootTree::SavedBlockTransactions => KnownPath::SavedBlockTransactionsRoot,
             RootTree::SpentAssetLockTransactions => KnownPath::SpentAssetLockTransactionsRoot,
             RootTree::Misc => KnownPath::MiscRoot,
             RootTree::WithdrawalTransactions => KnownPath::WithdrawalTransactionsRoot,
@@ -90,6 +93,7 @@ impl From<RootTree> for KnownPath {
             RootTree::Versions => KnownPath::VersionsRoot,
             RootTree::Votes => KnownPath::VotesRoot,
             RootTree::GroupActions => KnownPath::GroupActionsRoot,
+            RootTree::AddressBalances => KnownPath::SingleUseKeyBalancesRoot,
         }
     }
 }
@@ -477,7 +481,7 @@ pub trait GroveDbOpBatchV0Methods {
     /// # Returns
     ///
     /// * `Option<Op>` - Returns the found `Op` if it exists. If the `Op` is an `GroveOp::InsertOrReplace`, `GroveOp::Replace`,
-    ///                  or `GroveOp::Patch`, it will be removed from the batch.
+    ///   or `GroveOp::Patch`, it will be removed from the batch.
     fn remove_if_insert(&mut self, path: Vec<Vec<u8>>, key: &[u8]) -> Option<GroveOp>;
 }
 
@@ -669,7 +673,7 @@ impl GroveDbOpBatchV0Methods for GroveDbOpBatch {
     /// # Returns
     ///
     /// * `Option<Op>` - Returns the found `Op` if it exists. If the `Op` is an `GroveOp::InsertOrReplace`, `GroveOp::Replace`,
-    ///                  or `GroveOp::Patch`, it will be removed from the batch.
+    ///   or `GroveOp::Patch`, it will be removed from the batch.
     fn remove_if_insert(&mut self, path: Vec<Vec<u8>>, key: &[u8]) -> Option<GroveOp> {
         let path = KeyInfoPath(
             path.into_iter()

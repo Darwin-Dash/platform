@@ -1,6 +1,7 @@
+use crate::address_funds::PlatformAddress;
 use crate::identity::v0::IdentityV0;
 use crate::identity::{IdentityPublicKey, KeyID};
-use crate::prelude::Revision;
+use crate::prelude::{AddressNonce, Revision};
 
 #[cfg(feature = "identity-hashing")]
 use crate::serialization::PlatformSerializable;
@@ -17,8 +18,6 @@ use platform_serialization_derive::{PlatformDeserialize, PlatformSerialize};
 use platform_value::Identifier;
 
 use crate::fee::Credits;
-#[cfg(feature = "identity-serde-conversion")]
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The identity is not stored inside of drive, because of this, the serialization is mainly for
@@ -26,8 +25,8 @@ use std::collections::{BTreeMap, BTreeSet};
 /// untagged is needed here
 #[derive(Debug, Clone, PartialEq, From)]
 #[cfg_attr(
-    feature = "identity-serde-conversion",
-    derive(Serialize, Deserialize),
+   any( feature = "identity-serde-conversion" ,feature = "state-transition-serde-conversion",),
+    derive(serde::Serialize, serde::Deserialize),
     serde(tag = "$version"),
     // platform_version_path("dpp.identity_versions.identity_structure_version")
 )]
@@ -37,12 +36,26 @@ use std::collections::{BTreeMap, BTreeSet};
     platform_serialize(limit = 15000, unversioned)
 )]
 pub enum Identity {
-    #[cfg_attr(feature = "identity-serde-conversion", serde(rename = "0"))]
+    #[cfg_attr(
+        any(
+            feature = "identity-serde-conversion",
+            feature = "state-transition-serde-conversion"
+        ),
+        serde(rename = "0")
+    )]
     V0(IdentityV0),
 }
 
 /// An identity struct that represent partially set/loaded identity data.
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[cfg_attr(
+    any(
+        feature = "identity-serde-conversion",
+        feature = "state-transition-serde-conversion",
+    ),
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "camelCase")
+)]
 pub struct PartialIdentity {
     pub id: Identifier,
     pub loaded_public_keys: BTreeMap<KeyID, IdentityPublicKey>,
@@ -104,6 +117,33 @@ impl Identity {
                 received: version,
             }),
         }
+    }
+
+    /// Create a new identity using input [PlatformAddress]es.
+    ///
+    /// This function derives the identity ID from the provided input addresses.
+    ///
+    /// ## Arguments
+    ///
+    /// * `inputs` - A map of `PlatformAddress` to `(AddressNonce, Credits)`.
+    ///   The identity id is derived from the addresses and nonces (credits are ignored for the id derivation).
+    ///   The nonces should represent state after creation of the identity (e.g. be incremented by 1).
+    /// * `public_keys` - A map of KeyID to IdentityPublicKey tuples representing the public keys for the identity.
+    /// * `platform_version` - The platform version to use for identity creation.
+    ///
+    /// ## Returns
+    ///
+    /// * `Result<Identity, ProtocolError>` - Returns the newly created Identity or a ProtocolError if the operation fails.
+    #[cfg(feature = "state-transitions")]
+    pub fn new_with_input_addresses_and_keys(
+        inputs: &BTreeMap<PlatformAddress, (AddressNonce, Credits)>,
+        public_keys: BTreeMap<KeyID, IdentityPublicKey>,
+        platform_version: &PlatformVersion,
+    ) -> Result<Identity, ProtocolError> {
+        use crate::state_transition::identity_id_from_input_addresses;
+
+        let identity_id = identity_id_from_input_addresses(inputs)?;
+        Self::new_with_id_and_keys(identity_id, public_keys, platform_version)
     }
 
     /// Convenience method to get Partial Identity Info

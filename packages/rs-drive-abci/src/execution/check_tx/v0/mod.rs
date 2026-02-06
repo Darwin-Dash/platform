@@ -7,7 +7,7 @@ use crate::platform_types::event_execution_result::EventExecutionResult;
 #[cfg(test)]
 use crate::platform_types::event_execution_result::EventExecutionResult::UnpaidConsensusExecutionError;
 use crate::platform_types::platform::{Platform, PlatformRef};
-use crate::platform_types::platform_state::v0::PlatformStateV0Methods;
+use crate::platform_types::platform_state::PlatformStateV0Methods;
 use crate::rpc::core::CoreRPCLike;
 
 use dpp::consensus::ConsensusError;
@@ -68,6 +68,7 @@ where
                 errors,
                 state_read_guard.last_block_info(),
                 transaction,
+                None, // address_balances_in_update not needed for check_tx
                 platform_ref.state.current_platform_version()?,
                 platform_ref.state.previous_fee_versions(),
             )
@@ -204,7 +205,7 @@ mod tests {
     use crate::platform_types::event_execution_result::EventExecutionResult::{
         SuccessfulPaidExecution, UnpaidConsensusExecutionError, UnsuccessfulPaidExecution,
     };
-    use crate::platform_types::platform_state::v0::PlatformStateV0Methods;
+    use crate::platform_types::platform_state::PlatformStateV0Methods;
     use crate::test::helpers::setup::TestPlatformBuilder;
     use dpp::block::block_info::BlockInfo;
     use dpp::consensus::basic::BasicError;
@@ -239,7 +240,7 @@ mod tests {
     use dpp::state_transition::identity_update_transition::IdentityUpdateTransition;
     use dpp::state_transition::public_key_in_creation::v0::IdentityPublicKeyInCreationV0;
     use dpp::state_transition::public_key_in_creation::IdentityPublicKeyInCreation;
-    use dpp::state_transition::{StateTransition, StateTransitionLike};
+    use dpp::state_transition::{StateTransition, StateTransitionOwned};
     use dpp::tests::fixtures::{
         get_dashpay_contract_fixture, get_dpns_data_contract_fixture,
         instant_asset_lock_proof_fixture,
@@ -325,8 +326,8 @@ mod tests {
             217, 221, 43, 251, 104, 84, 78, 35, 20, 237, 188, 237, 240, 216, 62, 79, 208, 96, 149,
             116, 62, 82, 187, 135, 219,
         ];
-        let state_transitions =
-            StateTransition::deserialize_many(&[tx.clone()]).expect("expected a state transition");
+        let state_transitions = StateTransition::deserialize_many(std::slice::from_ref(&tx))
+            .expect("expected a state transition");
         let state_transition = state_transitions.first().unwrap();
         let StateTransition::DataContractCreate(contract_create) = state_transition else {
             panic!("expecting a data contract create");
@@ -373,7 +374,7 @@ mod tests {
         platform
             .platform
             .process_raw_state_transitions(
-                &[tx.clone()],
+                std::slice::from_ref(&tx),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -487,7 +488,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -630,7 +631,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -834,7 +835,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -988,7 +989,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1142,7 +1143,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1293,7 +1294,7 @@ mod tests {
         platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1410,7 +1411,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1491,7 +1492,7 @@ mod tests {
         let update_processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized_update.clone()],
+                std::slice::from_ref(&serialized_update),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1620,7 +1621,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1704,7 +1705,7 @@ mod tests {
         let update_processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized_update.clone()],
+                std::slice::from_ref(&serialized_update),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1834,7 +1835,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -1953,7 +1954,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized_update.clone()],
+                std::slice::from_ref(&serialized_update),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -2079,7 +2080,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized.clone()],
+                std::slice::from_ref(&serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -2201,7 +2202,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[serialized_update.clone()],
+                std::slice::from_ref(&serialized_update),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -2284,7 +2285,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(3), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -2293,14 +2294,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2479,7 +2480,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(3), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -2488,14 +2489,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2551,7 +2552,7 @@ mod tests {
             .unwrap();
 
         let asset_lock_proof_top_up = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2628,7 +2629,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(3), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -2637,14 +2638,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2700,7 +2701,7 @@ mod tests {
             .unwrap();
 
         let asset_lock_proof_top_up = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2812,14 +2813,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2845,7 +2846,7 @@ mod tests {
             .unwrap();
 
         let asset_lock_proof_top_up = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2913,7 +2914,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(3), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -2922,14 +2923,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -2985,7 +2986,7 @@ mod tests {
             .unwrap();
 
         let asset_lock_proof_top_up = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -3037,7 +3038,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(4), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -3046,7 +3047,7 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let identifier = asset_lock_proof_top_up
             .create_identifier()
@@ -3141,7 +3142,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(3), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -3150,14 +3151,14 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let (_, pk) = ECDSA_SECP256K1
             .random_public_and_private_key_data(&mut rng, platform_version)
             .unwrap();
 
         let asset_lock_proof = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -3287,7 +3288,7 @@ mod tests {
             .unwrap();
 
         let asset_lock_proof_top_up = instant_asset_lock_proof_fixture(
-            Some(PrivateKey::from_slice(pk.as_slice(), Network::Testnet).unwrap()),
+            Some(PrivateKey::from_byte_array(&pk, Network::Testnet).unwrap()),
             None,
         );
 
@@ -3339,7 +3340,7 @@ mod tests {
             IdentityPublicKey::random_ecdsa_master_authentication_key(0, Some(4), platform_version)
                 .expect("expected to get key pair");
 
-        signer.add_key(master_key.clone(), master_private_key);
+        signer.add_identity_public_key(master_key.clone(), master_private_key);
 
         let (key, private_key) = IdentityPublicKey::random_ecdsa_critical_level_authentication_key(
             1,
@@ -3348,7 +3349,7 @@ mod tests {
         )
         .expect("expected to get key pair");
 
-        signer.add_key(key.clone(), private_key);
+        signer.add_identity_public_key(key.clone(), private_key);
 
         let identifier = asset_lock_proof_top_up
             .create_identifier()
@@ -3528,7 +3529,7 @@ mod tests {
             .build_with_mock_rpc()
             .set_genesis_state();
 
-        let (identity, signer, key) =
+        let (identity, signer, _, key) =
             setup_identity_return_master_key(&mut platform, 958, dash_to_credits!(0.1));
 
         let mut rng = StdRng::seed_from_u64(1);
@@ -3689,7 +3690,7 @@ mod tests {
         let processing_result = platform
             .platform
             .process_raw_state_transitions(
-                &[token_mint_serialized_transition.clone()],
+                std::slice::from_ref(&token_mint_serialized_transition),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,
@@ -3701,7 +3702,7 @@ mod tests {
 
         assert_matches!(
             processing_result.execution_results().as_slice(),
-            [StateTransitionExecutionResult::SuccessfulExecution(_, _)]
+            [StateTransitionExecutionResult::SuccessfulExecution { .. }]
         );
 
         platform
@@ -3771,7 +3772,7 @@ mod tests {
         platform
             .platform
             .process_raw_state_transitions(
-                &[confirm_serialized.clone()],
+                std::slice::from_ref(&confirm_serialized),
                 &platform_state,
                 &BlockInfo::default(),
                 &transaction,

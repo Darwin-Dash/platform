@@ -13,14 +13,14 @@ use {
         },
         query::{Query, QueryItem},
     },
-    dpp::{
-        identity::identity_public_key::accessors::v0::IdentityPublicKeyGettersV0,
-        identity::{KeyID, Purpose, SecurityLevel},
-    },
+    dpp::identity::{KeyID, Purpose, SecurityLevel},
     grovedb::{PathQuery, SizedQuery},
     integer_encoding::VarInt,
     std::{collections::BTreeMap, ops::RangeFull},
 };
+
+#[cfg(feature = "server")]
+use dpp::identity::identity_public_key::accessors::v0::IdentityPublicKeyGettersV0;
 
 #[cfg(feature = "server")]
 use {
@@ -176,7 +176,7 @@ fn element_to_identity_public_key(element: Element) -> Result<IdentityPublicKey,
         )));
     };
 
-    IdentityPublicKey::deserialize_from_bytes(value.as_slice()).map_err(Error::Protocol)
+    IdentityPublicKey::deserialize_from_bytes(value.as_slice()).map_err(Error::from)
 }
 
 #[cfg(feature = "server")]
@@ -193,6 +193,15 @@ fn element_to_identity_public_key_id_and_object_pair(
     let public_key = element_to_identity_public_key(element)?;
 
     Ok((public_key.id(), public_key))
+}
+
+#[cfg(feature = "server")]
+fn element_to_identity_public_key_id_and_some_object_pair(
+    element: Element,
+) -> Result<(KeyID, Option<IdentityPublicKey>), Error> {
+    let public_key = element_to_identity_public_key(element)?;
+
+    Ok((public_key.id(), Some(public_key)))
 }
 
 #[cfg(feature = "server")]
@@ -262,6 +271,19 @@ fn supported_query_result_element_to_identity_public_key_id_and_object_pair(
         | QueryResultElement::KeyElementPairResultItem((_, element))
         | QueryResultElement::PathKeyElementTrioResultItem((_, _, element)) => {
             element_to_identity_public_key_id_and_object_pair(element)
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+fn supported_query_result_element_to_identity_public_key_id_and_some_object_pair(
+    query_result_element: QueryResultElement,
+) -> Result<(KeyID, Option<IdentityPublicKey>), Error> {
+    match query_result_element {
+        QueryResultElement::ElementResultItem(element)
+        | QueryResultElement::KeyElementPairResultItem((_, element))
+        | QueryResultElement::PathKeyElementTrioResultItem((_, _, element)) => {
+            element_to_identity_public_key_id_and_some_object_pair(element)
         }
     }
 }
@@ -591,12 +613,14 @@ impl IdentityPublicKeyResult for KeyIDOptionalIdentityPublicKeyPairBTreeMap {
     }
 
     fn try_from_query_results(
-        _value: QueryResultElements,
+        value: QueryResultElements,
         _platform_version: &PlatformVersion,
     ) -> Result<Self, Error> {
-        Err(Error::Drive(DriveError::NotSupported(
-            "KeyIDOptionalIdentityPublicKeyPairBTreeMap try from QueryResultElements in IdentityPublicKeyResult",
-        )))
+        value
+            .elements
+            .into_iter()
+            .map(supported_query_result_element_to_identity_public_key_id_and_some_object_pair)
+            .collect()
     }
 }
 

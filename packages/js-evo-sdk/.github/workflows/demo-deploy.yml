@@ -1,0 +1,141 @@
+name: Deploy Demo
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'packages/js-evo-sdk/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+defaults:
+  run:
+    working-directory: packages/js-evo-sdk
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-demo:
+    name: Build Demo
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+        working-directory: .
+
+      - name: Install dependencies
+        run: yarn install --inline-builds
+        working-directory: .
+
+      - name: Build SDK
+        run: yarn build
+
+      - name: Build Web Demo
+        run: yarn demo:web:build
+        env:
+          NODE_ENV: production
+          DEMO_BASE_URL: /platform/packages/js-evo-sdk/demo/web/
+
+      - name: Upload demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-build-${{ github.sha }}
+          path: packages/js-evo-sdk/demo/web/dist
+          retention-days: 7
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-24.04
+    needs: build-demo
+    if: github.event.inputs.environment == 'staging' || github.event_name == 'push'
+    environment:
+      name: staging
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download demo artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: demo-build-${{ github.sha }}
+          path: demo-dist
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo-dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-24.04
+    needs: build-demo
+    if: github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download demo artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: demo-build-${{ github.sha }}
+          path: demo-dist
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo-dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify:
+    name: Notify Deployment
+    runs-on: ubuntu-24.04
+    needs: [deploy-staging]
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          if [ "${{ needs.deploy-staging.result }}" == "success" ]; then
+            echo "✅ Demo deployed successfully!"
+            echo "URL: https://dashpay.github.io/platform/packages/js-evo-sdk/demo/web/"
+          else
+            echo "❌ Demo deployment failed"
+          fi
+        working-directory: .

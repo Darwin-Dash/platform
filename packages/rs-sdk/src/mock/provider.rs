@@ -5,11 +5,10 @@ use crate::platform::Fetch;
 use crate::sync::block_on;
 use crate::{Error, Sdk};
 use arc_swap::ArcSwapAny;
+use dash_context_provider::{ContextProvider, ContextProviderError};
 use dpp::data_contract::TokenConfiguration;
 use dpp::prelude::{CoreBlockHeight, DataContract, Identifier};
 use dpp::version::PlatformVersion;
-use drive_proof_verifier::error::ContextProviderError;
-use drive_proof_verifier::ContextProvider;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -245,30 +244,34 @@ impl ContextProvider for GrpcContextProvider {
 /// Thread-safe cache of various objects inside the SDK.
 ///
 /// This is used to cache objects that are expensive to fetch from Platform, like data contracts.
+///
+/// NOTE: Uses Mutex instead of RwLock to avoid "already locked to a reader" errors in single-threaded
+/// WASM environments. Since all operations modify the LRU cache (even reads update access order),
+/// we need exclusive access anyway.
 pub struct Cache<K: Hash + Eq, V> {
     // We use a Mutex to allow access to the cache when we don't have mutable &self
     // And we use Arc to allow multiple threads to access the cache without having to clone it
-    inner: std::sync::RwLock<lru::LruCache<K, Arc<V>>>,
+    // Note: RwLock causes "already locked to a reader" errors in WASM single-threaded async context
+    inner: std::sync::Mutex<lru::LruCache<K, Arc<V>>>,
 }
 
 impl<K: Hash + Eq, V> Cache<K, V> {
     /// Create new cache
     pub fn new(capacity: NonZeroUsize) -> Self {
         Self {
-            // inner: std::sync::Mutex::new(lru::LruCache::new(capacity)),
-            inner: std::sync::RwLock::new(lru::LruCache::new(capacity)),
+            inner: std::sync::Mutex::new(lru::LruCache::new(capacity)),
         }
     }
 
     /// Get a reference to the value stored under `k`.
     pub fn get(&self, k: &K) -> Option<Arc<V>> {
-        let mut guard = self.inner.write().expect("cache lock poisoned");
+        let mut guard = self.inner.lock().expect("cache lock poisoned");
         guard.get(k).map(Arc::clone)
     }
 
     /// Insert a new value into the cache.
     pub fn put(&self, k: K, v: V) {
-        let mut guard = self.inner.write().expect("cache lock poisoned");
+        let mut guard = self.inner.lock().expect("cache lock poisoned");
         guard.put(k, Arc::new(v));
     }
 }
