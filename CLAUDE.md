@@ -200,3 +200,59 @@ ralph --reset-session                  # Reset after crash/interruption
 - `@fix_plan.md` - Task checklist (markdown)
 - `@AGENT.md` - Build/run instructions and learnings
 - `specs/` - Technical specifications
+
+## Transaction Finder Session Context
+
+> This section captures ongoing work on `packages/transaction-finder` for session continuity.
+> Branch: `claude/review-transaction-finder-tests-leYzW`
+
+### What was done
+
+1. **Merged transaction-finder code** from branch `claude/check-git-branch-q2aoF` (resolved merge conflict in `.github/grpc-queries-cache.json`)
+2. **Ran all tests locally**:
+   - Unit tests: 258/258 pass (12 files)
+   - Mock integration tests: 41/41 pass
+   - Live testnet tests: fail locally due to container network restrictions (proxy blocks DAPI gRPC on port 1443)
+3. **Diagnosed network issues**: Envoy proxy only forwards standard TLS; Dash DAPI nodes use self-signed certs on port 1443 causing `sslv3 alert handshake failure`. UDP completely blocked (no WireGuard). SSH tunneling through proxy also blocked.
+4. **Successfully ran live tests on AWS EC2** via user-data approach:
+   - `testnet-realtime.spec.ts` PASSED (connected to DAPI, received MerkleBlocks)
+   - `testnet-utxo.spec.ts` timed out (was scanning 52K blocks from fixed START_HEIGHT)
+   - `testnet-realtime-automated.spec.ts` failed (missing `@dashevo/dash-rpc-client` package)
+5. **Refactored integration tests** (committed and pushed):
+   - Removed `@dashevo/dash-rpc-client` from `package.json` devDependencies
+   - Created `tests/helpers/test-state.ts` - persists scan state (`.test-state.json`) between runs
+   - Created `tests/helpers/dapi-transaction-helper.ts` - DAPI-only TX functions (derivePrivateKey, buildSelfSendTx, broadcastViaDAPI, waitForInstantSend)
+   - Fixed `testnet-utxo.spec.ts` - uses dynamic height (last 500 blocks or persisted state) instead of fixed START_HEIGHT
+   - Rewrote `testnet-realtime-automated.spec.ts` - DAPI-only flow using dashcore-lib for key derivation + TX building
+
+### What still needs to be done
+
+1. **Test on live testnet**: The refactored integration tests need to be run against the real Dash testnet to verify they work end-to-end. This requires either:
+   - AWS EC2 with SSM (preferred) - spin up instance, install Node.js 22 + deps, run tests remotely
+   - Any environment with direct network access to DAPI nodes on port 1443
+2. **Scale up test runs**: Start with 1 successful TX, then scale to 3, then more (UTXO chaining across runs)
+3. **Validate UTXO chaining**: Confirm that `.test-state.json` correctly persists state and subsequent runs scan from the right block height
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `tests/integration/testnet-utxo.spec.ts` | Historic UTXO scanning test (dynamic height) |
+| `tests/integration/testnet-realtime-automated.spec.ts` | DAPI-only self-send + IS detection test |
+| `tests/integration/testnet-realtime.spec.ts` | Passive realtime monitoring test (already works) |
+| `tests/helpers/test-state.ts` | Scan state persistence helper |
+| `tests/helpers/dapi-transaction-helper.ts` | DAPI TX building/broadcast helper |
+| `tests/helpers/dapi-config.ts` | DAPI client config + healthy node loading |
+| `scripts/dapi-multinode-poc.ts` | Reference implementation (1296 lines, DAPI-only POC) |
+| `packages/js-evo-sdk/.env.backup` | Contains MNEMONIC, TESTNET_ADDRESS, NETWORK, START_HEIGHT |
+
+### Environment notes
+
+- `.env` path: `packages/js-evo-sdk/.env` (tests load from there via dotenv)
+- `.env.backup` has: `MNEMONIC=lamp truck drip furnace now swing income victory leisure popular jeans vehicle`
+- `TESTNET_ADDRESS=yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy`
+- Install deps: `cd /home/user/platform && yarn workspaces focus @dashevo/transaction-finder`
+- Run unit tests: `cd packages/transaction-finder && yarn vitest run tests/unit/`
+- Run integration tests (needs network): `yarn vitest run tests/integration/ --testTimeout=360000`
+- Container network: proxy blocks DAPI (port 1443 self-signed certs), blocks UDP, blocks non-TLS SSH tunnels
+- Workaround: AWS EC2 with user-data scripts (package code as tarball to S3, EC2 downloads and runs)
