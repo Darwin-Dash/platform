@@ -2,6 +2,9 @@
 coverage/
 *.log
 
+# Test state (persisted between runs)
+.test-state.json
+
 # IDE
 .idea/
 .vscode/

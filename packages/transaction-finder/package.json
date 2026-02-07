@@ -18,9 +18,7 @@
     "test:unit": "vitest run tests/unit/",
     "test:integration": "vitest run tests/integration/ --testTimeout=60000",
     "test:realtime": "vitest run tests/integration/testnet-realtime.spec.ts --testTimeout=360000",
-    "test:realtime:auto": "vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=360000",
-    "test:realtime:auto:is": "TEST_MODE=instantsend vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=90000",
-    "test:realtime:auto:cl": "TEST_MODE=chainlock vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=360000",
+    "test:realtime:auto": "vitest run tests/integration/testnet-realtime-automated.spec.ts --testTimeout=180000",
     "test:chainlock": "vitest run tests/integration/chainlock-only.integration.test.ts --testTimeout=60000",
     "test:instantsend": "vitest run tests/integration/instantsend-only.integration.test.ts --testTimeout=60000",
     "test:coverage": "vitest run --coverage",
@@ -65,7 +63,6 @@
   },
   "devDependencies": {
     "@dashevo/dapi-client": "^1.0.0",
-    "@dashevo/dash-rpc-client": "file:../dash-rpc-client",
     "@dashevo/dashcore-lib": "~0.22.0",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",

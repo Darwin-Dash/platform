@@ -2,11 +2,12 @@
  * Real Testnet UTXO Finding Tests
  *
  * These tests connect to the real Dash testnet to find UTXOs.
- * Uses standard DAPIClient (not ResilientDAPIClient).
+ * Uses dynamic block height scanning instead of a fixed START_HEIGHT:
+ *   - If a previous run saved state (.test-state.json), scans from there
+ *   - Otherwise scans the last ~500 blocks from current height
  *
  * Environment variables (from js-evo-sdk/.env):
  *   TESTNET_ADDRESS - Address to scan for UTXOs
- *   START_HEIGHT    - Block height to start scanning from
  *   NETWORK         - Network (testnet/mainnet)
  */
 
@@ -15,34 +16,41 @@ import DAPIClient from '@dashevo/dapi-client';
 import { TransactionFinder, FinderMode } from '../../src/index.js';
 import { config } from 'dotenv';
 import { getDAPIClientOptions } from '../helpers/dapi-config.js';
+import { loadTestState, saveTestState, getOptimalStartHeight } from '../helpers/test-state.js';
+import type { TestState } from '../helpers/test-state.js';
 
 // Load .env from js-evo-sdk
 config({ path: '../js-evo-sdk/.env' });
 
 const TEST_ADDRESS = process.env.TESTNET_ADDRESS || 'yX3CJJ42ndx9Bn9vGZRD8cbwk8vth5aKyy';
-const START_HEIGHT = parseInt(process.env.START_HEIGHT || '1363870', 10);
 const NETWORK = process.env.NETWORK || 'testnet';
 
 describe('Testnet UTXO Finding', () => {
   let dapiClient: DAPIClient;
   let currentHeight: number;
+  let startHeight: number;
+  let testState: TestState;
 
   beforeAll(async () => {
     console.log('\n========================================');
     console.log('Testnet UTXO Finding Test');
     console.log('========================================');
     console.log(`Address: ${TEST_ADDRESS}`);
-    console.log(`Start Height: ${START_HEIGHT}`);
     console.log(`Network: ${NETWORK}`);
-    console.log('');
 
     dapiClient = new DAPIClient(getDAPIClientOptions(NETWORK as 'testnet' | 'mainnet'));
 
-    // Get current height
+    // Get current height via DAPI
     const status = await dapiClient.core.getBlockchainStatus();
     currentHeight = status.chain?.blocksCount || status.blocks;
     console.log(`Current blockchain height: ${currentHeight}`);
-    console.log(`Will scan ${currentHeight - START_HEIGHT} blocks`);
+
+    // Load persisted state and calculate optimal start height
+    testState = loadTestState();
+    const envStartHeight = parseInt(process.env.START_HEIGHT || '0', 10);
+    startHeight = getOptimalStartHeight(currentHeight, envStartHeight, testState);
+
+    console.log(`Scan range: ${startHeight} -> ${currentHeight} (${currentHeight - startHeight} blocks)`);
     console.log('');
   });
 
@@ -56,7 +64,7 @@ describe('Testnet UTXO Finding', () => {
       network: NETWORK as 'testnet' | 'mainnet',
       addresses: [TEST_ADDRESS],
       dapiClient: dapiClient as any,
-      fromHeight: START_HEIGHT,
+      fromHeight: startHeight,
       toHeight: currentHeight,
       requiredAmount: 10000, // Minimum 10000 duffs
       onProgress: (progress) => {
@@ -84,6 +92,19 @@ describe('Testnet UTXO Finding', () => {
     console.log(`Duration:     ${duration}s`);
     console.log('========================================');
 
+    // Persist state for next run
+    testState.lastTxBlockHeight = latestUTXO.blockHeight;
+    testState.lastUtxo = {
+      txId: latestUTXO.txId,
+      vout: latestUTXO.vout,
+      satoshis: latestUTXO.satoshis,
+      script: latestUTXO.script || '',
+      address: latestUTXO.address,
+      blockHeight: latestUTXO.blockHeight,
+    };
+    saveTestState(testState);
+    console.log('[state] Saved scan state for next run');
+
     expect(latestUTXO).toBeDefined();
     expect(latestUTXO.txId).toBeDefined();
     expect(latestUTXO.satoshis).toBeGreaterThan(0);
@@ -96,7 +117,7 @@ describe('Testnet UTXO Finding', () => {
       network: NETWORK as 'testnet' | 'mainnet',
       addresses: [TEST_ADDRESS],
       dapiClient: dapiClient as any,
-      fromHeight: START_HEIGHT,
+      fromHeight: startHeight,
       toHeight: currentHeight,
       onProgress: (progress) => {
         if (Math.floor(progress.progress) % 10 === 0) {
@@ -119,7 +140,15 @@ describe('Testnet UTXO Finding', () => {
     for (const utxo of utxos) {
       console.log(`  - ${utxo.satoshis} duffs at block ${utxo.blockHeight}`);
       console.log(`    TxID: ${utxo.txId}`);
+
+      // Update state with the highest block height we've seen
+      if (utxo.blockHeight > testState.lastTxBlockHeight) {
+        testState.lastTxBlockHeight = utxo.blockHeight;
+      }
     }
+
+    // Persist updated state
+    saveTestState(testState);
 
     console.log(`Duration: ${duration}s`);
     console.log('========================================');
